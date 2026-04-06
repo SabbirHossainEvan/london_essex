@@ -82,148 +82,201 @@ export default function FooterSection({
   copyrightText = "Copyright \u00A9 2025 London & Essex. All rights reserved.",
 }: FooterSectionProps) {
   const reduceMotion = useReducedMotion();
+  const [showBackToTop, setShowBackToTop] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 500);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const handleBackToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
-    <motion.footer
-      initial={reduceMotion ? false : { opacity: 0, y: 30 }}
-      whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.15 }}
-      transition={{ duration: 0.7, ease: "easeOut" }}
-      className="bg-[#eef7fd]"
-    >
-      <div className="px-4 py-10 sm:px-6 sm:py-12 lg:px-10">
-        <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-8 lg:grid-cols-[1.3fr_0.6fr_0.7fr] lg:gap-8">
-          <motion.div
-            initial={reduceMotion ? false : { opacity: 0, x: -24 }}
-            whileInView={reduceMotion ? undefined : { opacity: 1, x: 0 }}
-            viewport={{ once: true, amount: 0.4 }}
-            transition={{ delay: 0.08, duration: 0.6 }}
-            whileHover={reduceMotion ? undefined : { y: -3 }}
-            className="flex items-start"
-          >
-            <Link href="/" className="inline-flex">
-              <motion.div
-                animate={reduceMotion ? undefined : { y: [0, -2, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              >
-                <Image
-                  src="/Logo (1) 1.png"
-                  alt="London & Essex Electrical Training"
-                  width={420}
-                  height={84}
-                  className="h-auto w-[250px] sm:w-[300px] lg:w-[360px]"
-                />
-              </motion.div>
-            </Link>
-          </motion.div>
-
-          <motion.div
-            initial={reduceMotion ? false : { opacity: 0, y: 18 }}
-            whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ delay: 0.14, duration: 0.6 }}
-          >
-            <h3 className="text-[2rem] font-semibold tracking-tight text-[#2D3182]">
-              {companyTitle}
-            </h3>
-            <div className="mt-6 flex flex-col gap-6">
-              {legalLinks.map((link, index) => (
+    <>
+      <motion.footer
+        initial={reduceMotion ? false : { opacity: 0, y: 30 }}
+        whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.15 }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        className="bg-[#eef7fd]"
+      >
+        <div className="px-4 py-10 sm:px-6 sm:py-12 lg:px-10">
+          <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-8 lg:grid-cols-[1.3fr_0.6fr_0.7fr] lg:gap-8">
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, x: -24 }}
+              whileInView={reduceMotion ? undefined : { opacity: 1, x: 0 }}
+              viewport={{ once: true, amount: 0.4 }}
+              transition={{ delay: 0.08, duration: 0.6 }}
+              whileHover={reduceMotion ? undefined : { y: -3 }}
+              className="flex items-start"
+            >
+              <Link href="/" className="inline-flex">
                 <motion.div
-                  key={link.label}
-                  initial={reduceMotion ? false : { opacity: 0, x: -10 }}
-                  whileInView={reduceMotion ? undefined : { opacity: 1, x: 0 }}
-                  viewport={{ once: true, amount: 0.8 }}
-                  transition={{ delay: 0.18 + index * 0.06, duration: 0.45 }}
+                  animate={reduceMotion ? undefined : { y: [0, -2, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                 >
-                  <Link
-                    href={link.href}
-                    className="text-[1.55rem] leading-none text-[#252525] transition-colors hover:text-[#2D3182]"
-                  >
-                    {link.label}
-                  </Link>
+                  <Image
+                    src="/Logo (1) 1.png"
+                    alt="London & Essex Electrical Training"
+                    width={420}
+                    height={84}
+                    className="h-auto w-[250px] sm:w-[300px] lg:w-[360px]"
+                  />
                 </motion.div>
-              ))}
-            </div>
-          </motion.div>
+              </Link>
+            </motion.div>
 
-          <motion.div
-            initial={reduceMotion ? false : { opacity: 0, y: 18 }}
-            whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ delay: 0.2, duration: 0.6 }}
-          >
-            <h3 className="text-[2rem] font-semibold tracking-tight text-[#2D3182]">
-              {companyTitle}
-            </h3>
-
-            <div className="mt-6 flex flex-col gap-6">
-              {contacts.map((contact, index) => (
-                <motion.div
-                  key={contact.label}
-                  initial={reduceMotion ? false : { opacity: 0, x: 10 }}
-                  whileInView={reduceMotion ? undefined : { opacity: 1, x: 0 }}
-                  viewport={{ once: true, amount: 0.8 }}
-                  transition={{ delay: 0.24 + index * 0.07, duration: 0.45 }}
-                >
-                  <Link
-                    href={contact.href}
-                    className="group flex items-center gap-4 text-[1.45rem] text-[#252525]"
-                  >
-                    <motion.span
-                      whileHover={
-                        reduceMotion
-                          ? undefined
-                          : {
-                              rotate: contact.type === "phone" ? -12 : 8,
-                              scale: 1.08,
-                            }
-                      }
-                      className="inline-flex"
-                    >
-                      {contact.type === "phone" ? (
-                        <Phone className="h-6 w-6 text-[#2D3182]" />
-                      ) : (
-                        <Mail className="h-6 w-6 text-[#2D3182]" />
-                      )}
-                    </motion.span>
-                    <span className="transition-colors group-hover:text-[#2D3182]">
-                      {contact.label}
-                    </span>
-                  </Link>
-                </motion.div>
-              ))}
-
-              <div className="flex items-center gap-5 pt-1">
-                {socials.map((social, index) => (
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+              whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ delay: 0.14, duration: 0.6 }}
+            >
+              <h3 className="text-[1.45rem] font-semibold tracking-tight text-[#2D3182] sm:text-[1.6rem]">
+                {companyTitle}
+              </h3>
+              <div className="mt-6 flex flex-col gap-6">
+                {legalLinks.map((link, index) => (
                   <motion.div
-                    key={social.platform}
-                    initial={reduceMotion ? false : { opacity: 0, scale: 0.85 }}
-                    whileInView={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
-                    viewport={{ once: true, amount: 0.9 }}
-                    transition={{ delay: 0.34 + index * 0.05, duration: 0.35 }}
-                    whileHover={reduceMotion ? undefined : { y: -4, scale: 1.08 }}
-                    whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+                    key={link.label}
+                    initial={reduceMotion ? false : { opacity: 0, x: -10 }}
+                    whileInView={reduceMotion ? undefined : { opacity: 1, x: 0 }}
+                    viewport={{ once: true, amount: 0.8 }}
+                    transition={{ delay: 0.18 + index * 0.06, duration: 0.45 }}
                   >
-                    <Link href={social.href} aria-label={social.platform}>
-                      <SocialIcon platform={social.platform} />
+                    <Link
+                      href={link.href}
+                      className="text-[1.05rem] leading-[1.15] text-[#252525] transition-colors hover:text-[#2D3182] sm:text-[1.1rem]"
+                    >
+                      {link.label}
                     </Link>
                   </motion.div>
                 ))}
               </div>
-            </div>
-          </motion.div>
-        </div>
-      </div>
+            </motion.div>
 
-      <motion.div
-        initial={reduceMotion ? false : { opacity: 0 }}
-        whileInView={reduceMotion ? undefined : { opacity: 1 }}
-        viewport={{ once: true, amount: 1 }}
-        transition={{ delay: 0.3, duration: 0.6 }}
-        className="bg-[#18a8df] px-4 py-3 text-center text-[1rem] text-white sm:text-[1.1rem]"
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+              whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+            >
+              <h3 className="text-[1.45rem] font-semibold tracking-tight text-[#2D3182] sm:text-[1.6rem]">
+                {companyTitle}
+              </h3>
+
+              <div className="mt-6 flex flex-col gap-6">
+                {contacts.map((contact, index) => (
+                  <motion.div
+                    key={contact.label}
+                    initial={reduceMotion ? false : { opacity: 0, x: 10 }}
+                    whileInView={reduceMotion ? undefined : { opacity: 1, x: 0 }}
+                    viewport={{ once: true, amount: 0.8 }}
+                    transition={{ delay: 0.24 + index * 0.07, duration: 0.45 }}
+                  >
+                    <Link
+                      href={contact.href}
+                      className="group flex items-center gap-4 text-[1rem] text-[#252525] sm:text-[1.08rem]"
+                    >
+                      <motion.span
+                        whileHover={
+                          reduceMotion
+                            ? undefined
+                            : {
+                                rotate: contact.type === "phone" ? -12 : 8,
+                                scale: 1.08,
+                              }
+                        }
+                        className="inline-flex"
+                      >
+                        {contact.type === "phone" ? (
+                          <Phone className="h-5 w-5 text-[#2D3182]" />
+                        ) : (
+                          <Mail className="h-5 w-5 text-[#2D3182]" />
+                        )}
+                      </motion.span>
+                      <span className="transition-colors group-hover:text-[#2D3182]">
+                        {contact.label}
+                      </span>
+                    </Link>
+                  </motion.div>
+                ))}
+
+                <div className="flex items-center gap-5 pt-1">
+                  {socials.map((social, index) => (
+                    <motion.div
+                      key={social.platform}
+                      initial={reduceMotion ? false : { opacity: 0, scale: 0.85 }}
+                      whileInView={reduceMotion ? undefined : { opacity: 1, scale: 1 }}
+                      viewport={{ once: true, amount: 0.9 }}
+                      transition={{ delay: 0.34 + index * 0.05, duration: 0.35 }}
+                      whileHover={reduceMotion ? undefined : { y: -4, scale: 1.08 }}
+                      whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+                    >
+                      <Link href={social.href} aria-label={social.platform}>
+                        <SocialIcon platform={social.platform} />
+                      </Link>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+
+        <motion.div
+          initial={reduceMotion ? false : { opacity: 0 }}
+          whileInView={reduceMotion ? undefined : { opacity: 1 }}
+          viewport={{ once: true, amount: 1 }}
+          transition={{ delay: 0.3, duration: 0.6 }}
+          className="bg-[#18a8df] px-4 py-3 text-center text-[1rem] text-white sm:text-[1.1rem]"
+        >
+          {copyrightText}
+        </motion.div>
+      </motion.footer>
+
+      <motion.button
+        type="button"
+        onClick={handleBackToTop}
+        initial={false}
+        animate={
+          showBackToTop
+            ? { opacity: 1, scale: 1, y: 0 }
+            : { opacity: 0, scale: 0.85, y: 18 }
+        }
+        transition={{ duration: 0.25, ease: "easeOut" }}
+        whileHover={reduceMotion ? undefined : { y: -3, scale: 1.05 }}
+        whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+        className={`fixed bottom-15 right-6 z-50 flex h-16 w-16 items-center justify-center rounded-full bg-[#18a8df] text-white shadow-[0_12px_24px_rgba(24,168,223,0.35)] ${showBackToTop ? "pointer-events-auto" : "pointer-events-none"}`}
+        aria-label="Back to top"
       >
-        {copyrightText}
-      </motion.div>
-    </motion.footer>
+        <motion.svg
+          width="26"
+          height="26"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          animate={reduceMotion ? undefined : { y: [0, -2, 0] }}
+          transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+          aria-hidden="true"
+        >
+          <path
+            d="M5 14L12 7L19 14"
+            stroke="currentColor"
+            strokeWidth="2.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </motion.svg>
+      </motion.button>
+    </>
   );
 }

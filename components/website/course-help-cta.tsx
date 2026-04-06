@@ -25,10 +25,10 @@ export default function CourseHelpCta({
       whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.25 }}
       transition={{ duration: 0.7, ease: "easeOut" }}
-      className="bg-white py-10 sm:py-12"
+
     >
-      <div className="mx-auto w-full px-0 sm:px-2">
-        <div className="relative overflow-hidden rounded-[0px] bg-[#87d6f4] sm:rounded-[26px]">
+      <div className="relative overflow-hidden">
+        <div className="relative overflow-hidden">
           <Image
             src={backgroundSrc}
             alt=""
@@ -38,13 +38,13 @@ export default function CourseHelpCta({
             priority={false}
           />
 
-          <div className="relative z-10 grid min-h-[230px] grid-cols-1 items-center gap-2 px-5 py-8 sm:px-8 md:min-h-[250px] lg:grid-cols-[360px_1fr] lg:px-12 xl:grid-cols-[390px_1fr] xl:px-16">
+          <div className="relative z-10 mx-auto grid min-h-[230px] max-w-[1280px] grid-cols-1 items-center gap-2 px-5 py-8 sm:px-8 md:min-h-[250px] lg:min-h-[340px] lg:grid-cols-[430px_minmax(0,560px)] lg:justify-between lg:px-12 xl:grid-cols-[470px_minmax(0,600px)] xl:px-16">
             <motion.div
               initial={reduceMotion ? false : { opacity: 0, x: -28 }}
               whileInView={reduceMotion ? undefined : { opacity: 1, x: 0 }}
               viewport={{ once: true, amount: 0.35 }}
               transition={{ delay: 0.1, duration: 0.65 }}
-              className="relative order-2 mx-auto -mb-8 h-[210px] w-[210px] self-end sm:h-[240px] sm:w-[240px] lg:order-1 lg:mx-0 lg:-mb-10 lg:h-[300px] lg:w-[300px] xl:h-[325px] xl:w-[325px]"
+              className="relative order-2 mx-auto -mb-8 h-[210px] w-[210px] self-end sm:h-[240px] sm:w-[240px] lg:order-1 lg:mx-0 lg:-mb-12 lg:h-[330px] lg:w-[330px] xl:h-[360px] xl:w-[360px]"
             >
               <motion.div
                 animate={reduceMotion ? undefined : { y: [0, -5, 0] }}
@@ -66,10 +66,10 @@ export default function CourseHelpCta({
               whileInView={reduceMotion ? undefined : { opacity: 1, x: 0 }}
               viewport={{ once: true, amount: 0.35 }}
               transition={{ delay: 0.15, duration: 0.65 }}
-              className="order-1 flex flex-col items-start justify-center lg:order-2 lg:pl-6 xl:pl-10"
+              className="order-1 flex flex-col items-start justify-center lg:order-2 lg:pl-2 xl:pl-0"
             >
               <div className="relative">
-                <div className="absolute left-[82px] top-[6px] hidden h-[138px] w-[92px] opacity-75 sm:block">
+                <div className="absolute -left-[128px] top-[6px] hidden h-[138px] w-[92px] opacity-75 lg:block">
                   <div className="grid grid-cols-5 gap-[6px]">
                     {Array.from({ length: 45 }).map((_, index) => (
                       <span
@@ -80,7 +80,7 @@ export default function CourseHelpCta({
                   </div>
                 </div>
 
-                <h2 className="relative max-w-[640px] text-[3rem] font-semibold leading-[0.94] tracking-[-0.04em] text-[#38439e] sm:text-[4rem] lg:text-[4.5rem] xl:text-[4.8rem]">
+                <h2 className="relative max-w-[600px] text-[3rem] font-semibold leading-[0.94] tracking-[-0.04em] text-[#38439e] sm:text-[4rem] lg:text-[4.4rem] xl:text-[4.7rem]">
                   {title}
                 </h2>
               </div>

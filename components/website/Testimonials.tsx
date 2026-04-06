@@ -2,7 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Quote, Star } from "lucide-react";
 
 interface Testimonial {
@@ -33,21 +33,19 @@ const testimonials: Testimonial[] = [
   },
 ];
 
-const marqueeVariants = {
-  animate: {
-    x: [0, -1035],
-    transition: {
-      x: {
-        repeat: Infinity,
-        repeatType: "loop" as const,
-        duration: 20,
-        ease: "linear" as const,
-      },
-    },
-  },
-};
-
 const Testimonials = () => {
+  const [activeIndex, setActiveIndex] = React.useState(0);
+
+  const showPrevious = () => {
+    setActiveIndex((current) => (current === 0 ? testimonials.length - 1 : current - 1));
+  };
+
+  const showNext = () => {
+    setActiveIndex((current) => (current === testimonials.length - 1 ? 0 : current + 1));
+  };
+
+  const activeTestimonial = testimonials[activeIndex];
+
   return (
     <section className="overflow-hidden bg-slate-50 px-4 py-16">
       <div className="mx-auto max-w-7xl">
@@ -80,18 +78,21 @@ const Testimonials = () => {
               What Students Think And Say About SkillGrow
             </h3>
 
-            <div className="relative w-full overflow-hidden">
-              <motion.div className="flex gap-6" variants={marqueeVariants} animate="animate">
-                {[...testimonials, ...testimonials].map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="relative min-w-[320px] rounded-2xl border border-sky-100 bg-sky-50 p-8 md:min-w-[450px]"
-                  >
+            <div className="relative min-h-[320px] w-full overflow-hidden">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTestimonial.id}
+                  initial={{ opacity: 0, x: 40 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -40 }}
+                  transition={{ duration: 0.35, ease: "easeOut" }}
+                  className="relative rounded-2xl border border-sky-100 bg-sky-50 p-8"
+                >
                     <div className="mb-4 flex items-start justify-between">
                       <div>
                         <p className="mb-2 font-semibold text-indigo-600">Great Quality!</p>
                         <div className="flex text-orange-400">
-                          {[...Array(item.rating)].map((_, i) => (
+                          {[...Array(activeTestimonial.rating)].map((_, i) => (
                             <Star key={i} size={20} fill="currentColor" />
                           ))}
                         </div>
@@ -100,43 +101,55 @@ const Testimonials = () => {
                     </div>
 
                     <p className="mb-8 text-lg italic text-slate-600">
-                      &quot;{item.text}&quot;
+                      &quot;{activeTestimonial.text}&quot;
                     </p>
 
                     <div className="flex items-center gap-4">
                       <div className="relative h-12 w-12 overflow-hidden rounded-full border-2 border-white shadow-sm">
                         <Image
-                          src={item.image}
-                          alt={item.name}
+                          src={activeTestimonial.image}
+                          alt={activeTestimonial.name}
                           fill
                           className="object-cover"
                           sizes="48px"
                         />
                       </div>
                       <div>
-                        <h4 className="font-bold text-slate-800">{item.name}</h4>
-                        <p className="text-sm text-slate-500">{item.role}</p>
+                        <h4 className="font-bold text-slate-800">{activeTestimonial.name}</h4>
+                        <p className="text-sm text-slate-500">{activeTestimonial.role}</p>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </motion.div>
+                </motion.div>
+              </AnimatePresence>
             </div>
 
             <div className="mt-10 flex items-center justify-between">
               <div className="flex gap-2">
-                {[1, 2, 3, 4].map((dot, i) => (
-                  <div
+                {testimonials.map((testimonial, i) => (
+                  <button
                     key={i}
-                    className={`h-2 w-2 rounded-full ${i === 0 ? "w-4 bg-cyan-500" : "bg-slate-300"}`}
+                    type="button"
+                    onClick={() => setActiveIndex(i)}
+                    aria-label={`Show testimonial ${testimonial.name}`}
+                    className={`h-2 rounded-full transition-all ${i === activeIndex ? "w-4 bg-cyan-500" : "w-2 bg-slate-300"}`}
                   />
                 ))}
               </div>
               <div className="flex gap-4">
-                <button className="rounded-full border border-sky-200 p-3 text-sky-500 transition-colors hover:bg-sky-500 hover:text-white">
+                <button
+                  type="button"
+                  onClick={showPrevious}
+                  className="rounded-full border border-sky-200 p-3 text-sky-500 transition-colors hover:bg-sky-500 hover:text-white"
+                  aria-label="Previous testimonial"
+                >
                   <ArrowLeft size={24} />
                 </button>
-                <button className="rounded-full border border-sky-200 p-3 text-sky-500 transition-colors hover:bg-sky-500 hover:text-white">
+                <button
+                  type="button"
+                  onClick={showNext}
+                  className="rounded-full border border-sky-200 p-3 text-sky-500 transition-colors hover:bg-sky-500 hover:text-white"
+                  aria-label="Next testimonial"
+                >
                   <ArrowRight size={24} />
                 </button>
               </div>

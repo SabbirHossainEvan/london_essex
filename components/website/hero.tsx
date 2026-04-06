@@ -57,15 +57,16 @@ const AnimatedStat = ({
 
 const Hero = () => {
   return (
-    <div className="relative overflow-hidden bg-white pt-10 pb-20 lg:pt-10 lg:pb-30">
-      <div className="max-w-8xl mx-auto justify-between px-4 sm:px-6 lg:px-40">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+    <div className="relative overflow-hidden bg-white pt-12 pb-20 sm:pt-15 lg:pt-25 lg:pb-30">
+      <div className="mx-auto max-w-[1600px] px-4 sm:px-6 lg:px-10 xl:px-16">
+        <div className="grid grid-cols-1 items-center gap-14 lg:grid-cols-[minmax(0,640px)_minmax(560px,1fr)] lg:gap-14 xl:grid-cols-[minmax(0,700px)_minmax(580px,1fr)]">
 
           {/* Left Content */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
+            className="max-w-[700px]"
           >
             <h1 className="text-4xl lg:text-6xl font-bold tracking-tight text-[#2D3182] leading-[1.05]">
               Find the right construction training{" "}
@@ -81,12 +82,12 @@ const Hero = () => {
               and book your place today.
             </h1>
 
-            <p className="mt-10 text-xl text-gray-600 max-w-xl leading-relaxed">
+            <p className="mt-10 max-w-[640px] text-xl leading-relaxed text-gray-600">
               Professional electrician, gas, and plumbing training delivered by expert instructors in state-of-the-art facilities.
             </p>
 
             {/* Search Bar */}
-            <div className="mt-12 max-w-md">
+            <div className="mt-12 max-w-[520px]">
               <div className="relative flex items-center p-1 bg-white rounded-2xl shadow-xl shadow-blue-900/5 border border-gray-100/50">
                 <div className="flex-1 flex items-center px-4">
                   <Search className="text-gray-400 mr-2" size={20} />
@@ -103,7 +104,7 @@ const Hero = () => {
             </div>
 
             {/* Categories */}
-            <div className="mt-10 flex flex-wrap gap-4">
+            <div className="mt-10 flex max-w-[640px] flex-wrap gap-4">
               <span className="text-sm font-bold text-[#2D3182]/50 uppercase tracking-widest mr-2 self-center">
                 Popular:
               </span>
@@ -141,13 +142,13 @@ const Hero = () => {
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 1, ease: "easeOut" }}
-            className="relative h-[700px] w-full hidden lg:flex items-center justify-center -mr-20"
+            className="relative hidden h-[680px] w-full items-center justify-center lg:flex"
           >
-            <div className="relative w-full h-full lg:scale-125">
+            <div className="relative h-full w-full lg:translate-x-4 lg:scale-[1.03] xl:translate-x-8">
               <img
                 src="/hero-collage.png"
                 alt="Construction Training Collage"
-                className="w-[90%] h-[90%] mt-20 object-contain pointer-events-none drop-shadow-[0_20px_50px_rgba(0,0,0,0.15)]"
+                className="mt-6 h-full w-full object-contain pointer-events-none drop-shadow-[0_20px_50px_rgba(0,0,0,0.15)]"
               />
             </div>
           </motion.div>

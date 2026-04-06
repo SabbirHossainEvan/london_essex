@@ -1,10 +1,17 @@
 "use client";
 
 import React from "react";
+import Image, { StaticImageData } from "next/image";
+import airbnbLogo from "../../public/image/Airbnb.png";
+import bookingLogo from "../../public/image/Booking.png";
+import londonEssexLogo from "../../public/image/Logo (1) 1.png";
+import tiketLogo from "../../public/image/tiket.com.png";
+import travelokaLogo from "../../public/image/Traveloka.png";
+import tripadvisorLogo from "../../public/image/Tripadvisor.png";
 
 type Partner = {
   name: string;
-  label?: string;
+  src?: StaticImageData;
 };
 
 type PartnersMarqueeProps = {
@@ -13,21 +20,40 @@ type PartnersMarqueeProps = {
 };
 
 const defaultPartners: Partner[] = [
-  { name: "traveloka" },
-  { name: "tiket.com" },
-  { name: "Booking.com" },
-  { name: "airbnb" },
-  { name: "tripadvisor" },
-  { name: "airbnb" },
+  { name: "Traveloka", src: travelokaLogo },
+  { name: "tiket.com", src: tiketLogo },
+  { name: "Booking.com", src: bookingLogo },
+  { name: "Airbnb", src: airbnbLogo },
+  { name: "Tripadvisor", src: tripadvisorLogo },
+  { name: "London & Essex", src: londonEssexLogo },
 ];
 
-function PartnerBadge({ name, label }: Partner) {
+const partnerLogoMap: Record<string, StaticImageData> = {
+  traveloka: travelokaLogo,
+  "tiket.com": tiketLogo,
+  "booking.com": bookingLogo,
+  airbnb: airbnbLogo,
+  tripadvisor: tripadvisorLogo,
+  "london & essex": londonEssexLogo,
+  "london and essex": londonEssexLogo,
+};
+
+function PartnerBadge({ name, src }: Partner) {
+  const resolvedSrc = src ?? partnerLogoMap[name.trim().toLowerCase()];
+
+  if (!resolvedSrc) {
+    return null;
+  }
+
   return (
-    <div className="flex min-w-[150px] items-center justify-center px-6 py-3 text-center text-xl font-semibold tracking-tight text-slate-400 sm:min-w-[190px] sm:text-2xl">
-      <span className="whitespace-nowrap">
-        {name}
-        {label ? <span className="ml-1 text-base align-top">{label}</span> : null}
-      </span>
+    <div className="flex h-20 min-w-[160px] items-center justify-center rounded-2xl px-6 py-4 shadow-[0_10px_30px_rgba(45,49,130,0.06)] sm:min-w-[210px]">
+      <Image
+        src={resolvedSrc}
+        alt={name}
+        width={resolvedSrc.width}
+        height={resolvedSrc.height}
+        className="h-8 w-[60%] object-contain sm:h-10"
+      />
     </div>
   );
 }
@@ -39,8 +65,8 @@ export default function PartnersMarquee({
   const duplicatedPartners = [...partners, ...partners];
 
   return (
-    <section className="bg-[#f6f6fc] py-10 sm:py-12">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section className=" py-10 sm:py-12">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-0">
         <h2 className="text-center text-2xl font-bold tracking-tight text-[#2D3182] sm:text-3xl">
           {title}
         </h2>
@@ -54,7 +80,7 @@ export default function PartnersMarquee({
               <PartnerBadge
                 key={`${partner.name}-${index}`}
                 name={partner.name}
-                label={partner.label}
+                src={partner.src}
               />
             ))}
           </div>
