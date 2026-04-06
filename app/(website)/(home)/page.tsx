@@ -1,11 +1,12 @@
-import React from "react";
 import Hero from "@/components/website/hero";
+import PartnersMarquee from "@/components/website/partners-marquee";
+import { homePartners } from "./partners-data";
 
 export default function HomePage() {
   return (
-    <main>
+    <>
       <Hero />
-      {/* Other sections like Featured Courses, Why Choose Us, etc. can go here */}
-    </main>
+      <PartnersMarquee partners={homePartners} />
+    </>
   );
 }
