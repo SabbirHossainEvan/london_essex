@@ -38,8 +38,32 @@ body {
   animation-play-state: paused;
 }
 
+@keyframes course-marquee-scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(calc(-50% - 12px), 0, 0);
+  }
+}
+
+.course-marquee-track {
+  animation: course-marquee-scroll 20s linear infinite;
+  will-change: transform;
+}
+
+.course-marquee-track:hover {
+  animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .marquee-track {
+    animation: none;
+    transform: none;
+  }
+
+  .course-marquee-track {
     animation: none;
     transform: none;
   }
