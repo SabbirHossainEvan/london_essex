@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { Mail, Phone } from "lucide-react";
@@ -28,17 +29,6 @@ type FooterSectionProps = {
   socials?: FooterSocial[];
   copyrightText?: string;
 };
-
-function BrandMark() {
-  return (
-    <div className="relative h-16 w-16 shrink-0">
-      <div className="absolute inset-1 rounded-[18px] border-[4px] border-[#2D3182] [clip-path:polygon(20%_0,100%_0,100%_80%,80%_100%,0_100%,0_20%)]" />
-      <div className="absolute left-2 top-6 h-[4px] w-12 rotate-[-36deg] rounded-full bg-[#00AEEF]" />
-      <div className="absolute left-3 top-3 h-[4px] w-9 rotate-[34deg] rounded-full bg-[#00AEEF]" />
-      <div className="absolute left-6 top-10 h-[4px] w-8 rotate-[-38deg] rounded-full bg-[#00AEEF]" />
-    </div>
-  );
-}
 
 function SocialIcon({ platform }: { platform: FooterSocial["platform"] }) {
   if (platform === "facebook") {
@@ -109,22 +99,22 @@ export default function FooterSection({
             viewport={{ once: true, amount: 0.4 }}
             transition={{ delay: 0.08, duration: 0.6 }}
             whileHover={reduceMotion ? undefined : { y: -3 }}
-            className="flex items-start gap-4"
+            className="flex items-start"
           >
-            <motion.div
-              animate={reduceMotion ? undefined : { rotate: [0, -3, 0], y: [0, -2, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <BrandMark />
-            </motion.div>
-            <div className="pt-1">
-              <div className="text-[2rem] font-bold leading-none tracking-[0.02em] text-[#2D3182] sm:text-[2.2rem]">
-                LONDON & ESSEX
-              </div>
-              <div className="mt-1 text-[0.92rem] font-semibold tracking-[0.34em] text-[#00AEEF] sm:text-[1rem]">
-                ELECTRICAL TRAINING
-              </div>
-            </div>
+            <Link href="/" className="inline-flex">
+              <motion.div
+                animate={reduceMotion ? undefined : { y: [0, -2, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <Image
+                  src="/Logo (1) 1.png"
+                  alt="London & Essex Electrical Training"
+                  width={420}
+                  height={84}
+                  className="h-auto w-[250px] sm:w-[300px] lg:w-[360px]"
+                />
+              </motion.div>
+            </Link>
           </motion.div>
 
           <motion.div

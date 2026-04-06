@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,16 +24,16 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-20">
 
           {/* Logo Section */}
-          <div className="flex-shrink-0 flex items-center">
-            <div className="flex flex-col leading-tight">
-              <span className="text-[#2D3182] font-bold text-xl tracking-tight">
-                LONDON & ESSEX
-              </span>
-              <span className="text-[#00AEEF] text-[10px] font-semibold tracking-[0.2em]">
-                ELECTRICAL TRAINING
-              </span>
-            </div>
-          </div>
+          <Link href="/" className="flex shrink-0 items-center">
+            <Image
+              src="/Logo (1) 1.png"
+              alt="London & Essex Electrical Training"
+              width={360}
+              height={72}
+              className="h-auto w-[230px] sm:w-[260px] lg:w-[300px]"
+              priority
+            />
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">

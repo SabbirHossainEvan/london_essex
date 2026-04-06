@@ -5,18 +5,60 @@ import { motion } from "framer-motion";
 import { Search, Star, Award, Users, Clock } from "lucide-react";
 
 const stats = [
-  { label: "Students Trained", value: "20K+", icon: Users },
-  { label: "Star Rating", value: "4.9", icon: Star },
-  { label: "Pass Rate", value: "98%", icon: Award },
-  { label: "Years Experience", value: "18+", icon: Clock },
+  { label: "Students Trained", value: 20, suffix: "K+", decimals: 0, icon: Users },
+  { label: "Star Rating", value: 4.9, suffix: "", decimals: 1, icon: Star },
+  { label: "Pass Rate", value: 98, suffix: "%", decimals: 0, icon: Award },
+  { label: "Years Experience", value: 18, suffix: "+", decimals: 0, icon: Clock },
 ];
 
 const categories = ["Gas Engineer", "Electrical", "Plumbing", "Renewables"];
 
+const AnimatedStat = ({
+  value,
+  suffix,
+  decimals,
+}: {
+  value: number;
+  suffix: string;
+  decimals: number;
+}) => {
+  const [displayValue, setDisplayValue] = React.useState(0);
+
+  React.useEffect(() => {
+    const duration = 2600;
+    const startTime = performance.now();
+
+    let frameId = 0;
+
+    const updateValue = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+
+      setDisplayValue(value * easedProgress);
+
+      if (progress < 1) {
+        frameId = window.requestAnimationFrame(updateValue);
+      }
+    };
+
+    frameId = window.requestAnimationFrame(updateValue);
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [value]);
+
+  return (
+    <span>
+      {displayValue.toFixed(decimals)}
+      {suffix}
+    </span>
+  );
+};
+
 const Hero = () => {
   return (
     <div className="relative overflow-hidden bg-white pt-10 pb-20 lg:pt-10 lg:pb-30">
-      <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-40">
+      <div className="max-w-8xl mx-auto justify-between px-4 sm:px-6 lg:px-40">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
           {/* Left Content */}
@@ -76,11 +118,17 @@ const Hero = () => {
             </div>
 
             {/* Stats */}
-            <div className="mt-24 grid grid-cols-2 md:grid-cols-4 gap-12">
+            <div className="mt-16 grid grid-cols-2 gap-x-6 gap-y-10 text-center sm:mt-20 sm:gap-x-10 sm:gap-y-12 md:mt-24 md:grid-cols-4 md:gap-12 md:text-left">
               {stats.map((stat) => (
-                <div key={stat.label}>
-                  <div className="text-4xl font-black text-[#2D3182] tracking-tight">{stat.value}</div>
-                  <div className="text-xs font-bold text-gray-400 mt-2 uppercase tracking-[0.2em] leading-tight">
+                <div key={stat.label} className="flex min-w-0 flex-col items-center md:items-start">
+                  <div className="text-[2.25rem] font-black leading-none tracking-tight text-[#2D3182] sm:text-4xl">
+                    <AnimatedStat
+                      value={stat.value}
+                      suffix={stat.suffix}
+                      decimals={stat.decimals}
+                    />
+                  </div>
+                  <div className="mt-2 max-w-[9rem] text-[0.72rem] font-bold leading-[1.2] uppercase tracking-[0.14em] text-gray-400 sm:text-xs sm:tracking-[0.2em]">
                     {stat.label}
                   </div>
                 </div>
@@ -99,7 +147,7 @@ const Hero = () => {
               <img
                 src="/hero-collage.png"
                 alt="Construction Training Collage"
-                className="w-full h-full object-contain pointer-events-none drop-shadow-[0_20px_50px_rgba(0,0,0,0.15)]"
+                className="w-[90%] h-[90%] mt-20 object-contain pointer-events-none drop-shadow-[0_20px_50px_rgba(0,0,0,0.15)]"
               />
             </div>
           </motion.div>
