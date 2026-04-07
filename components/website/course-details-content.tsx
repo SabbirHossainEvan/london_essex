@@ -10,6 +10,8 @@ import CourseCard from "@/components/website/course-card";
 type CourseDetailsContentProps = {
   course: CourseSummary;
   relatedCourses: CourseSummary[];
+  coursesHrefBasePath?: string;
+  defaultSelectedImageIndex?: number;
 };
 
 type AccordionKey = "learning" | "delivery" | "additional";
@@ -17,8 +19,12 @@ type AccordionKey = "learning" | "delivery" | "additional";
 export default function CourseDetailsContent({
   course,
   relatedCourses,
+  coursesHrefBasePath = "/courses",
+  defaultSelectedImageIndex = 0,
 }: CourseDetailsContentProps) {
-  const [selectedImage, setSelectedImage] = React.useState(course.gallery[0] ?? course.heroImage);
+  const [selectedImage, setSelectedImage] = React.useState(
+    course.gallery[defaultSelectedImageIndex] ?? course.gallery[0] ?? course.heroImage
+  );
   const [openSection, setOpenSection] = React.useState<AccordionKey>("learning");
   const [relatedIndex, setRelatedIndex] = React.useState(0);
 
@@ -175,13 +181,14 @@ export default function CourseDetailsContent({
                 title={relatedCourse.title}
                 schedule={relatedCourse.schedule}
                 description={relatedCourse.description}
+                hrefBasePath={coursesHrefBasePath}
               />
             ))}
           </div>
         </div>
 
         <div className="mt-8">
-          <Link href="/courses" className="inline-flex items-center gap-2 text-sm font-medium text-[#3943a5]">
+          <Link href={coursesHrefBasePath} className="inline-flex items-center gap-2 text-sm font-medium text-[#3943a5]">
             <ChevronLeft size={16} />
             Back to all courses
           </Link>

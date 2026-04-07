@@ -7,6 +7,7 @@ type CourseCardProps = {
   title: string;
   schedule: string;
   description: string;
+  hrefBasePath?: string;
 };
 
 export default function CourseCard({
@@ -15,6 +16,7 @@ export default function CourseCard({
   title,
   schedule,
   description,
+  hrefBasePath = "/courses",
 }: CourseCardProps) {
   return (
     <article className="group flex min-h-[300px] flex-col overflow-hidden rounded-[16px] border border-[#d8e8f6] bg-white shadow-[0_10px_24px_rgba(60,101,154,0.08)]">
@@ -38,7 +40,7 @@ export default function CourseCard({
 
         <div className="mt-6 flex items-end justify-between gap-4">
           <Link
-            href={`/courses/${slug}`}
+            href={`${hrefBasePath}/${slug}`}
             className="rounded-[8px] bg-[#19a9de] px-5 py-3 text-sm font-semibold text-white shadow-[0_4px_0_#315063] transition-transform hover:-translate-y-0.5"
           >
             View Details

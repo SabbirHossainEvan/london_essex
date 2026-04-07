@@ -1,21 +1,23 @@
-import React from "react";
-import Link from "next/link";
+import DashboardWelcomeBanner from "@/components/dashboard/dashboard-welcome-banner";
+import QuickActionsCard from "@/components/dashboard/quick-actions-card";
+import RecentActivityFeed from "@/components/dashboard/recent-activity-feed";
+import RunningCourseCard from "@/components/dashboard/running-course-card";
+import UpcomingCourseEmptyCard from "@/components/dashboard/upcoming-course-empty-card";
 
 export default function DashboardPage() {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-white font-sans">
-      <div className="bg-white p-10 rounded-2xl shadow-xl border border-gray-100 text-center max-w-md">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Dashboard</h1>
-        <p className="text-gray-500 leading-relaxed">
-          This is your private dashboard area. Notice that the public website Navbar is intentionally excluded from this layout.
-        </p>
-        <Link
-          href="/"
-          className="mt-8 inline-block px-6 py-2 bg-zinc-950 text-white rounded-lg font-semibold hover:opacity-90 transition-opacity"
-        >
-          Return Home
-        </Link>
-      </div>
+    <div className="space-y-6">
+      <DashboardWelcomeBanner />
+
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.55fr)]">
+        <RunningCourseCard />
+        <QuickActionsCard />
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.55fr)]">
+        <UpcomingCourseEmptyCard />
+        <RecentActivityFeed />
+      </section>
     </div>
   );
 }
