@@ -1,13 +1,14 @@
 import CoursesHero from "@/components/website/courses-hero";
-import FooterSection from "@/components/website/footer-section";
-import { footerContacts, footerLegalLinks, footerSocials } from "../(home)/footer-data";
-import CourseHelpCta from "@/components/website/course-help-cta";
+import CoursesGridSection from "@/components/website/courses-grid-section";
+import { coursesData } from "./courses-data";
+
 
 export default function CoursesPage() {
   return (
     <>
       <CoursesHero />
-      <CourseHelpCta />
+      <CoursesGridSection courses={coursesData} />
+
 
     </>
   );
