@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 
 export default function DashboardPage() {
   return (
@@ -8,9 +9,12 @@ export default function DashboardPage() {
         <p className="text-gray-500 leading-relaxed">
           This is your private dashboard area. Notice that the public website Navbar is intentionally excluded from this layout.
         </p>
-        <button className="mt-8 px-6 py-2 bg-zinc-950 text-white rounded-lg font-semibold hover:opacity-90 transition-opacity">
+        <Link
+          href="/"
+          className="mt-8 inline-block px-6 py-2 bg-zinc-950 text-white rounded-lg font-semibold hover:opacity-90 transition-opacity"
+        >
           Return Home
-        </button>
+        </Link>
       </div>
     </div>
   );

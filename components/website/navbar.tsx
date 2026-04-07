@@ -58,17 +58,18 @@ const Navbar = () => {
           </div>
 
           {/* Buttons Section */}
-          <div className="hidden md:flex items-center space-x-4">
-            <button className="px-6 py-2 border-2 border-[#E5E7EB] text-[#2D3182] font-bold rounded-lg hover:bg-gray-50 transition-all">
-              Sign In
-            </button>
-            <motion.button
+          <div className="hidden md:flex items-center">
+            <motion.div
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="px-6 py-2.5 bg-gradient-to-r from-[#39C5F8] to-[#0193D7] text-white font-bold rounded-lg shadow-md"
             >
-              Get Started
-            </motion.button>
+              <Link
+                href="/login"
+                className="block px-6 py-2.5 bg-gradient-to-r from-[#39C5F8] to-[#0193D7] text-white font-bold rounded-lg shadow-md"
+              >
+                Get Started
+              </Link>
+            </motion.div>
           </div>
 
           {/* Mobile Menu Button */}
@@ -101,8 +102,13 @@ const Navbar = () => {
                 </Link>
               ))}
               <div className="pt-4 flex flex-col gap-3">
-                <button className="w-full py-3 border border-gray-200 rounded-lg text-[#2D3182]">Sign In</button>
-                <button className="w-full py-3 bg-[#00AEEF] text-white rounded-lg">Get Started</button>
+                <Link
+                  href="/login"
+                  onClick={() => setIsOpen(false)}
+                  className="w-full py-3 bg-[#00AEEF] text-white rounded-lg text-center"
+                >
+                  Get Started
+                </Link>
               </div>
             </div>
           </motion.div>
