@@ -10,7 +10,6 @@ import {
   Search,
   Settings,
   Ticket,
-  TrendingUp,
   X,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -24,7 +23,6 @@ const dashboardNavItems = [
   { label: "Dashboard", href: "/dashboard", icon: Gauge, group: "Menu" },
   { label: "Courses", href: "/dashboard/courses", icon: BookOpen, group: "Menu" },
   { label: "Bookings", href: "/dashboard/bookings", icon: Ticket, group: "Menu" },
-  { label: "Progress", href: "/dashboard/progress", icon: TrendingUp, group: "Menu" },
   { label: "Support", href: "/dashboard/support", icon: Headset, group: "Help" },
   { label: "Setting", href: "/dashboard/settings", icon: Settings, group: "Help" },
 ];

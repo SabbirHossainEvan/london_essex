@@ -13,7 +13,6 @@ const breadcrumbMap: Record<string, string[]> = {
   "/dashboard": ["Dashboard", "Overview"],
   "/dashboard/courses": ["Dashboard", "Courses"],
   "/dashboard/bookings": ["Dashboard", "Bookings"],
-  "/dashboard/progress": ["Dashboard", "Progress"],
   "/dashboard/support": ["Dashboard", "Support"],
   "/dashboard/settings": ["Dashboard", "Settings"],
 };
