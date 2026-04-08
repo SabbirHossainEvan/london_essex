@@ -31,9 +31,9 @@ export default function QuickActionsCard() {
       </div>
 
       <div className="space-y-4 p-5">
-        {quickActions.map((item) => (
+        {quickActions.map((item, index) => (
           <div
-            key={`${item.title}-${item.date}`}
+            key={`${item.title}-${item.date}-${index}`}
             className="rounded-[14px] border border-[#e7eef8] bg-[#fcfeff] p-4"
           >
             <div className="flex gap-3">
