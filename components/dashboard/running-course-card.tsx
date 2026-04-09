@@ -1,4 +1,9 @@
+"use client";
+
 import PanelCard from "@/components/dashboard/panel-card";
+import AnimatedProgressBar, {
+  AnimatedCounter,
+} from "@/components/dashboard/animated-progress-bar";
 
 export default function RunningCourseCard() {
   return (
@@ -28,11 +33,11 @@ export default function RunningCourseCard() {
           <div className="mt-5">
             <div className="mb-2 flex items-center justify-between text-sm text-[#7a88a5]">
               <span>Progress</span>
-              <span>45%</span>
+              <span className="font-semibold text-[#1ea6df]">
+                <AnimatedCounter value={45} />
+              </span>
             </div>
-            <div className="h-3 rounded-full bg-[#ebf2f8]">
-              <div className="h-3 w-[45%] rounded-full bg-[#1ea6df]" />
-            </div>
+            <AnimatedProgressBar value={45} />
           </div>
 
           <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
