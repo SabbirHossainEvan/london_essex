@@ -15,23 +15,6 @@ const highlights = [
   },
 ];
 
-const values = [
-  {
-    title: "Industry-led learning",
-    description:
-      "Courses are shaped around practical trade skills, certification pathways, and the confidence learners need on real job sites.",
-  },
-  {
-    title: "Modern workshop training",
-    description:
-      "We combine hands-on sessions, tutor guidance, and structured assessment support in facilities designed for real progress.",
-  },
-  {
-    title: "Flexible progression",
-    description:
-      "Whether you are a new entrant or upskilling professionally, our training routes are designed to meet you where you are.",
-  },
-];
 
 export default function AboutSection() {
   return (
@@ -92,21 +75,7 @@ export default function AboutSection() {
           </div>
         </div>
 
-        <div className="mt-14 grid gap-6 lg:grid-cols-3">
-          {values.map((value) => (
-            <div
-              key={value.title}
-              className="rounded-[22px] border border-[#d8e7f5] bg-white p-6 shadow-[0_12px_30px_rgba(90,121,166,0.08)]"
-            >
-              <h2 className="text-[1.35rem] font-semibold text-[#38439e]">
-                {value.title}
-              </h2>
-              <p className="mt-4 text-[1rem] leading-8 text-[#6d7690]">
-                {value.description}
-              </p>
-            </div>
-          ))}
-        </div>
+
       </div>
     </section>
   );
