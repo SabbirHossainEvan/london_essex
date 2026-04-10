@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, LockKeyhole, Mail, Phone, Sparkles, User } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole, Mail, Sparkles, User } from "lucide-react";
 import AuthShell from "@/components/auth/auth-shell";
 
 export default function SignUpPage() {
@@ -12,7 +12,6 @@ export default function SignUpPage() {
   const [formData, setFormData] = React.useState({
     fullName: "",
     email: "",
-    phone: "",
     password: "",
   });
 
@@ -89,26 +88,7 @@ export default function SignUpPage() {
           </div>
         </div>
 
-        <div>
-          <label
-            htmlFor="phone"
-            className="mb-2 block text-sm font-medium text-[#31406c]"
-          >
-            Phone number
-          </label>
-          <div className="relative">
-            <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8ba0bf]" />
-            <input
-              id="phone"
-              type="tel"
-              value={formData.phone}
-              onChange={(event) => handleChange("phone", event.target.value)}
-              placeholder="+44 7..."
-              className="h-13 w-full rounded-2xl border border-[#d8e4f1] bg-[#f7fbff] pl-11 pr-4 text-sm text-[#22305a] outline-none transition focus:border-[#18a8df] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,168,223,0.12)]"
-              required
-            />
-          </div>
-        </div>
+
 
         <div>
           <label
