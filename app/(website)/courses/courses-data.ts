@@ -1,5 +1,6 @@
 export type CourseSummary = {
   slug: string;
+  bookingFlow: "standard" | "am2";
   category: string;
   title: string;
   schedule: string;
@@ -20,6 +21,7 @@ export type CourseSummary = {
 export const coursesData: CourseSummary[] = [
   {
     slug: "am2-assessment-preparation",
+    bookingFlow: "am2",
     category: "Gas Engineer",
     title: "AM2 Assessment Preparation",
     schedule: "Weekdays or Weekends",
@@ -42,6 +44,7 @@ export const coursesData: CourseSummary[] = [
   },
   {
     slug: "how-to-become-a-gas-engineer-new-entrants",
+    bookingFlow: "standard",
     category: "Gas Engineer",
     title: "How To Become A Gas Engineer (New Entrants)",
     schedule: "Weekdays or Weekends",
@@ -64,6 +67,7 @@ export const coursesData: CourseSummary[] = [
   },
   {
     slug: "how-to-become-a-gas-engineer-fast-track",
+    bookingFlow: "standard",
     category: "Gas Engineer",
     title: "How To Become A Gas Engineer (Fast Track)",
     schedule: "Weekdays or Evenings",
@@ -86,6 +90,7 @@ export const coursesData: CourseSummary[] = [
   },
   {
     slug: "gas-managed-learning-programme",
+    bookingFlow: "standard",
     category: "Gas Engineer",
     title: "Gas Managed Learning Programme",
     schedule: "Weekend Friendly",
@@ -108,6 +113,7 @@ export const coursesData: CourseSummary[] = [
   },
   {
     slug: "electrical-inspection-and-testing",
+    bookingFlow: "standard",
     category: "Electrical",
     title: "Electrical Inspection & Testing",
     schedule: "Evenings or Weekends",
@@ -130,6 +136,7 @@ export const coursesData: CourseSummary[] = [
   },
   {
     slug: "domestic-plumbing-foundation",
+    bookingFlow: "standard",
     category: "Plumbing",
     title: "Domestic Plumbing Foundation",
     schedule: "Weekday Intensive",

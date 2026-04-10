@@ -96,7 +96,10 @@ export function DashboardSidebar({
                   {dashboardNavItems
                     .filter((item) => item.group === group)
                     .map((item) => {
-                      const active = pathname === item.href;
+                      const active =
+                        item.href === "/dashboard"
+                          ? pathname === item.href
+                          : pathname === item.href || pathname.startsWith(`${item.href}/`);
                       const Icon = item.icon;
 
                       return (

@@ -21,6 +21,7 @@ export default async function DashboardCourseDetailsPage({
       course={course}
       relatedCourses={relatedCourses}
       coursesHrefBasePath="/dashboard/courses"
+      bookingHrefBasePath="/dashboard/courses"
       defaultSelectedImageIndex={2}
     />
   );

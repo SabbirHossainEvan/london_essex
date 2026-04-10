@@ -11,6 +11,7 @@ type CourseDetailsContentProps = {
   course: CourseSummary;
   relatedCourses: CourseSummary[];
   coursesHrefBasePath?: string;
+  bookingHrefBasePath?: string;
   defaultSelectedImageIndex?: number;
 };
 
@@ -20,6 +21,7 @@ export default function CourseDetailsContent({
   course,
   relatedCourses,
   coursesHrefBasePath = "/courses",
+  bookingHrefBasePath,
   defaultSelectedImageIndex = 0,
 }: CourseDetailsContentProps) {
   const [selectedImage, setSelectedImage] = React.useState(
@@ -112,9 +114,21 @@ export default function CourseDetailsContent({
               <span className="pb-1 text-sm text-[#6f7894]">{course.vatLabel}</span>
             </div>
 
-            <button className="mt-5 w-full rounded-[8px] bg-[#1ea9de] px-6 py-4 text-base font-semibold text-white shadow-[0_4px_0_#315063]">
+            <Link
+              href={
+                bookingHrefBasePath
+                  ? `${bookingHrefBasePath}/${course.slug}/book`
+                  : "#"
+              }
+              aria-disabled={!bookingHrefBasePath}
+              className={`mt-5 block w-full rounded-[8px] px-6 py-4 text-center text-base font-semibold text-white shadow-[0_4px_0_#315063] ${
+                bookingHrefBasePath
+                  ? "bg-[#1ea9de]"
+                  : "pointer-events-none cursor-not-allowed bg-[#8fc9df]"
+              }`}
+            >
               Book Now
-            </button>
+            </Link>
           </div>
         </div>
 

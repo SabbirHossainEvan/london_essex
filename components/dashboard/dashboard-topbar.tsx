@@ -19,7 +19,12 @@ const breadcrumbMap: Record<string, string[]> = {
 
 export function DashboardTopbar({ onMenuClick }: DashboardTopbarProps) {
   const pathname = usePathname();
-  const crumbs = breadcrumbMap[pathname] ?? ["Dashboard"];
+  const crumbs =
+    pathname.startsWith("/dashboard/courses/")
+      ? pathname.endsWith("/book")
+        ? ["Dashboard", "Courses", "Booking"]
+        : ["Dashboard", "Courses", "Details"]
+      : breadcrumbMap[pathname] ?? ["Dashboard"];
 
   return (
     <header className="sticky top-0 z-20 border-b border-[#dde7f7] bg-[#fbfdff]/95 backdrop-blur">
