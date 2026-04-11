@@ -1,9 +1,17 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-const fallbackBaseUrl = "http://localhost:3001/api";
+const fallbackBaseUrl = "http://localhost:3001";
+
+function normalizeApiBaseUrl(value: string) {
+  const trimmed = value.trim().replace(/\/+$/, "");
+
+  return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+}
 
 export const apiBaseUrl =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || fallbackBaseUrl;
+  normalizeApiBaseUrl(
+    process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || fallbackBaseUrl
+  );
 
 export const baseApi = createApi({
   reducerPath: "api",

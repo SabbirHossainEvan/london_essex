@@ -5,8 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, LockKeyhole, Mail, Sparkles, User } from "lucide-react";
 import AuthShell from "@/components/auth/auth-shell";
+import { useAppDispatch } from "@/lib/redux/hooks";
+import { useSignUpMutation } from "@/lib/redux/features/auth/auth-api";
+import { setCredentials } from "@/lib/redux/features/auth/auth-slice";
 
 export default function SignUpPage() {
+  const dispatch = useAppDispatch();
   const router = useRouter();
   const [showPassword, setShowPassword] = React.useState(false);
   const [formData, setFormData] = React.useState({
@@ -14,21 +18,57 @@ export default function SignUpPage() {
     email: "",
     password: "",
   });
+  const [formError, setFormError] = React.useState("");
+  const [signUp, { isLoading }] = useSignUpMutation();
 
   const handleChange = (field: keyof typeof formData, value: string) => {
+    setFormError("");
     setFormData((current) => ({ ...current, [field]: value }));
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (Object.values(formData).some((value) => !value.trim())) {
+      setFormError("Please fill in your full name, email, and password.");
       return;
     }
 
-    router.push(
-      `/otp-verification?flow=signup&email=${encodeURIComponent(formData.email)}`
-    );
+    try {
+      const response = await signUp({
+        name: formData.fullName.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        role: "user",
+      }).unwrap();
+
+      dispatch(
+        setCredentials({
+          accessToken: response.data.token,
+          user: {
+            id: response.data.user.id,
+            fullName: response.data.user.name,
+            email: response.data.user.email,
+            role: response.data.user.role,
+          },
+        })
+      );
+
+      router.push("/dashboard");
+    } catch (error) {
+      const message =
+        typeof error === "object" &&
+        error !== null &&
+        "data" in error &&
+        typeof error.data === "object" &&
+        error.data !== null &&
+        "message" in error.data &&
+        typeof error.data.message === "string"
+          ? error.data.message
+          : "We could not create your account right now. Please try again.";
+
+      setFormError(message);
+    }
   };
 
   return (
@@ -42,7 +82,7 @@ export default function SignUpPage() {
       </div>
       <h1 className="mt-5 text-4xl font-semibold tracking-[-0.04em] text-[#1b2758]">Sign up</h1>
       <p className="mt-3 text-sm leading-7 text-[#6b7892]">
-        Fill in your details and we&apos;ll send a verification code to continue.
+        Fill in your details to create your learner account and continue to your dashboard.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-5">
@@ -87,9 +127,6 @@ export default function SignUpPage() {
             />
           </div>
         </div>
-
-
-
         <div>
           <label
             htmlFor="signup-password"
@@ -119,15 +156,22 @@ export default function SignUpPage() {
           </div>
         </div>
 
+        {formError ? (
+          <p className="rounded-2xl border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+            {formError}
+          </p>
+        ) : null}
+
         <p className="text-xs leading-6 text-[#7c8aa2]">
           By continuing, you agree to our Terms and Privacy Policy.
         </p>
 
         <button
           type="submit"
+          disabled={isLoading}
           className="h-13 w-full rounded-2xl bg-[linear-gradient(135deg,#0f1c53_0%,#1a6ac8_55%,#1dc2f3_100%)] text-sm font-semibold text-white shadow-[0_18px_34px_rgba(24,108,196,0.28)] transition hover:-translate-y-0.5"
         >
-          Continue
+          {isLoading ? "Creating account..." : "Continue"}
         </button>
       </form>
 
