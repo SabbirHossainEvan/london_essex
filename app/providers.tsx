@@ -1,0 +1,15 @@
+"use client";
+
+import React from "react";
+import { Provider } from "react-redux";
+import { makeStore } from "@/lib/redux/store";
+
+export default function Providers({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const [store] = React.useState(makeStore);
+
+  return <Provider store={store}>{children}</Provider>;
+}
