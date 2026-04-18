@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import type { CourseSummary } from "@/app/(website)/courses/courses-data";
 import PanelCard from "@/components/dashboard/panel-card";
@@ -467,6 +468,7 @@ export default function Am2FullChecklistPage({
   course,
   flow,
 }: Am2FullChecklistPageProps) {
+  const router = useRouter();
   const meta = checklistMeta[flow];
   const [activeSection, setActiveSection] = React.useState<SectionKey>("a1");
   const [questionSelections, setQuestionSelections] = React.useState<QuestionSelections>(() => {
@@ -522,8 +524,17 @@ export default function Am2FullChecklistPage({
     overallTotals.total === 0
       ? 0
       : Math.round((overallTotals.answered / overallTotals.total) * 100);
+  const isChecklistComplete =
+    overallTotals.total > 0 && overallTotals.answered === overallTotals.total;
 
   const moveToNextSection = () => {
+    if (activeSectionIndex === sectionTabs.length - 1 && isChecklistComplete) {
+      router.push(
+        `/dashboard/courses/${course.slug}/book?flow=${flow}&netStep=signatures`
+      );
+      return;
+    }
+
     const nextSection = sectionTabs[activeSectionIndex + 1];
     if (nextSection) {
       setActiveSection(nextSection.key);
@@ -613,9 +624,16 @@ export default function Am2FullChecklistPage({
               </button>
               <button
                 type="button"
+                onClick={moveToNextSection}
+                disabled={
+                  activeSectionIndex === sectionTabs.length - 1 &&
+                  !isChecklistComplete
+                }
                 className="rounded-md bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] px-4 py-2 text-xs font-medium text-white"
               >
-                Next Section
+                {activeSectionIndex === sectionTabs.length - 1
+                  ? "Continue to Signatures"
+                  : "Next Section"}
               </button>
             </div>
           </div>
@@ -703,14 +721,20 @@ export default function Am2FullChecklistPage({
               <button
                 type="button"
                 onClick={moveToNextSection}
-                disabled={activeSectionIndex === sectionTabs.length - 1}
+                disabled={
+                  activeSectionIndex === sectionTabs.length - 1 &&
+                  !isChecklistComplete
+                }
                 className={`rounded-md px-4 py-2 text-xs font-medium ${
-                  activeSectionIndex === sectionTabs.length - 1
+                  activeSectionIndex === sectionTabs.length - 1 &&
+                  !isChecklistComplete
                     ? "cursor-not-allowed bg-[#dce4ec] text-[#9eacba]"
                     : "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] text-white"
                 }`}
               >
-                Next Section
+                {activeSectionIndex === sectionTabs.length - 1
+                  ? "Continue to Signatures"
+                  : "Next Section"}
               </button>
             </div>
           </div>

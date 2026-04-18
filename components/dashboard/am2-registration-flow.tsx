@@ -2,13 +2,16 @@
 
 import React from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   CalendarDays,
   Check,
+  CircleCheckBig,
   ChevronRight,
   Mail,
+  PenTool,
   Phone,
+  Signature,
 } from "lucide-react";
 import type { CourseSummary } from "@/app/(website)/courses/courses-data";
 import PanelCard from "@/components/dashboard/panel-card";
@@ -521,6 +524,163 @@ function NetChecklistPanel({ flow }: { flow: NetFlowType }) {
   );
 }
 
+function NetSignaturesPanel({
+  candidateSigned,
+  providerSigned,
+  onCandidateSign,
+  onProviderRequest,
+  onContinue,
+}: {
+  candidateSigned: boolean;
+  providerSigned: boolean;
+  onCandidateSign: () => void;
+  onProviderRequest: () => void;
+  onContinue: () => void;
+}) {
+  const allSigned = candidateSigned && providerSigned;
+
+  return (
+    <>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-[1rem] font-semibold text-[#3849a0]">
+            Michael Johnson
+          </h2>
+          <p className="mt-1 text-xs text-[#7a88a3]">
+            Readiness for Assessment: Candidate Self-Assessment Checklist
+          </p>
+        </div>
+        <button
+          type="button"
+          className="text-sm font-semibold text-[#4451ac]"
+        >
+          Important Information
+        </button>
+      </div>
+
+      <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-[#d5e6f5] bg-[#f4fbff] px-4 py-3">
+          <span className="text-sm text-[#50637f]">Step 1 of 2</span>
+          <div className="flex items-center gap-2">
+            <span className="h-4 w-4 rounded-full bg-[#1ea6df]" />
+            <span className="h-4 w-4 rounded-full bg-[#bfeaff]" />
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-[#dbe7f4] bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-semibold text-[#4451ac]">
+                  <Signature className="h-4 w-4" />
+                  Candidates
+                </p>
+                <p
+                  className={`mt-3 flex items-center gap-2 text-xs ${
+                    candidateSigned ? "text-[#1e9d57]" : "text-[#8b97ac]"
+                  }`}
+                >
+                  {candidateSigned ? (
+                    <CircleCheckBig className="h-4 w-4" />
+                  ) : (
+                    <span className="grid h-4 w-4 place-items-center rounded-full bg-[#ffe8ea] text-[10px] text-[#d55465]">
+                      x
+                    </span>
+                  )}
+                  {candidateSigned ? "Signed" : "not Signed"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={onCandidateSign}
+                className="rounded-lg border border-[#d5e2f2] bg-white px-4 py-2 text-xs font-medium text-[#4451ac]"
+              >
+                {candidateSigned ? "View" : "Submit Signature"}
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-[#dbe7f4] bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-semibold text-[#4451ac]">
+                  <PenTool className="h-4 w-4" />
+                  Training Provider
+                </p>
+                <p
+                  className={`mt-3 flex items-center gap-2 text-xs ${
+                    providerSigned ? "text-[#1e9d57]" : "text-[#8b97ac]"
+                  }`}
+                >
+                  {providerSigned ? (
+                    <CircleCheckBig className="h-4 w-4" />
+                  ) : (
+                    <span className="grid h-4 w-4 place-items-center rounded-full bg-[#ffe8ea] text-[10px] text-[#d55465]">
+                      x
+                    </span>
+                  )}
+                  {providerSigned ? "Signed" : "not Signed"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={onProviderRequest}
+                className="rounded-lg border border-[#d5e2f2] bg-white px-4 py-2 text-xs font-medium text-[#4451ac]"
+              >
+                {providerSigned ? "View" : "Ask for signed"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={onContinue}
+            disabled={!allSigned}
+            className={`w-full rounded-lg px-4 py-3 text-sm font-medium ${
+              allSigned
+                ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] text-white"
+                : "cursor-not-allowed bg-[#dce4ec] text-[#9eacba]"
+            }`}
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function NetSubmitPanel() {
+  return (
+    <>
+      <div>
+        <h2 className="text-[1rem] font-semibold text-[#3849a0]">
+          Submission Pack
+        </h2>
+        <p className="mt-1 text-xs text-[#7a88a3]">
+          Your checklist and signatures are ready for the next review step.
+        </p>
+      </div>
+
+      <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
+        <div className="rounded-xl border border-[#dbe7f4] bg-white p-5">
+          <p className="text-sm font-semibold text-[#3849a0]">
+            Submission draft prepared
+          </p>
+          <p className="mt-2 text-sm leading-6 text-[#6e7f9b]">
+            Candidate checklist, supporting documents, and signatures have been
+            collected. You can continue to the next step of the booking flow.
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function NvqRegistrationDateModal({
   open,
   value,
@@ -615,6 +775,7 @@ function NvqRegistrationDateModal({
 export default function Am2RegistrationFlow({
   course,
 }: Am2RegistrationFlowProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [phase, setPhase] = React.useState<"registration" | "net">(
     "registration"
@@ -679,8 +840,12 @@ export default function Am2RegistrationFlow({
   const [nvqModalOpen, setNvqModalOpen] = React.useState(false);
   const [nvqTiming, setNvqTiming] =
     React.useState<NvqTiming>("before-september-2023");
+  const [candidateSigned, setCandidateSigned] = React.useState(false);
+  const [providerSigned, setProviderSigned] = React.useState(false);
 
   const selectedQualification = searchParams.get("qualification") ?? "";
+  const requestedFlow = searchParams.get("flow");
+  const requestedNetStep = searchParams.get("netStep");
   const lockedAssessmentType = am2eEligibleQualifications.has(selectedQualification)
     ? "AM2E"
     : "AM2";
@@ -707,8 +872,27 @@ export default function Am2RegistrationFlow({
         ])
       )
     );
-    setCurrentNetStep("documents");
-  }, [netFlowType, phase]);
+  }, [netFlowType]);
+
+  React.useEffect(() => {
+    const resolvedFlow =
+      requestedFlow === "am2e" || requestedFlow === "am2e-v1"
+        ? requestedFlow
+        : requestedFlow === "am2"
+          ? "am2"
+          : null;
+    const resolvedStep = netSteps.find(
+      (step) => step.key === requestedNetStep
+    )?.key;
+
+    if (!resolvedFlow || !resolvedStep) {
+      return;
+    }
+
+    setNetFlowType(resolvedFlow);
+    setPhase("net");
+    setCurrentNetStep(resolvedStep);
+  }, [requestedFlow, requestedNetStep]);
 
   const currentIndex = registrationSteps.findIndex(
     (step) => step.key === currentStep
@@ -783,6 +967,13 @@ export default function Am2RegistrationFlow({
       next.set(id, { fileName: file.name });
       return next;
     });
+  };
+
+  const handleSignaturesContinue = () => {
+    setCurrentNetStep("submit");
+    router.replace(
+      `/dashboard/courses/${course.slug}/book?flow=${netFlowType}&netStep=submit`
+    );
   };
 
   return (
@@ -1299,6 +1490,20 @@ export default function Am2RegistrationFlow({
 
           {phase === "net" && currentNetStep === "checklist" ? (
             <NetChecklistPanel flow={netFlowType} />
+          ) : null}
+
+          {phase === "net" && currentNetStep === "signatures" ? (
+            <NetSignaturesPanel
+              candidateSigned={candidateSigned}
+              providerSigned={providerSigned}
+              onCandidateSign={() => setCandidateSigned(true)}
+              onProviderRequest={() => setProviderSigned(true)}
+              onContinue={handleSignaturesContinue}
+            />
+          ) : null}
+
+          {phase === "net" && currentNetStep === "submit" ? (
+            <NetSubmitPanel />
           ) : null}
 
           {phase === "registration" ? (
