@@ -17,7 +17,21 @@ type Am2RegistrationFlowProps = {
   course: CourseSummary;
 };
 
-type StepKey = "candidate" | "assessment" | "employer" | "training" | "privacy";
+type RegistrationStepKey =
+  | "candidate"
+  | "assessment"
+  | "employer"
+  | "training"
+  | "privacy";
+
+type NetStepKey =
+  | "documents"
+  | "checklist"
+  | "signatures"
+  | "submit"
+  | "review"
+  | "payment"
+  | "confirmed";
 
 type CandidateFormState = {
   title: string;
@@ -56,25 +70,24 @@ type EmployerFormState = {
   postcode: string;
 };
 
-type TrainingFormState = {
-  companyName: string;
-  email: string;
-  contactName: string;
-  contactNumber: string;
-  address1: string;
-  address2: string;
-  address3: string;
-  address4: string;
-  town: string;
-  postcode: string;
-};
+type TrainingFormState = EmployerFormState;
 
-const steps: Array<{ key: StepKey; label: string }> = [
+const registrationSteps: Array<{ key: RegistrationStepKey; label: string }> = [
   { key: "candidate", label: "Candidate" },
   { key: "assessment", label: "Assessment" },
   { key: "employer", label: "Employer" },
   { key: "training", label: "Training" },
   { key: "privacy", label: "Privacy" },
+];
+
+const netSteps: Array<{ key: NetStepKey; label: string }> = [
+  { key: "documents", label: "Documents" },
+  { key: "checklist", label: "Checklist" },
+  { key: "signatures", label: "Signatures" },
+  { key: "submit", label: "Submit" },
+  { key: "review", label: "Review" },
+  { key: "payment", label: "Payment" },
+  { key: "confirmed", label: "Confirmed" },
 ];
 
 const fundingOptions = [
@@ -102,7 +115,15 @@ const am2eEligibleQualifications = new Set([
   "EAL 603/5982/1",
 ]);
 
-function Stepper({ currentStep }: { currentStep: StepKey }) {
+function Stepper<T extends string>({
+  steps,
+  currentStep,
+  activeClassName,
+}: {
+  steps: Array<{ key: T; label: string }>;
+  currentStep: T;
+  activeClassName: string;
+}) {
   const currentIndex = steps.findIndex((step) => step.key === currentStep);
 
   return (
@@ -118,7 +139,7 @@ function Stepper({ currentStep }: { currentStep: StepKey }) {
                 <span
                   className={`grid h-6 w-6 place-items-center rounded-full text-[11px] font-semibold ${
                     isDone || isActive
-                      ? "bg-[#17a85a] text-white"
+                      ? activeClassName
                       : "bg-[#e6edf8] text-[#8a97b2]"
                   }`}
                 >
@@ -230,7 +251,13 @@ export default function Am2RegistrationFlow({
   course,
 }: Am2RegistrationFlowProps) {
   const searchParams = useSearchParams();
-  const [currentStep, setCurrentStep] = React.useState<StepKey>("candidate");
+  const [phase, setPhase] = React.useState<"registration" | "net">(
+    "registration"
+  );
+  const [currentStep, setCurrentStep] =
+    React.useState<RegistrationStepKey>("candidate");
+  const [currentNetStep, setCurrentNetStep] =
+    React.useState<NetStepKey>("documents");
   const [candidate, setCandidate] = React.useState<CandidateFormState>({
     title: "",
     firstName: "",
@@ -278,6 +305,8 @@ export default function Am2RegistrationFlow({
     postcode: "",
   });
   const [privacyConfirmed, setPrivacyConfirmed] = React.useState(false);
+  const [documentsUploaded, setDocumentsUploaded] = React.useState(false);
+
   const selectedQualification = searchParams.get("qualification") ?? "";
   const lockedAssessmentType = am2eEligibleQualifications.has(selectedQualification)
     ? "AM2E"
@@ -290,7 +319,9 @@ export default function Am2RegistrationFlow({
     }));
   }, [lockedAssessmentType]);
 
-  const currentIndex = steps.findIndex((step) => step.key === currentStep);
+  const currentIndex = registrationSteps.findIndex(
+    (step) => step.key === currentStep
+  );
 
   const updateCandidate = (field: keyof CandidateFormState, value: string) => {
     setCandidate((current) => ({ ...current, [field]: value }));
@@ -320,17 +351,14 @@ export default function Am2RegistrationFlow({
   };
 
   const moveNext = () => {
-    if (currentStep === "privacy") {
-      return;
-    }
-    const nextStep = steps[currentIndex + 1];
+    const nextStep = registrationSteps[currentIndex + 1];
     if (nextStep) {
       setCurrentStep(nextStep.key);
     }
   };
 
   const moveBack = () => {
-    const previousStep = steps[currentIndex - 1];
+    const previousStep = registrationSteps[currentIndex - 1];
     if (previousStep) {
       setCurrentStep(previousStep.key);
     }
@@ -349,21 +377,47 @@ export default function Am2RegistrationFlow({
           <span className="font-medium text-[#4451ac]">{course.title}</span>
         </div>
 
-        <h1 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-[#2d3f8f]">
-          NET Candidate Registration Form
-        </h1>
-        <p className="mt-3 max-w-[920px] text-sm leading-6 text-[#667795]">
-          Once this form is completed please return it to your assessment centre.
-          All fields are mandatory. To view how NET uses candidate data please
-          view our Privacy Policy at www.netservices.org.uk/policies
-        </p>
+        {phase === "registration" ? (
+          <>
+            <h1 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-[#2d3f8f]">
+              NET Candidate Registration Form
+            </h1>
+            <p className="mt-3 max-w-[920px] text-sm leading-6 text-[#667795]">
+              Once this form is completed please return it to your assessment centre.
+              All fields are mandatory. To view how NET uses candidate data please
+              view our Privacy Policy at www.netservices.org.uk/policies
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-[#2d3f8f]">
+              {course.title}
+            </h1>
+            <p className="mt-3 max-w-[920px] text-sm leading-6 text-[#667795]">
+              Complete the next AM2 preparation steps before continuing your
+              submission.
+            </p>
+          </>
+        )}
       </div>
 
       <PanelCard className="rounded-[24px] border-[#d7e5f7] bg-[#eef6ff] p-4 sm:p-5">
-        <Stepper currentStep={currentStep} />
+        {phase === "registration" ? (
+          <Stepper
+            steps={registrationSteps}
+            currentStep={currentStep}
+            activeClassName="bg-[#17a85a] text-white"
+          />
+        ) : (
+          <Stepper
+            steps={netSteps}
+            currentStep={currentNetStep}
+            activeClassName="bg-[#1ea6df] text-white"
+          />
+        )}
 
         <div className="mt-5 rounded-[18px] border border-[#d7e5f7] bg-white/75 p-4 sm:p-5">
-          {currentStep === "candidate" ? (
+          {phase === "registration" && currentStep === "candidate" ? (
             <>
               <div>
                 <h2 className="text-[1.6rem] font-semibold text-[#3849a0]">
@@ -486,7 +540,7 @@ export default function Am2RegistrationFlow({
             </>
           ) : null}
 
-          {currentStep === "assessment" ? (
+          {phase === "registration" && currentStep === "assessment" ? (
             <>
               <div>
                 <h2 className="text-[1.6rem] font-semibold text-[#3849a0]">
@@ -602,7 +656,7 @@ export default function Am2RegistrationFlow({
             </>
           ) : null}
 
-          {currentStep === "employer" ? (
+          {phase === "registration" && currentStep === "employer" ? (
             <>
               <div>
                 <h2 className="text-[1.6rem] font-semibold text-[#3849a0]">
@@ -653,41 +707,18 @@ export default function Am2RegistrationFlow({
                   </div>
                 </div>
 
-                <div>
-                  <FieldLabel>Address 1 *</FieldLabel>
-                  <TextField
-                    value={employer.address1}
-                    onChange={(value) => updateEmployer("address1", value)}
-                    placeholder="Enter address line 1"
-                  />
-                </div>
-
-                <div>
-                  <FieldLabel>Address 2 *</FieldLabel>
-                  <TextField
-                    value={employer.address2}
-                    onChange={(value) => updateEmployer("address2", value)}
-                    placeholder="Enter address line 1"
-                  />
-                </div>
-
-                <div>
-                  <FieldLabel>Address 3 *</FieldLabel>
-                  <TextField
-                    value={employer.address3}
-                    onChange={(value) => updateEmployer("address3", value)}
-                    placeholder="Enter address line 1"
-                  />
-                </div>
-
-                <div>
-                  <FieldLabel>Address 4 *</FieldLabel>
-                  <TextField
-                    value={employer.address4}
-                    onChange={(value) => updateEmployer("address4", value)}
-                    placeholder="Enter address line 1"
-                  />
-                </div>
+                {["address1", "address2", "address3", "address4"].map((field, index) => (
+                  <div key={field}>
+                    <FieldLabel>{`Address ${index + 1} *`}</FieldLabel>
+                    <TextField
+                      value={employer[field as keyof EmployerFormState] as string}
+                      onChange={(value) =>
+                        updateEmployer(field as keyof EmployerFormState, value)
+                      }
+                      placeholder="Enter address line 1"
+                    />
+                  </div>
+                ))}
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
@@ -711,7 +742,7 @@ export default function Am2RegistrationFlow({
             </>
           ) : null}
 
-          {currentStep === "training" ? (
+          {phase === "registration" && currentStep === "training" ? (
             <>
               <div>
                 <h2 className="text-[1.6rem] font-semibold text-[#3849a0]">
@@ -765,41 +796,18 @@ export default function Am2RegistrationFlow({
                   </div>
                 </div>
 
-                <div>
-                  <FieldLabel>Address 1</FieldLabel>
-                  <TextField
-                    value={training.address1}
-                    onChange={(value) => updateTraining("address1", value)}
-                    placeholder="Enter address line 1"
-                  />
-                </div>
-
-                <div>
-                  <FieldLabel>Address 2</FieldLabel>
-                  <TextField
-                    value={training.address2}
-                    onChange={(value) => updateTraining("address2", value)}
-                    placeholder="Enter address line 2"
-                  />
-                </div>
-
-                <div>
-                  <FieldLabel>Address 3</FieldLabel>
-                  <TextField
-                    value={training.address3}
-                    onChange={(value) => updateTraining("address3", value)}
-                    placeholder="Enter address line 3"
-                  />
-                </div>
-
-                <div>
-                  <FieldLabel>Address 4</FieldLabel>
-                  <TextField
-                    value={training.address4}
-                    onChange={(value) => updateTraining("address4", value)}
-                    placeholder="Enter address line 4"
-                  />
-                </div>
+                {["address1", "address2", "address3", "address4"].map((field, index) => (
+                  <div key={field}>
+                    <FieldLabel>{`Address ${index + 1}`}</FieldLabel>
+                    <TextField
+                      value={training[field as keyof TrainingFormState] as string}
+                      onChange={(value) =>
+                        updateTraining(field as keyof TrainingFormState, value)
+                      }
+                      placeholder={`Enter address line ${index + 1}`}
+                    />
+                  </div>
+                ))}
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
@@ -823,7 +831,7 @@ export default function Am2RegistrationFlow({
             </>
           ) : null}
 
-          {currentStep === "privacy" ? (
+          {phase === "registration" && currentStep === "privacy" ? (
             <>
               <div>
                 <h2 className="text-[1.6rem] font-semibold text-[#3849a0]">
@@ -839,16 +847,8 @@ export default function Am2RegistrationFlow({
                   that you include in this form is necessary for the completion
                   of your assessment and will only be shared between the
                   Controllers for this purpose or if the provision of legal
-                  obligations. In accordance with our terms and conditions, in
-                  cases of non-assessment maybe completed within 24 months of
-                  commencement, WHO are required to retain your information until
-                  the date of completed expiry which can be withheld from
-                  collection if you identify. Specifically photographic retention
-                  of those concerned with 24 months or 6 months after the 24
-                  month period has expired. Other data is kept in accordance with
-                  our data retention policy. For full details of NET&apos;s policy on
-                  data protection please visit www.netservices.org.uk or the
-                  website of your assigned Assessment Centre.
+                  obligations. In accordance with our terms and conditions, data
+                  may be retained in line with the applicable retention policy.
                 </p>
 
                 <label className="flex items-start gap-3 rounded-lg border border-[#dde9f7] bg-[#f4f9ff] px-4 py-3 text-[#33446d]">
@@ -867,48 +867,165 @@ export default function Am2RegistrationFlow({
             </>
           ) : null}
 
-          <div className="mt-6 flex items-center justify-between gap-3 border-t border-[#dbe7f4] pt-5">
-            <div className="flex gap-3">
-              {currentIndex > 0 ? (
+          {phase === "net" && currentNetStep === "documents" ? (
+            <>
+              <div>
+                <h2 className="inline-flex items-center gap-2 text-[1rem] font-semibold text-[#3849a0]">
+                  Upload Full Certificate
+                </h2>
+              </div>
+
+              <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
+                <h3 className="text-sm font-semibold text-[#3850a2]">
+                  AM2 Readiness Checklist
+                </h3>
+                <p className="mt-1 text-xs text-[#6c7f9d]">
+                  for those who don&apos;t already hold AM2
+                </p>
+
+                <div className="mt-5 rounded-lg border border-[#f2c463] bg-[#fffaf1] px-4 py-3 text-sm text-[#8f6413]">
+                  You must upload all required documents before proceeding.
+                </div>
+
+                <div className="mt-4 rounded-xl border border-[#82cdf4] bg-white px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[#334496]">
+                        Learner History Report or Walled Garden Report (City &
+                        Guilds)
+                      </p>
+                      <p className="mt-1 text-xs text-[#7d8da7]">
+                        Requested from your NVQ provider
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setDocumentsUploaded(true)}
+                      className="rounded-lg border border-[#d9e6f3] bg-[#f5fbff] px-4 py-2 text-sm font-medium text-[#4154a6]"
+                    >
+                      Upload
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-3 border-t border-[#dbe7f4] pt-5">
                 <button
                   type="button"
-                  onClick={moveBack}
-                  className="rounded-lg border border-[#d8e5f4] bg-white px-4 py-2.5 text-sm font-medium text-[#384a77]"
+                  disabled={!documentsUploaded}
+                  onClick={() => setCurrentNetStep("checklist")}
+                  className={`rounded-lg px-5 py-2.5 text-sm font-medium text-white ${
+                    documentsUploaded
+                      ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
+                      : "cursor-not-allowed bg-[#dce6ef]"
+                  }`}
                 >
-                  Back to previous step
+                  Continue
+                </button>
+              </div>
+            </>
+          ) : null}
+
+          {phase === "net" && currentNetStep === "checklist" ? (
+            <>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-[1rem] font-semibold text-[#3849a0]">
+                    AM2 Checklist
+                  </h2>
+                  <p className="mt-1 text-xs text-[#7a88a3]">
+                    Readiness for Assessment: Candidate Self-Assessment Checklist
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="text-sm font-semibold text-[#4451ac]"
+                >
+                  Important Information
+                </button>
+              </div>
+
+              <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-xs text-[#7a88a3]">Overall Completion</span>
+                  <span className="text-xs text-[#7a88a3]">0%</span>
+                </div>
+                <div className="mt-3 h-2 rounded-full bg-white">
+                  <div className="h-2 w-0 rounded-full bg-[#1ea6df]" />
+                </div>
+
+                <div className="mt-5 rounded-lg border border-[#d5e6f5] bg-[#dff1fd] px-4 py-3 text-sm text-[#46627d]">
+                  Complete all sections of the checklist. You can use the full
+                  checklist page for a detailed view.
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-[1fr_220px]">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-[#d3dfef] bg-white px-4 py-3 text-sm font-medium text-[#2f407f]"
+                  >
+                    Open Full Checklist
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-[#dce4ec] px-4 py-3 text-sm font-medium text-[#9eacba]"
+                  >
+                    Continue
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : null}
+
+          {phase === "registration" ? (
+            <div className="mt-6 flex items-center justify-between gap-3 border-t border-[#dbe7f4] pt-5">
+              <div className="flex gap-3">
+                {currentIndex > 0 ? (
+                  <button
+                    type="button"
+                    onClick={moveBack}
+                    className="rounded-lg border border-[#d8e5f4] bg-white px-4 py-2.5 text-sm font-medium text-[#384a77]"
+                  >
+                    Back to previous step
+                  </button>
+                ) : (
+                  <Link
+                    href="/dashboard/courses"
+                    className="rounded-lg border border-[#d8e5f4] bg-white px-4 py-2.5 text-sm font-medium text-[#384a77]"
+                  >
+                    Cancel
+                  </Link>
+                )}
+              </div>
+
+              {currentStep === "privacy" ? (
+                <button
+                  type="button"
+                  disabled={!privacyConfirmed}
+                  onClick={() => {
+                    setPhase("net");
+                    setCurrentNetStep("documents");
+                  }}
+                  className={`rounded-lg px-5 py-2.5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)] ${
+                    privacyConfirmed
+                      ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)]"
+                      : "cursor-not-allowed bg-[#a6dff6]"
+                  }`}
+                >
+                  Continue
                 </button>
               ) : (
-                <Link
-                  href="/dashboard/courses"
-                  className="rounded-lg border border-[#d8e5f4] bg-white px-4 py-2.5 text-sm font-medium text-[#384a77]"
+                <button
+                  type="button"
+                  onClick={moveNext}
+                  className="rounded-lg bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] px-5 py-2.5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
                 >
-                  Cancel
-                </Link>
+                  Continue
+                </button>
               )}
             </div>
-
-            {currentStep === "privacy" ? (
-              <Link
-                href="/dashboard/courses"
-                aria-disabled={!privacyConfirmed}
-                className={`rounded-lg px-5 py-2.5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)] ${
-                  privacyConfirmed
-                    ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)]"
-                    : "pointer-events-none bg-[#a6dff6]"
-                }`}
-              >
-                Continue
-              </Link>
-            ) : (
-              <button
-                type="button"
-                onClick={moveNext}
-                className="rounded-lg bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] px-5 py-2.5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
-              >
-                Continue
-              </button>
-            )}
-          </div>
+          ) : null}
         </div>
       </PanelCard>
     </div>
