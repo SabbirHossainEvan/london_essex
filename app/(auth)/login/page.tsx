@@ -5,25 +5,64 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, LockKeyhole, Mail, Sparkles } from "lucide-react";
 import AuthShell from "@/components/auth/auth-shell";
+import { useAppDispatch } from "@/lib/redux/hooks";
+import { useLoginMutation } from "@/lib/redux/features/auth/auth-api";
+import { setCredentials } from "@/lib/redux/features/auth/auth-slice";
 
 export default function LoginPage() {
+  const dispatch = useAppDispatch();
   const router = useRouter();
   const [showPassword, setShowPassword] = React.useState(false);
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [formError, setFormError] = React.useState("");
+  const [login, { isLoading }] = useLoginMutation();
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!email.trim() || !password.trim()) {
+      setFormError("Please enter your email and password.");
       return;
     }
 
-    router.push("/dashboard");
+    try {
+      const response = await login({
+        email: email.trim(),
+        password,
+      }).unwrap();
+
+      dispatch(
+        setCredentials({
+          accessToken: response.data.token,
+          user: {
+            id: response.data.user.id,
+            fullName: response.data.user.name,
+            email: response.data.user.email,
+            role: response.data.user.role,
+          },
+        })
+      );
+
+      router.push("/dashboard");
+    } catch (error) {
+      const message =
+        typeof error === "object" &&
+        error !== null &&
+        "data" in error &&
+        typeof error.data === "object" &&
+        error.data !== null &&
+        "message" in error.data &&
+        typeof error.data.message === "string"
+          ? error.data.message
+          : "We could not sign you in right now. Please try again.";
+
+      setFormError(message);
+    }
   };
 
   const handleGoogleSignIn = () => {
-    router.push("/dashboard");
+    setFormError("Google sign-in is not connected yet.");
   };
 
   return (
@@ -73,7 +112,10 @@ export default function LoginPage() {
               id="email"
               type="email"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) => {
+                setFormError("");
+                setEmail(event.target.value);
+              }}
               placeholder="name@example.com"
               className="h-13 w-full rounded-2xl border border-[#d8e4f1] bg-[#f7fbff] pl-11 pr-4 text-sm text-[#22305a] outline-none transition focus:border-[#18a8df] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,168,223,0.12)]"
               required
@@ -94,7 +136,10 @@ export default function LoginPage() {
               id="password"
               type={showPassword ? "text" : "password"}
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => {
+                setFormError("");
+                setPassword(event.target.value);
+              }}
               placeholder="Enter your password"
               className="h-13 w-full rounded-2xl border border-[#d8e4f1] bg-[#f7fbff] pl-11 pr-12 text-sm text-[#22305a] outline-none transition focus:border-[#18a8df] focus:bg-white focus:shadow-[0_0_0_4px_rgba(24,168,223,0.12)]"
               required
@@ -123,11 +168,18 @@ export default function LoginPage() {
           </Link>
         </div>
 
+        {formError ? (
+          <p className="rounded-2xl border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+            {formError}
+          </p>
+        ) : null}
+
         <button
           type="submit"
+          disabled={isLoading}
           className="h-13 w-full rounded-2xl bg-[linear-gradient(135deg,#0f1c53_0%,#1a6ac8_55%,#1dc2f3_100%)] text-sm font-semibold text-white shadow-[0_18px_34px_rgba(24,108,196,0.28)] transition hover:-translate-y-0.5"
         >
-          Sign In
+          {isLoading ? "Signing in..." : "Sign In"}
         </button>
       </form>
 

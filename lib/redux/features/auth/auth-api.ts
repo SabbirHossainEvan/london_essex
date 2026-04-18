@@ -6,9 +6,10 @@ export type LoginRequest = {
 };
 
 export type SignUpRequest = {
-  fullName: string;
+  name: string;
   email: string;
   password: string;
+  role: "user";
 };
 
 export type ForgotPasswordRequest = {
@@ -27,17 +28,26 @@ export type ResetPasswordRequest = {
   confirmPassword: string;
 };
 
+export type AuthUserResponse = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type AuthSuccessResponse = {
-  accessToken: string;
-  refreshToken?: string;
-  user: {
-    id: string;
-    fullName: string;
-    email: string;
+  success: boolean;
+  message: string;
+  data: {
+    token: string;
+    user: AuthUserResponse;
   };
 };
 
 export type AuthMessageResponse = {
+  success?: boolean;
   message: string;
 };
 
@@ -51,7 +61,7 @@ export const authApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Auth", "Profile"],
     }),
-    signUp: builder.mutation<AuthMessageResponse, SignUpRequest>({
+    signUp: builder.mutation<AuthSuccessResponse, SignUpRequest>({
       query: (body) => ({
         url: "/auth/signup",
         method: "POST",
