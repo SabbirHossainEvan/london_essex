@@ -148,7 +148,11 @@ export default function DashboardCourseDetailsView({
                     type="button"
                     onClick={() => {
                       setBookingOpen(false);
-                      router.push(`/dashboard/courses/${course.slug}/book`);
+                      router.push(
+                        `/dashboard/courses/${course.slug}/book?qualification=${encodeURIComponent(
+                          selectedQualification
+                        )}`
+                      );
                     }}
                     className="rounded-md bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] px-4 py-2 text-sm font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.26)]"
                   >

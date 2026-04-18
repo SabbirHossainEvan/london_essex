@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   CalendarDays,
   Check,
@@ -95,6 +96,11 @@ const assessmentTypeOptions = [
   "AM2S v1.1 / 1.2",
   "AM2SN",
 ];
+
+const am2eEligibleQualifications = new Set([
+  "(EWA) City & Guilds 2346",
+  "EAL 603/5982/1",
+]);
 
 function Stepper({ currentStep }: { currentStep: StepKey }) {
   const currentIndex = steps.findIndex((step) => step.key === currentStep);
@@ -223,6 +229,7 @@ function RadioRow({
 export default function Am2RegistrationFlow({
   course,
 }: Am2RegistrationFlowProps) {
+  const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = React.useState<StepKey>("candidate");
   const [candidate, setCandidate] = React.useState<CandidateFormState>({
     title: "",
@@ -271,6 +278,17 @@ export default function Am2RegistrationFlow({
     postcode: "",
   });
   const [privacyConfirmed, setPrivacyConfirmed] = React.useState(false);
+  const selectedQualification = searchParams.get("qualification") ?? "";
+  const lockedAssessmentType = am2eEligibleQualifications.has(selectedQualification)
+    ? "AM2E"
+    : "AM2";
+
+  React.useEffect(() => {
+    setAssessment((current) => ({
+      ...current,
+      assessmentType: lockedAssessmentType,
+    }));
+  }, [lockedAssessmentType]);
 
   const currentIndex = steps.findIndex((step) => step.key === currentStep);
 
@@ -291,6 +309,14 @@ export default function Am2RegistrationFlow({
 
   const updateTraining = (field: keyof TrainingFormState, value: string) => {
     setTraining((current) => ({ ...current, [field]: value }));
+  };
+
+  const selectAssessmentType = (value: string) => {
+    if (value !== lockedAssessmentType) {
+      return;
+    }
+
+    updateAssessment("assessmentType", value);
   };
 
   const moveNext = () => {
@@ -542,13 +568,35 @@ export default function Am2RegistrationFlow({
 
                 <div>
                   <FieldLabel>Type of assessment</FieldLabel>
-                  <RadioRow
-                    name="assessment-type"
-                    options={assessmentTypeOptions}
-                    value={assessment.assessmentType}
-                    onChange={(value) => updateAssessment("assessmentType", value)}
-                    columns="md:grid-cols-3"
-                  />
+                  <div className="grid gap-3 md:grid-cols-3">
+                    {assessmentTypeOptions.map((option) => {
+                      const checked = assessment.assessmentType === option;
+                      const disabled = option !== lockedAssessmentType;
+
+                      return (
+                        <label
+                          key={option}
+                          className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition ${
+                            disabled
+                              ? "cursor-not-allowed border-[#e6edf7] bg-[#f6f9fc] text-[#aab6c9]"
+                              : checked
+                                ? "cursor-pointer border-[#8ed7f8] bg-[#dff5ff] text-[#24346b]"
+                                : "cursor-pointer border-[#dde9f7] bg-[#f4f9ff] text-[#5f6f90]"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="assessment-type"
+                            checked={checked}
+                            disabled={disabled}
+                            onChange={() => selectAssessmentType(option)}
+                            className="h-4 w-4 accent-[#1ea6df]"
+                          />
+                          <span>{option}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </>
