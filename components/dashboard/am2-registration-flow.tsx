@@ -71,6 +71,17 @@ type EmployerFormState = {
 };
 
 type TrainingFormState = EmployerFormState;
+type NetFlowType = "am2" | "am2e" | "am2e-v1";
+type NvqTiming = "before-september-2023" | "after-september-2023";
+type DocumentRequirement = {
+  id: string;
+  title: string;
+  description: string;
+  initiallyUploaded?: boolean;
+};
+type UploadedDocumentState = {
+  fileName: string;
+};
 
 const registrationSteps: Array<{ key: RegistrationStepKey; label: string }> = [
   { key: "candidate", label: "Candidate" },
@@ -114,6 +125,96 @@ const am2eEligibleQualifications = new Set([
   "(EWA) City & Guilds 2346",
   "EAL 603/5982/1",
 ]);
+
+const netFlowContent: Record<
+  NetFlowType,
+  {
+    documentsTitle: string;
+    documentsSubtitle: string;
+    checklistTitle: string;
+    checklistSubtitle: string;
+    requirements: DocumentRequirement[];
+  }
+> = {
+  am2: {
+    documentsTitle: "AM2 Readiness Checklist",
+    documentsSubtitle: "for those who don't already hold AM2",
+    checklistTitle: "AM2 Checklist",
+    checklistSubtitle:
+      "Readiness for Assessment: Candidate Self-Assessment Checklist",
+    requirements: [
+      {
+        id: "learner-history",
+        title: "Learner History Report or Walled Garden Report (City & Guilds)",
+        description: "Requested from your NVQ provider",
+      },
+    ],
+  },
+  am2e: {
+    documentsTitle: "AM2E Checklist",
+    documentsSubtitle:
+      "This required document must be uploaded for the assessment.",
+    checklistTitle: "AM2E Checklist",
+    checklistSubtitle:
+      "Readiness for Assessment: Candidate Self-Assessment Checklist",
+    requirements: [
+      {
+        id: "ewq-certificate",
+        title: "The Experienced Worker Qualification Certificate",
+        description:
+          "Certificate must show City & Guilds 2346 or EAL 603/5982/1",
+        initiallyUploaded: true,
+      },
+      {
+        id: "learner-history",
+        title:
+          "City & Guilds Walled Garden Report or EAL Learner History Report",
+        description: "Both must confirm your NVQ provider",
+      },
+      {
+        id: "still-in-scope",
+        title: "Still In Scope (Sep 2023)",
+        description:
+          "Skills Scan dated September 2023 onwards will be required if out of scope for two years",
+      },
+    ],
+  },
+  "am2e-v1": {
+    documentsTitle: "AM2E V1 Checklist",
+    documentsSubtitle:
+      "The required documents must be uploaded for the assessment.",
+    checklistTitle: "AM2E V1 Checklist",
+    checklistSubtitle:
+      "Readiness for Assessment: Candidate Self-Assessment Checklist",
+    requirements: [
+      {
+        id: "ewq-certificate",
+        title: "The Experienced Worker Qualification Certificate",
+        description:
+          "Certificate must show City & Guilds 2346 or EAL 603/5982/1",
+        initiallyUploaded: true,
+      },
+      {
+        id: "learner-history",
+        title:
+          "City & Guilds Walled Garden Report or EAL Learner History Report",
+        description: "Both must confirm your NVQ provider",
+      },
+      {
+        id: "still-in-scope",
+        title: "Still In Scope (Sep 2023)",
+        description:
+          "Skills Scan dated September 2023 onwards will be required if out of scope for two years",
+      },
+      {
+        id: "technical-certificate",
+        title: "Level 2 or Level 3 Technical Certificate",
+        description:
+          "For example City & Guilds 2365/5357 or EAL equivalent",
+      },
+    ],
+  },
+};
 
 function Stepper<T extends string>({
   steps,
@@ -247,6 +348,270 @@ function RadioRow({
   );
 }
 
+function NetDocumentsPanel({
+  flow,
+  uploadedDocuments,
+  onUpload,
+  onContinue,
+}: {
+  flow: NetFlowType;
+  uploadedDocuments: Map<string, UploadedDocumentState>;
+  onUpload: (id: string, file: File) => void;
+  onContinue: () => void;
+}) {
+  const content = netFlowContent[flow];
+  const allRequiredUploaded = content.requirements.every((item) => {
+    if (item.initiallyUploaded) {
+      return true;
+    }
+
+    return uploadedDocuments.has(item.id);
+  });
+
+  const acceptedDocumentTypes =
+    ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.rtf,.odt,.ods,.zip,.jpg,.jpeg,.png,.webp";
+
+  const handleFileChange = (
+    id: string,
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    onUpload(id, file);
+    event.target.value = "";
+  };
+
+  return (
+    <>
+      <div>
+        <h2 className="inline-flex items-center gap-2 text-[1rem] font-semibold text-[#3849a0]">
+          Upload Full Certificate
+        </h2>
+      </div>
+
+      <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
+        <h3 className="text-sm font-semibold text-[#3850a2]">
+          {content.documentsTitle}
+        </h3>
+        <p className="mt-1 text-xs text-[#6c7f9d]">{content.documentsSubtitle}</p>
+
+        <div className="mt-5 rounded-lg border border-[#f2c463] bg-[#fffaf1] px-4 py-3 text-sm text-[#8f6413]">
+          You must upload all required documents before proceeding.
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {content.requirements.map((item) => {
+            const uploadedDocument = uploadedDocuments.get(item.id);
+            const isUploaded = item.initiallyUploaded || Boolean(uploadedDocument);
+
+            return (
+              <div
+                key={item.id}
+                className="rounded-xl border border-[#82cdf4] bg-white px-4 py-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[#334496]">
+                      {item.title}
+                    </p>
+                    <p className="mt-1 text-xs text-[#7d8da7]">
+                      {item.description}
+                    </p>
+                    {uploadedDocument ? (
+                      <p className="mt-2 text-xs font-medium text-[#1f8f54]">
+                        Selected file: {uploadedDocument.fileName}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <label
+                    className={`inline-flex cursor-pointer items-center rounded-lg border px-4 py-2 text-sm font-medium ${
+                      isUploaded
+                        ? "border-[#ccead8] bg-[#effcf3] text-[#1f8f54]"
+                        : "border-[#d9e6f3] bg-[#f5fbff] text-[#4154a6]"
+                    }`}
+                  >
+                    <input
+                      type="file"
+                      accept={acceptedDocumentTypes}
+                      className="hidden"
+                      onChange={(event) => handleFileChange(item.id, event)}
+                    />
+                    {isUploaded ? "Re-uploaded" : "Upload"}
+                  </label>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-6 flex items-center justify-end gap-3 border-t border-[#dbe7f4] pt-5">
+        <button
+          type="button"
+          disabled={!allRequiredUploaded}
+          onClick={onContinue}
+          className={`rounded-lg px-5 py-2.5 text-sm font-medium text-white ${
+            allRequiredUploaded
+              ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
+              : "cursor-not-allowed bg-[#dce6ef]"
+          }`}
+        >
+          Continue
+        </button>
+      </div>
+    </>
+  );
+}
+
+function NetChecklistPanel({ flow }: { flow: NetFlowType }) {
+  const content = netFlowContent[flow];
+
+  return (
+    <>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-[1rem] font-semibold text-[#3849a0]">
+            {content.checklistTitle}
+          </h2>
+          <p className="mt-1 text-xs text-[#7a88a3]">{content.checklistSubtitle}</p>
+        </div>
+        <button
+          type="button"
+          className="text-sm font-semibold text-[#4451ac]"
+        >
+          Important Information
+        </button>
+      </div>
+
+      <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-xs text-[#7a88a3]">Overall Completion</span>
+          <span className="text-xs text-[#7a88a3]">0%</span>
+        </div>
+        <div className="mt-3 h-2 rounded-full bg-white">
+          <div className="h-2 w-0 rounded-full bg-[#1ea6df]" />
+        </div>
+
+        <div className="mt-5 rounded-lg border border-[#d5e6f5] bg-[#dff1fd] px-4 py-3 text-sm text-[#46627d]">
+          Complete all sections of the checklist. You can use the full checklist
+          page for a detailed view.
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-[1fr_220px]">
+          <button
+            type="button"
+            className="rounded-lg border border-[#d3dfef] bg-white px-4 py-3 text-sm font-medium text-[#2f407f]"
+          >
+            Open Full Checklist
+          </button>
+          <button
+            type="button"
+            className="rounded-lg bg-[#dce4ec] px-4 py-3 text-sm font-medium text-[#9eacba]"
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function NvqRegistrationDateModal({
+  open,
+  value,
+  onChange,
+  onClose,
+  onContinue,
+}: {
+  open: boolean;
+  value: NvqTiming;
+  onChange: (value: NvqTiming) => void;
+  onClose: () => void;
+  onContinue: () => void;
+}) {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-50 bg-[#12214d]/36"
+        onClick={onClose}
+      />
+      <div className="fixed inset-0 z-60 grid place-items-center px-4">
+        <div className="w-full max-w-[760px] rounded-[24px] border border-[#d8e7f8] bg-white p-6 shadow-[0_30px_80px_rgba(18,33,77,0.24)]">
+          <h2 className="text-[2rem] font-semibold text-[#3546a5]">
+            NVQ Registration Date
+          </h2>
+
+          <div className="mt-6 rounded-[20px] border border-[#dbe7f5] bg-[#f8fbff] p-5">
+            <div className="rounded-[18px] border border-[#20b2ee] p-5">
+              <p className="text-[1.15rem] font-medium text-[#3646a5]">
+                When did you register for your NVQ?
+              </p>
+              <p className="mt-4 text-sm font-medium text-[#7a88a7]">Ans:</p>
+
+              <div className="mt-4 space-y-4">
+                {[
+                  {
+                    key: "before-september-2023" as const,
+                    label: "Before 3rd September 2023",
+                  },
+                  {
+                    key: "after-september-2023" as const,
+                    label: "After September 2023",
+                  },
+                ].map((option) => (
+                  <label
+                    key={option.key}
+                    className={`flex cursor-pointer items-center gap-4 rounded-xl border px-4 py-4 text-lg ${
+                      value === option.key
+                        ? "border-[#b9e7ff] bg-[#fcfeff] text-[#3346a5]"
+                        : "border-[#d9e7f5] bg-white text-[#44577e]"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="nvq-registration-date"
+                      checked={value === option.key}
+                      onChange={() => onChange(option.key)}
+                      className="h-5 w-5 accent-[#1ea6df]"
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-[#d8e5f4] bg-white px-8 py-3 text-base font-medium text-[#384a77]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onContinue}
+              className="rounded-xl bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] px-8 py-3 text-base font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function Am2RegistrationFlow({
   course,
 }: Am2RegistrationFlowProps) {
@@ -258,6 +623,7 @@ export default function Am2RegistrationFlow({
     React.useState<RegistrationStepKey>("candidate");
   const [currentNetStep, setCurrentNetStep] =
     React.useState<NetStepKey>("documents");
+  const [netFlowType, setNetFlowType] = React.useState<NetFlowType>("am2");
   const [candidate, setCandidate] = React.useState<CandidateFormState>({
     title: "",
     firstName: "",
@@ -305,7 +671,14 @@ export default function Am2RegistrationFlow({
     postcode: "",
   });
   const [privacyConfirmed, setPrivacyConfirmed] = React.useState(false);
-  const [documentsUploaded, setDocumentsUploaded] = React.useState(false);
+  const [uploadedDocuments, setUploadedDocuments] = React.useState<
+    Map<string, UploadedDocumentState>
+  >(
+    new Map()
+  );
+  const [nvqModalOpen, setNvqModalOpen] = React.useState(false);
+  const [nvqTiming, setNvqTiming] =
+    React.useState<NvqTiming>("before-september-2023");
 
   const selectedQualification = searchParams.get("qualification") ?? "";
   const lockedAssessmentType = am2eEligibleQualifications.has(selectedQualification)
@@ -318,6 +691,24 @@ export default function Am2RegistrationFlow({
       assessmentType: lockedAssessmentType,
     }));
   }, [lockedAssessmentType]);
+
+  React.useEffect(() => {
+    const initialUploads = netFlowContent[netFlowType].requirements
+      .filter((item) => item.initiallyUploaded)
+      .map((item) => item.id);
+
+    setUploadedDocuments(
+      new Map(
+        initialUploads.map((id) => [
+          id,
+          {
+            fileName: "Previously uploaded document",
+          },
+        ])
+      )
+    );
+    setCurrentNetStep("documents");
+  }, [netFlowType, phase]);
 
   const currentIndex = registrationSteps.findIndex(
     (step) => step.key === currentStep
@@ -362,6 +753,36 @@ export default function Am2RegistrationFlow({
     if (previousStep) {
       setCurrentStep(previousStep.key);
     }
+  };
+
+  const startNetFlow = (flowType: NetFlowType) => {
+    setNetFlowType(flowType);
+    setPhase("net");
+    setCurrentNetStep("documents");
+  };
+
+  const handlePrivacyContinue = () => {
+    if (am2eEligibleQualifications.has(selectedQualification)) {
+      setNvqModalOpen(true);
+      return;
+    }
+
+    startNetFlow("am2");
+  };
+
+  const handleNqvContinue = () => {
+    setNvqModalOpen(false);
+    startNetFlow(
+      nvqTiming === "before-september-2023" ? "am2e" : "am2e-v1"
+    );
+  };
+
+  const handleUploadDocument = (id: string, file: File) => {
+    setUploadedDocuments((current) => {
+      const next = new Map(current);
+      next.set(id, { fileName: file.name });
+      return next;
+    });
   };
 
   return (
@@ -868,114 +1289,16 @@ export default function Am2RegistrationFlow({
           ) : null}
 
           {phase === "net" && currentNetStep === "documents" ? (
-            <>
-              <div>
-                <h2 className="inline-flex items-center gap-2 text-[1rem] font-semibold text-[#3849a0]">
-                  Upload Full Certificate
-                </h2>
-              </div>
-
-              <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
-                <h3 className="text-sm font-semibold text-[#3850a2]">
-                  AM2 Readiness Checklist
-                </h3>
-                <p className="mt-1 text-xs text-[#6c7f9d]">
-                  for those who don&apos;t already hold AM2
-                </p>
-
-                <div className="mt-5 rounded-lg border border-[#f2c463] bg-[#fffaf1] px-4 py-3 text-sm text-[#8f6413]">
-                  You must upload all required documents before proceeding.
-                </div>
-
-                <div className="mt-4 rounded-xl border border-[#82cdf4] bg-white px-4 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-[#334496]">
-                        Learner History Report or Walled Garden Report (City &
-                        Guilds)
-                      </p>
-                      <p className="mt-1 text-xs text-[#7d8da7]">
-                        Requested from your NVQ provider
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setDocumentsUploaded(true)}
-                      className="rounded-lg border border-[#d9e6f3] bg-[#f5fbff] px-4 py-2 text-sm font-medium text-[#4154a6]"
-                    >
-                      Upload
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 flex items-center justify-end gap-3 border-t border-[#dbe7f4] pt-5">
-                <button
-                  type="button"
-                  disabled={!documentsUploaded}
-                  onClick={() => setCurrentNetStep("checklist")}
-                  className={`rounded-lg px-5 py-2.5 text-sm font-medium text-white ${
-                    documentsUploaded
-                      ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
-                      : "cursor-not-allowed bg-[#dce6ef]"
-                  }`}
-                >
-                  Continue
-                </button>
-              </div>
-            </>
+            <NetDocumentsPanel
+              flow={netFlowType}
+              uploadedDocuments={uploadedDocuments}
+              onUpload={handleUploadDocument}
+              onContinue={() => setCurrentNetStep("checklist")}
+            />
           ) : null}
 
           {phase === "net" && currentNetStep === "checklist" ? (
-            <>
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-[1rem] font-semibold text-[#3849a0]">
-                    AM2 Checklist
-                  </h2>
-                  <p className="mt-1 text-xs text-[#7a88a3]">
-                    Readiness for Assessment: Candidate Self-Assessment Checklist
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="text-sm font-semibold text-[#4451ac]"
-                >
-                  Important Information
-                </button>
-              </div>
-
-              <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-xs text-[#7a88a3]">Overall Completion</span>
-                  <span className="text-xs text-[#7a88a3]">0%</span>
-                </div>
-                <div className="mt-3 h-2 rounded-full bg-white">
-                  <div className="h-2 w-0 rounded-full bg-[#1ea6df]" />
-                </div>
-
-                <div className="mt-5 rounded-lg border border-[#d5e6f5] bg-[#dff1fd] px-4 py-3 text-sm text-[#46627d]">
-                  Complete all sections of the checklist. You can use the full
-                  checklist page for a detailed view.
-                </div>
-
-                <div className="mt-4 grid gap-3 md:grid-cols-[1fr_220px]">
-                  <button
-                    type="button"
-                    className="rounded-lg border border-[#d3dfef] bg-white px-4 py-3 text-sm font-medium text-[#2f407f]"
-                  >
-                    Open Full Checklist
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-[#dce4ec] px-4 py-3 text-sm font-medium text-[#9eacba]"
-                  >
-                    Continue
-                  </button>
-                </div>
-              </div>
-            </>
+            <NetChecklistPanel flow={netFlowType} />
           ) : null}
 
           {phase === "registration" ? (
@@ -1003,10 +1326,7 @@ export default function Am2RegistrationFlow({
                 <button
                   type="button"
                   disabled={!privacyConfirmed}
-                  onClick={() => {
-                    setPhase("net");
-                    setCurrentNetStep("documents");
-                  }}
+                  onClick={handlePrivacyContinue}
                   className={`rounded-lg px-5 py-2.5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)] ${
                     privacyConfirmed
                       ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)]"
@@ -1028,6 +1348,14 @@ export default function Am2RegistrationFlow({
           ) : null}
         </div>
       </PanelCard>
+
+      <NvqRegistrationDateModal
+        open={nvqModalOpen}
+        value={nvqTiming}
+        onChange={setNvqTiming}
+        onClose={() => setNvqModalOpen(false)}
+        onContinue={handleNqvContinue}
+      />
     </div>
   );
 }
