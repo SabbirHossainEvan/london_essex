@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import CourseDetailsContent from "@/components/website/course-details-content";
 import { coursesData, getCourseBySlug } from "@/app/(website)/courses/courses-data";
+import DashboardCourseDetailsView from "@/components/dashboard/dashboard-course-details-view";
 
 export default async function DashboardCourseDetailsPage({
   params,
@@ -16,13 +16,5 @@ export default async function DashboardCourseDetailsPage({
 
   const relatedCourses = coursesData.filter((item) => item.slug !== course.slug);
 
-  return (
-    <CourseDetailsContent
-      course={course}
-      relatedCourses={relatedCourses}
-      coursesHrefBasePath="/dashboard/courses"
-      bookingHrefBasePath="/dashboard/courses"
-      defaultSelectedImageIndex={2}
-    />
-  );
+  return <DashboardCourseDetailsView course={course} relatedCourses={relatedCourses} />;
 }
