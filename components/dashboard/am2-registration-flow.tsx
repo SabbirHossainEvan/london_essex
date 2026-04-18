@@ -503,12 +503,12 @@ function NetChecklistPanel({ flow }: { flow: NetFlowType }) {
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-[1fr_220px]">
-          <button
-            type="button"
+          <Link
+            href={`/dashboard/courses/am2-assessment-preparation/book/full-checklist?flow=${flow}`}
             className="rounded-lg border border-[#d3dfef] bg-white px-4 py-3 text-sm font-medium text-[#2f407f]"
           >
             Open Full Checklist
-          </button>
+          </Link>
           <button
             type="button"
             className="rounded-lg bg-[#dce4ec] px-4 py-3 text-sm font-medium text-[#9eacba]"
