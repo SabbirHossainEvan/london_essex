@@ -58,14 +58,16 @@ const sectionTabs: Array<{ key: SectionKey; label: string }> = [
   { key: "e", label: "Section E" },
 ];
 
-const sectionContent: Record<
+type SectionContentMap = Record<
   SectionKey,
   {
     title: string;
     description: string;
     questions: QuestionItem[];
   }
-> = {
+>;
+
+const am2SectionContent: SectionContentMap = {
   a1: {
     title: "Section A1: Safe Isolation and Risk Assessment (45 mins)",
     description:
@@ -392,6 +394,399 @@ const sectionContent: Record<
   },
 };
 
+const am2eSectionContent: SectionContentMap = {
+  a1: {
+    title: "Section A1: Safe Isolation and Risk Assessment (45 mins)",
+    description:
+      "To demonstrate occupational competence candidates will be expected to:",
+    questions: [
+      {
+        id: 1,
+        text: "Carry out and document an assessment of risk",
+        knowledge: "Extensive",
+        experience: "Adequate",
+      },
+      {
+        id: 2,
+        text: "Carry out safe isolation in the correct sequence",
+        knowledge: "Limited",
+        experience: "Unsure",
+      },
+    ],
+  },
+  a2a5: {
+    title: "Sections A2-A6: Composite Installation (10 hours)",
+    description:
+      "This section has areas where candidates will need to demonstrate occupational competence in accordance with statutory and non-statutory regulations and approved industry working practices.",
+    questions: [
+      {
+        id: 1,
+        text: "Interpretation of specifications and technical data",
+        knowledge: "Limited",
+        experience: "Limited",
+      },
+      {
+        id: 2,
+        text: "Selection of protective devices",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 3,
+        text: "Install protective equipotential bonding",
+        knowledge: "Extensive",
+        experience: "Extensive",
+      },
+      {
+        id: 4,
+        text: "Install and terminate PVC singles cable",
+        knowledge: "Unsure",
+        experience: "Unsure",
+      },
+      {
+        id: 5,
+        text: "Install and terminate PVC/PVC multi-core & cpc cable",
+        knowledge: "Limited",
+        experience: "Limited",
+      },
+      {
+        id: 6,
+        text: "Install and terminate SY multi-flex cable",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 7,
+        text: "Install and terminate heat-resistant flex",
+        knowledge: "Limited",
+        experience: "Unsure",
+      },
+      {
+        id: 8,
+        text: "Install and terminate XLPE SWA",
+        knowledge: "Unsure",
+        experience: "Limited",
+      },
+      {
+        id: 9,
+        text: "Install and terminate data-cable",
+        knowledge: "Adequate",
+        experience: "Limited",
+      },
+      {
+        id: 10,
+        text: "Install and terminate FP200 type cable",
+        knowledge: "Limited",
+        experience: "Adequate",
+      },
+      {
+        id: 11,
+        text: "Forming and install 20mm metal conduit",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 12,
+        text: "Forming and installing 20mm PVC conduit",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 13,
+        text: "Install protective devices in a TP&N distribution board",
+        knowledge: "Extensive",
+        experience: "Adequate",
+      },
+      {
+        id: 14,
+        text: "Install a two-way and intermediate lighting circuit in PVC/PVC multi-core cable",
+        knowledge: "Unsure",
+        experience: "Unsure",
+      },
+      {
+        id: 15,
+        text: "Install a BS 1363 13A socket outlet ring circuit in PVC singles cable",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 16,
+        text: "Install a carbon monoxide detector safety service circuit in FP200 type cable",
+        knowledge: "Limited",
+        experience: "Limited",
+      },
+      {
+        id: 17,
+        text: "Install data outlets circuit in Cat. 5 cable",
+        knowledge: "Adequate",
+        experience: "Limited",
+      },
+      {
+        id: 18,
+        text: "Install a BS EN 60309 16A T P & N socket outlet in XLPE SWA cable",
+        knowledge: "Limited",
+        experience: "Adequate",
+      },
+      {
+        id: 19,
+        text: "Install protective equipotential bonding to gas and water services",
+        knowledge: "Extensive",
+        experience: "Adequate",
+      },
+      {
+        id: 20,
+        text: "Connect a 3-phase direct on line motor circuit in SY cable",
+        knowledge: "Limited",
+        experience: "Unsure",
+      },
+      {
+        id: 21,
+        text: "Install an S Plan central heating and hot water system with a solar thermal sustainable energy element utilising heat resistant flexible cable and PVC singles cable",
+        knowledge: "Unsure",
+        experience: "Limited",
+      },
+    ],
+  },
+  a3a5: {
+    title: "Sections A3-A5: AM2E Checklist",
+    description:
+      "AM2E-specific checklist questions will be added here separately.",
+    questions: [],
+  },
+  b: {
+    title: "Section B: Inspection, Testing and Certification (3.5 hours)",
+    description:
+      "In this area candidates will be expected to follow practices and procedures that take into account electrically sensitive equipment. To demonstrate occupational competence, candidates will be expected to:",
+    questions: [
+      {
+        id: 1,
+        text: "Work according to best practice as required by Health and Safety legislation",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 2,
+        text: "Ensure the installation is correctly isolated before commencing the inspection and test activity",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 3,
+        text: "Carry out a visual inspection of the installation in accordance with BS 7671 and IET Guidance Note 3",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 4,
+        text: "Complete the following tests on the installation in accordance with BS 7671 and IET Guidance Note 3: Continuity of protective conductors",
+        knowledge: "Limited",
+        experience: "Limited",
+      },
+      {
+        id: 5,
+        text: "Continuity of ring final circuit conductors",
+        knowledge: "Limited",
+        experience: "Limited",
+      },
+      {
+        id: 6,
+        text: "Insulation resistance",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 7,
+        text: "Polarity",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 8,
+        text: "Earth fault-loop impedance (EFLI)",
+        knowledge: "Adequate",
+        experience: "Limited",
+      },
+      {
+        id: 9,
+        text: "Prospective fault current (PFC)",
+        knowledge: "Adequate",
+        experience: "Limited",
+      },
+      {
+        id: 10,
+        text: "Check for phase sequence and phase rotation",
+        knowledge: "Limited",
+        experience: "Unsure",
+      },
+      {
+        id: 11,
+        text: "Functional testing",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 12,
+        text: "Verify that the test results obtained conform to the values required by BS 7671 and IET Guidance Note 3",
+        knowledge: "Extensive",
+        experience: "Adequate",
+      },
+      {
+        id: 13,
+        text: "Complete an electrical installation certificate, schedule of inspections and schedule of test results using the model forms as illustrated in Appendix 6 of BS 7671",
+        knowledge: "Extensive",
+        experience: "Adequate",
+      },
+    ],
+  },
+  c: {
+    title: "Section C: Safe Isolation of Circuits (30 mins)",
+    description:
+      "To demonstrate occupational competence candidates will be expected to:",
+    questions: [
+      {
+        id: 1,
+        text: "Carry out safe isolation in the correct sequence on a single-phase circuit",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 2,
+        text: "Carry out safe isolation in the correct sequence on a three-phase circuit",
+        knowledge: "Adequate",
+        experience: "Limited",
+      },
+      {
+        id: 3,
+        text: "Carry out safe isolation in the correct sequence on a three-phase installation",
+        knowledge: "Limited",
+        experience: "Unsure",
+      },
+    ],
+  },
+  d: {
+    title: "Section D: Fault Diagnosis and Rectification (2 hours)",
+    description:
+      "To demonstrate occupational competence candidates will be expected to:",
+    questions: [
+      {
+        id: 1,
+        text: "Work according to best practice as required by Health and Safety legislation",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 2,
+        text: "Correctly identify and use tools, equipment and test instruments that are fit for purpose",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 3,
+        text: "Carry out checks and preparations that must be completed prior to undertaking fault diagnosis",
+        knowledge: "Adequate",
+        experience: "Limited",
+      },
+      {
+        id: 4,
+        text: "Identify faults from 'fault symptom' information given by the assessor",
+        knowledge: "Limited",
+        experience: "Unsure",
+      },
+      {
+        id: 5,
+        text: "State and record how the identified faults can be rectified",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+    ],
+  },
+  e: {
+    title: "Section E: Assessment of Applied Knowledge (1 hour)",
+    description:
+      "This assessment will last for one hour and be in the form of a computerised multiple-choice test. Candidates will be expected to answer 30 questions and will be assessed on their application of knowledge associated with:",
+    questions: [
+      {
+        id: 1,
+        text: "Health and Safety",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 2,
+        text: "BS 7671: Requirements for Electrical Installations",
+        knowledge: "Adequate",
+        experience: "Limited",
+      },
+      {
+        id: 3,
+        text: "Building Regulations",
+        knowledge: "Limited",
+        experience: "Limited",
+      },
+      {
+        id: 4,
+        text: "Inspection, Testing and Fault Finding",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+    ],
+  },
+};
+
+const am2eV1SectionContent: SectionContentMap = {
+  a1: {
+    title: "Section A1: AM2E V1 Checklist",
+    description:
+      "AM2E V1-specific checklist questions will be added here separately.",
+    questions: [],
+  },
+  a2a5: {
+    title: "Sections A2-A5: AM2E V1 Checklist",
+    description:
+      "AM2E V1-specific checklist questions will be added here separately.",
+    questions: [],
+  },
+  a3a5: {
+    title: "Sections A3-A5: AM2E V1 Checklist",
+    description:
+      "AM2E V1-specific checklist questions will be added here separately.",
+    questions: [],
+  },
+  b: {
+    title: "Section B: AM2E V1 Checklist",
+    description:
+      "AM2E V1-specific checklist questions will be added here separately.",
+    questions: [],
+  },
+  c: {
+    title: "Section C: AM2E V1 Checklist",
+    description:
+      "AM2E V1-specific checklist questions will be added here separately.",
+    questions: [],
+  },
+  d: {
+    title: "Section D: AM2E V1 Checklist",
+    description:
+      "AM2E V1-specific checklist questions will be added here separately.",
+    questions: [],
+  },
+  e: {
+    title: "Section E: AM2E V1 Checklist",
+    description:
+      "AM2E V1-specific checklist questions will be added here separately.",
+    questions: [],
+  },
+};
+
+const checklistContentByFlow: Record<
+  Am2FullChecklistPageProps["flow"],
+  SectionContentMap
+> = {
+  am2: am2SectionContent,
+  am2e: am2eSectionContent,
+  "am2e-v1": am2eV1SectionContent,
+};
+
 function Stepper() {
   return (
     <div className="overflow-x-auto">
@@ -470,11 +865,12 @@ export default function Am2FullChecklistPage({
 }: Am2FullChecklistPageProps) {
   const router = useRouter();
   const meta = checklistMeta[flow];
+  const sectionContent = checklistContentByFlow[flow];
   const [activeSection, setActiveSection] = React.useState<SectionKey>("a1");
   const [questionSelections, setQuestionSelections] = React.useState<QuestionSelections>(() => {
     return Object.fromEntries(
       (Object.entries(sectionContent) as Array<
-        [SectionKey, (typeof sectionContent)[SectionKey]]
+        [SectionKey, SectionContentMap[SectionKey]]
       >).map(([sectionKey, section]) => [
         sectionKey,
         Object.fromEntries(
@@ -489,6 +885,29 @@ export default function Am2FullChecklistPage({
       ])
     ) as QuestionSelections;
   });
+
+  React.useEffect(() => {
+    setActiveSection("a1");
+    setQuestionSelections(
+      Object.fromEntries(
+        (Object.entries(sectionContent) as Array<
+          [SectionKey, SectionContentMap[SectionKey]]
+        >).map(([sectionKey, section]) => [
+          sectionKey,
+          Object.fromEntries(
+            section.questions.map((question) => [
+              question.id,
+              {
+                knowledge: null,
+                experience: null,
+              },
+            ])
+          ),
+        ])
+      ) as QuestionSelections
+    );
+  }, [sectionContent]);
+
   const activeSectionIndex = sectionTabs.findIndex(
     (section) => section.key === activeSection
   );
