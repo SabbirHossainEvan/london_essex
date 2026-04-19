@@ -735,16 +735,156 @@ const am2eSectionContent: SectionContentMap = {
 
 const am2eV1SectionContent: SectionContentMap = {
   a1: {
-    title: "Section A1: AM2E V1 Checklist",
+    title: "Section A1: Safe Isolation and Risk Assessment (45 mins)",
     description:
-      "AM2E V1-specific checklist questions will be added here separately.",
-    questions: [],
+      "To demonstrate occupational competence candidates will be expected to:",
+    questions: [
+      {
+        id: 1,
+        text: "Carry out and document an assessment of risk",
+        knowledge: "Extensive",
+        experience: "Adequate",
+      },
+      {
+        id: 2,
+        text: "Carry out safe isolation in the correct sequence considering any separate energy systems",
+        knowledge: "Adequate",
+        experience: "Limited",
+      },
+    ],
   },
   a2a5: {
-    title: "Sections A2-A5: AM2E V1 Checklist",
+    title: "Sections A2-A6: Composite Installation (10.5 hours)",
     description:
-      "AM2E V1-specific checklist questions will be added here separately.",
-    questions: [],
+      "This section has areas where candidates will need to demonstrate occupational competence in accordance with statutory and non-statutory regulations and approved industry working practices.",
+    questions: [
+      {
+        id: 1,
+        text: "Interpretation of specifications and technical data",
+        knowledge: "Limited",
+        experience: "Limited",
+      },
+      {
+        id: 2,
+        text: "Selection of protective devices, single pole and triple pole",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 3,
+        text: "Install protective equipotential bonding",
+        knowledge: "Extensive",
+        experience: "Extensive",
+      },
+      {
+        id: 4,
+        text: "Install and terminate PVC singles cable",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 5,
+        text: "Install and terminate PVC/PVC multi-core & cpc cable",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 6,
+        text: "Install and terminate SY multi-flex cable",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 7,
+        text: "Install and terminate heat-resistant flex",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 8,
+        text: "Install and terminate XLPE SWA",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 9,
+        text: "Install and terminate data-cable",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 10,
+        text: "Install and terminate FP200 type cable",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 11,
+        text: "Form and install metal conduit systems",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 12,
+        text: "Form and install PVC conduit systems",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 13,
+        text: "Install protective devices in a TP&N distribution board",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 14,
+        text: "Install a two-way, intermediate and key switch for various lighting circuits in PVC/PVC multi-core cable",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 15,
+        text: "Install a BS 1363 13A socket outlet ring circuit using PVC single cables",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 16,
+        text: "Install a carbon monoxide detector safety service circuit in FP200 type cable",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 17,
+        text: "Install data outlets circuit in Cat. 5 cable",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 18,
+        text: "Install a BS EN 60309 20A T P & N supply in XLPE SWA cable for electric vehicle pillar",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 19,
+        text: "Install protective equipotential bonding to gas and water services",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 20,
+        text: "Connect a 3-phase direct online motor circuit in SY cable with remote start stop function using PVC singles",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 21,
+        text: "Install an S Plan central heating and hot water system with a solar thermal sustainable energy element utilising heat resistant flexible cable and PVC singles cable",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+    ],
   },
   a3a5: {
     title: "Sections A3-A5: AM2E V1 Checklist",
@@ -753,28 +893,182 @@ const am2eV1SectionContent: SectionContentMap = {
     questions: [],
   },
   b: {
-    title: "Section B: AM2E V1 Checklist",
+    title: "Section B: Inspection, Testing and Certification (3.5 hours)",
     description:
-      "AM2E V1-specific checklist questions will be added here separately.",
-    questions: [],
+      "In this area candidates will be expected to follow practices and procedures that take into account electrically sensitive equipment. To demonstrate occupational competence, candidates will be expected to:",
+    questions: [
+      {
+        id: 1,
+        text: "Work according to best practice as required by Health and Safety legislation",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 2,
+        text: "Ensure the installation is correctly isolated before commencing the inspection and test activity taking into account any renewable sources",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 3,
+        text: "Carry out a visual inspection of the installation in accordance with BS 7671 and IET Guidance Note 3",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 4,
+        text: "Continuity of protective conductors",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 5,
+        text: "Continuity of ring final circuit conductors",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 6,
+        text: "Insulation resistance",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 7,
+        text: "Polarity",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 8,
+        text: "Earth fault-loop impedance (EFLI)",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 9,
+        text: "Prospective fault current (PFC)",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 10,
+        text: "Check for phase sequence and phase rotation",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 11,
+        text: "Functional testing",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 12,
+        text: "Verify that the test results obtained conform to the values required by BS 7671 and IET Guidance Note 3",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 13,
+        text: "Complete an electrical installation certificate, schedule of inspections and schedule of test results using the model forms as illustrated in Appendix 6 of BS 7671",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+    ],
   },
   c: {
-    title: "Section C: AM2E V1 Checklist",
+    title: "Section C: Safe Isolation of Circuits (30 mins)",
     description:
-      "AM2E V1-specific checklist questions will be added here separately.",
-    questions: [],
+      "To demonstrate occupational competence candidates will be expected to:",
+    questions: [
+      {
+        id: 1,
+        text: "Carry out safe isolation in the correct sequence on a single-phase circuit",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 2,
+        text: "Carry out safe isolation in the correct sequence on a three-phase circuit",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 3,
+        text: "Carry out safe isolation in the correct sequence on a three-phase installation",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+    ],
   },
   d: {
-    title: "Section D: AM2E V1 Checklist",
+    title: "Section D: Fault Diagnosis and Rectification (2 hours)",
     description:
-      "AM2E V1-specific checklist questions will be added here separately.",
-    questions: [],
+      "To demonstrate occupational competence candidates will be expected to:",
+    questions: [
+      {
+        id: 1,
+        text: "Work according to best practice as required by Health and Safety legislation",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 2,
+        text: "Correctly select and use tools, equipment and test instruments",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 3,
+        text: "Carry out checks and preparations that must be completed prior to undertaking fault diagnosis",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 4,
+        text: "Identify faults from 'fault symptom' information",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 5,
+        text: "State and record how the identified faults can be rectified",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+    ],
   },
   e: {
-    title: "Section E: AM2E V1 Checklist",
+    title: "Section E: Assessment of Applied Knowledge (1.5 hours)",
     description:
-      "AM2E V1-specific checklist questions will be added here separately.",
-    questions: [],
+      "This assessment will last for 1.5 hours and be in the form of a computerised multiple-choice test. Candidates will be expected to answer 40 questions and will be assessed on their application of knowledge associated with:",
+    questions: [
+      {
+        id: 1,
+        text: "Health and Safety",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 2,
+        text: "BS 7671: Requirements for Electrical Installations including any current amendments",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 3,
+        text: "Building Regulations",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+      {
+        id: 4,
+        text: "Inspection, Testing and Fault Finding",
+        knowledge: "Adequate",
+        experience: "Adequate",
+      },
+    ],
   },
 };
 

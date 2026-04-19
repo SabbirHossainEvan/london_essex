@@ -76,6 +76,7 @@ type EmployerFormState = {
 type TrainingFormState = EmployerFormState;
 type NetFlowType = "am2" | "am2e" | "am2e-v1";
 type NvqTiming = "before-september-2023" | "after-september-2023";
+type EmployerStatus = "yes" | "no";
 type DocumentRequirement = {
   id: string;
   title: string;
@@ -282,12 +283,14 @@ function TextField({
   onChange,
   placeholder,
   type = "text",
+  disabled = false,
 }: {
   icon?: React.ReactNode;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
   type?: React.HTMLInputTypeAttribute;
+  disabled?: boolean;
 }) {
   return (
     <div className="relative">
@@ -301,7 +304,12 @@ function TextField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className={`h-11 w-full rounded-lg border border-[#dde9f7] bg-[#eef7ff] pr-4 text-sm text-[#27396b] outline-none transition focus:border-[#28aee5] focus:bg-white ${
+        disabled={disabled}
+        className={`h-11 w-full rounded-lg border border-[#dde9f7] pr-4 text-sm text-[#27396b] outline-none transition ${
+          disabled
+            ? "cursor-not-allowed bg-[#f4f7fb] text-[#94a3b8]"
+            : "bg-[#eef7ff] focus:border-[#28aee5] focus:bg-white"
+        } ${
           icon ? "pl-11" : "pl-4"
         }`}
       />
@@ -819,6 +827,8 @@ export default function Am2RegistrationFlow({
     town: "",
     postcode: "",
   });
+  const [hasEmployer, setHasEmployer] = React.useState<EmployerStatus>("yes");
+  const [employerStepError, setEmployerStepError] = React.useState("");
   const [training, setTraining] = React.useState<TrainingFormState>({
     companyName: "",
     email: "",
@@ -910,6 +920,7 @@ export default function Am2RegistrationFlow({
   };
 
   const updateEmployer = (field: keyof EmployerFormState, value: string) => {
+    setEmployerStepError("");
     setEmployer((current) => ({ ...current, [field]: value }));
   };
 
@@ -926,6 +937,22 @@ export default function Am2RegistrationFlow({
   };
 
   const moveNext = () => {
+    if (currentStep === "employer") {
+      if (hasEmployer === "no") {
+        setEmployerStepError("");
+      } else {
+        const employerValues = Object.values(employer).map((value) => value.trim());
+        const hasMissingEmployerField = employerValues.some((value) => value.length === 0);
+
+        if (hasMissingEmployerField) {
+          setEmployerStepError(
+            "Please complete all employer fields, or select No if you are self-employed or do not have an employer."
+          );
+          return;
+        }
+      }
+    }
+
     const nextStep = registrationSteps[currentIndex + 1];
     if (nextStep) {
       setCurrentStep(nextStep.key);
@@ -1280,6 +1307,22 @@ export default function Am2RegistrationFlow({
               </div>
 
               <div className="mt-5 grid gap-4">
+                <div>
+                  <FieldLabel>
+                    If you have no employer or are self-employed please put SELF
+                    EMPLOYED
+                  </FieldLabel>
+                  <RadioRow
+                    name="has-employer"
+                    options={["Yes", "No"]}
+                    value={hasEmployer === "yes" ? "Yes" : "No"}
+                    onChange={(value) => {
+                      setEmployerStepError("");
+                      setHasEmployer(value === "Yes" ? "yes" : "no");
+                    }}
+                  />
+                </div>
+
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <FieldLabel>Company Name *</FieldLabel>
@@ -1287,6 +1330,7 @@ export default function Am2RegistrationFlow({
                       value={employer.companyName}
                       onChange={(value) => updateEmployer("companyName", value)}
                       placeholder="Enter employer company name"
+                      disabled={hasEmployer === "no"}
                     />
                   </div>
                   <div>
@@ -1296,6 +1340,7 @@ export default function Am2RegistrationFlow({
                       onChange={(value) => updateEmployer("email", value)}
                       placeholder="Enter employer email address"
                       type="email"
+                      disabled={hasEmployer === "no"}
                     />
                   </div>
                 </div>
@@ -1307,6 +1352,7 @@ export default function Am2RegistrationFlow({
                       value={employer.contactName}
                       onChange={(value) => updateEmployer("contactName", value)}
                       placeholder="Enter employer contact name"
+                      disabled={hasEmployer === "no"}
                     />
                   </div>
                   <div>
@@ -1315,6 +1361,7 @@ export default function Am2RegistrationFlow({
                       value={employer.contactNumber}
                       onChange={(value) => updateEmployer("contactNumber", value)}
                       placeholder="Enter employer mobile number"
+                      disabled={hasEmployer === "no"}
                     />
                   </div>
                 </div>
@@ -1327,7 +1374,8 @@ export default function Am2RegistrationFlow({
                       onChange={(value) =>
                         updateEmployer(field as keyof EmployerFormState, value)
                       }
-                      placeholder="Enter address line 1"
+                      placeholder={`Enter address line ${index + 1}`}
+                      disabled={hasEmployer === "no"}
                     />
                   </div>
                 ))}
@@ -1339,6 +1387,7 @@ export default function Am2RegistrationFlow({
                       value={employer.town}
                       onChange={(value) => updateEmployer("town", value)}
                       placeholder="Enter town"
+                      disabled={hasEmployer === "no"}
                     />
                   </div>
                   <div>
@@ -1347,9 +1396,16 @@ export default function Am2RegistrationFlow({
                       value={employer.postcode}
                       onChange={(value) => updateEmployer("postcode", value)}
                       placeholder="Enter postcode"
+                      disabled={hasEmployer === "no"}
                     />
                   </div>
                 </div>
+
+                {employerStepError ? (
+                  <p className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+                    {employerStepError}
+                  </p>
+                ) : null}
               </div>
             </>
           ) : null}
