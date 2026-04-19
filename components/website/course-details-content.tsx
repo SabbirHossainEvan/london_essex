@@ -13,6 +13,7 @@ type CourseDetailsContentProps = {
   coursesHrefBasePath?: string;
   bookingHrefBasePath?: string;
   defaultSelectedImageIndex?: number;
+  onBookNow?: () => void;
 };
 
 type AccordionKey = "learning" | "delivery" | "additional";
@@ -23,6 +24,7 @@ export default function CourseDetailsContent({
   coursesHrefBasePath = "/courses",
   bookingHrefBasePath,
   defaultSelectedImageIndex = 0,
+  onBookNow,
 }: CourseDetailsContentProps) {
   const [selectedImage, setSelectedImage] = React.useState(
     course.gallery[defaultSelectedImageIndex] ?? course.gallery[0] ?? course.heroImage
@@ -114,21 +116,31 @@ export default function CourseDetailsContent({
               <span className="pb-1 text-sm text-[#6f7894]">{course.vatLabel}</span>
             </div>
 
-            <Link
-              href={
-                bookingHrefBasePath
-                  ? `${bookingHrefBasePath}/${course.slug}/book`
-                  : "#"
-              }
-              aria-disabled={!bookingHrefBasePath}
-              className={`mt-5 block w-full rounded-[8px] px-6 py-4 text-center text-base font-semibold text-white shadow-[0_4px_0_#315063] ${
-                bookingHrefBasePath
-                  ? "bg-[#1ea9de]"
-                  : "pointer-events-none cursor-not-allowed bg-[#8fc9df]"
-              }`}
-            >
-              Book Now
-            </Link>
+            {onBookNow ? (
+              <button
+                type="button"
+                onClick={onBookNow}
+                className="mt-5 block w-full rounded-[8px] bg-[#1ea9de] px-6 py-4 text-center text-base font-semibold text-white shadow-[0_4px_0_#315063]"
+              >
+                Book Now
+              </button>
+            ) : (
+              <Link
+                href={
+                  bookingHrefBasePath
+                    ? `${bookingHrefBasePath}/${course.slug}/book`
+                    : "#"
+                }
+                aria-disabled={!bookingHrefBasePath}
+                className={`mt-5 block w-full rounded-[8px] px-6 py-4 text-center text-base font-semibold text-white shadow-[0_4px_0_#315063] ${
+                  bookingHrefBasePath
+                    ? "bg-[#1ea9de]"
+                    : "pointer-events-none cursor-not-allowed bg-[#8fc9df]"
+                }`}
+              >
+                Book Now
+              </Link>
+            )}
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getCourseBySlug } from "@/app/(website)/courses/courses-data";
+import Am2RegistrationFlow from "@/components/dashboard/am2-registration-flow";
 import CourseBookingFlow from "@/components/dashboard/course-booking-flow";
 
 export default async function DashboardCourseBookingPage({
@@ -12,6 +13,10 @@ export default async function DashboardCourseBookingPage({
 
   if (!course) {
     notFound();
+  }
+
+  if (course.slug === "am2-assessment-preparation") {
+    return <Am2RegistrationFlow course={course} />;
   }
 
   return <CourseBookingFlow course={course} />;
