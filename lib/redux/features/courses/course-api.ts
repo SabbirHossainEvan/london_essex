@@ -209,6 +209,83 @@ export type CourseBookNowResponse = {
   };
 };
 
+export type CourseRegistrationStep = {
+  id: string;
+  label: string;
+  status: "completed" | "current" | "upcoming" | string;
+};
+
+export type CourseRegistrationField = {
+  id: string;
+  label: string;
+  type:
+    | "text"
+    | "date"
+    | "email"
+    | "tel"
+    | "radio"
+    | "choice-grid"
+    | string;
+  required: boolean;
+  placeholder?: string;
+  helperText?: string;
+  options?: Array<{
+    id: string;
+    label: string;
+  }>;
+};
+
+export type CourseRegistrationSection = {
+  id: string;
+  title: string;
+  description?: string;
+  fields: CourseRegistrationField[];
+};
+
+export type CourseRegistrationFormResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    screen: {
+      courseContext: {
+        id: string;
+        title: string;
+        slug: string;
+        qualification?: string;
+        location?: string;
+        schedule?: string;
+      };
+      steps: CourseRegistrationStep[];
+      title: string;
+      description: string;
+      assistanceText?: string;
+      sections: CourseRegistrationSection[];
+      navigation?: {
+        previous?: {
+          label?: string;
+          apiUrl?: string;
+        } | null;
+        next?: {
+          label?: string;
+          apiUrl?: string;
+        } | null;
+      };
+      submission?: {
+        apiUrl?: string;
+        method?: string;
+        payloadTemplate?: {
+          courseSlug?: string;
+          personalDetails?: Record<string, string>;
+          assessmentDetails?: Record<string, string>;
+        };
+        continueLabel?: string;
+      };
+    };
+  };
+};
+
+export type CourseAssessmentRegistrationFormResponse = CourseRegistrationFormResponse;
+
 export const courseApi = baseApi.injectEndpoints({
   overrideExisting: process.env.NODE_ENV === "development",
   endpoints: (builder) => ({
@@ -233,6 +310,23 @@ export const courseApi = baseApi.injectEndpoints({
       }),
       providesTags: ["Course"],
     }),
+    getCourseRegistrationForm: builder.query<CourseRegistrationFormResponse, string>({
+      query: (courseSlug) => ({
+        url: `/courses/${courseSlug}/registration-form`,
+        method: "GET",
+      }),
+      providesTags: ["Course"],
+    }),
+    getCourseAssessmentRegistrationForm: builder.query<
+      CourseAssessmentRegistrationFormResponse,
+      string
+    >({
+      query: (courseSlug) => ({
+        url: `/courses/${courseSlug}/registration-form/assessment`,
+        method: "GET",
+      }),
+      providesTags: ["Course"],
+    }),
   }),
 });
 
@@ -240,4 +334,6 @@ export const {
   useGetCourseCatalogScreenQuery,
   useGetCourseDetailScreenQuery,
   useLazyGetCourseBookNowQuery,
+  useGetCourseRegistrationFormQuery,
+  useGetCourseAssessmentRegistrationFormQuery,
 } = courseApi;

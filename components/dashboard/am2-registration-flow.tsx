@@ -24,6 +24,11 @@ import {
 } from "lucide-react";
 import type { CourseSummary } from "@/app/(website)/courses/courses-data";
 import PanelCard from "@/components/dashboard/panel-card";
+import {
+  useGetCourseAssessmentRegistrationFormQuery,
+  useGetCourseRegistrationFormQuery,
+  type CourseRegistrationField,
+} from "@/lib/redux/features/courses/course-api";
 
 type Am2RegistrationFlowProps = {
   course: CourseSummary;
@@ -111,6 +116,9 @@ type UploadedDocumentState = {
   fileName: string;
 };
 
+type CandidateFieldKey = keyof CandidateFormState;
+type AssessmentFieldKey = keyof AssessmentFormState;
+
 const registrationSteps: Array<{ key: RegistrationStepKey; label: string }> = [
   { key: "candidate", label: "Candidate" },
   { key: "assessment", label: "Assessment" },
@@ -118,6 +126,30 @@ const registrationSteps: Array<{ key: RegistrationStepKey; label: string }> = [
   { key: "training", label: "Training" },
   { key: "privacy", label: "Privacy" },
 ];
+
+const candidateFieldIdMap: Record<string, CandidateFieldKey> = {
+  title: "title",
+  firstName: "firstName",
+  lastName: "lastName",
+  dateOfBirth: "dob",
+  niNumber: "niNumber",
+  email: "email",
+  mobileNumber: "mobileNumber",
+  addressLine1: "address1",
+  addressLine2: "address2",
+  town: "town",
+  postcode: "postcode",
+};
+
+const assessmentFieldIdMap: Record<string, AssessmentFieldKey> = {
+  apprentice: "apprentice",
+  uln: "uln",
+  funding: "funding",
+  awardingBody: "awardingBody",
+  reasonableAdjustments: "adjustments",
+  recognitionOfPriorLearning: "recognition",
+  assessmentType: "assessmentType",
+};
 
 const netSteps: Array<{ key: NetStepKey; label: string }> = [
   { key: "documents", label: "Documents" },
@@ -127,26 +159,6 @@ const netSteps: Array<{ key: NetStepKey; label: string }> = [
   { key: "review", label: "Review" },
   { key: "payment", label: "Payment" },
   { key: "confirmed", label: "Confirmed" },
-];
-
-const fundingOptions = [
-  "England 16-18 Apprenticeship funded",
-  "England 19+ Apprenticeship funded",
-  "Other Funding Method",
-];
-
-const awardingBodyOptions = ["City & Guilds", "EAL", "N/A", "Other"];
-
-const assessmentTypeOptions = [
-  "AM2",
-  "AM2E",
-  "AM2S v1.0",
-  "AM2ED",
-  "AM2D",
-  "Cable Jointing",
-  "AM2E v1.1",
-  "AM2S v1.1 / 1.2",
-  "AM2SN",
 ];
 
 const am2eEligibleQualifications = new Set([
@@ -299,6 +311,26 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
       {children}
     </label>
   );
+}
+
+function resolveApiErrorMessage(error: unknown, fallback: string) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "data" in error &&
+    typeof error.data === "object" &&
+    error.data !== null &&
+    "message" in error.data &&
+    typeof error.data.message === "string"
+  ) {
+    return error.data.message;
+  }
+
+  return fallback;
+}
+
+function normalizeAssessmentValue(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, "");
 }
 
 function TextField({
@@ -1623,6 +1655,18 @@ export default function Am2RegistrationFlow({
 }: Am2RegistrationFlowProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const {
+    data: registrationFormData,
+    isLoading: isRegistrationFormLoading,
+    isError: isRegistrationFormError,
+    error: registrationFormError,
+  } = useGetCourseRegistrationFormQuery(course.slug);
+  const {
+    data: assessmentFormData,
+    isLoading: isAssessmentFormLoading,
+    isError: isAssessmentFormError,
+    error: assessmentFormError,
+  } = useGetCourseAssessmentRegistrationFormQuery(course.slug);
   const [phase, setPhase] = React.useState<"registration" | "net">(
     "registration"
   );
@@ -1645,13 +1689,13 @@ export default function Am2RegistrationFlow({
     postcode: "",
   });
   const [assessment, setAssessment] = React.useState<AssessmentFormState>({
-    apprentice: "Yes",
+    apprentice: "",
     uln: "",
     funding: "",
     awardingBody: "",
-    adjustments: "No",
-    recognition: "No",
-    assessmentType: "AM2",
+    adjustments: "",
+    recognition: "",
+    assessmentType: "",
   });
   const [employer, setEmployer] = React.useState<EmployerFormState>({
     companyName: "",
@@ -1666,6 +1710,8 @@ export default function Am2RegistrationFlow({
     postcode: "",
   });
   const [hasEmployer, setHasEmployer] = React.useState<EmployerStatus>("yes");
+  const [candidateStepError, setCandidateStepError] = React.useState("");
+  const [assessmentStepError, setAssessmentStepError] = React.useState("");
   const [employerStepError, setEmployerStepError] = React.useState("");
   const [training, setTraining] = React.useState<TrainingFormState>({
     companyName: "",
@@ -1722,13 +1768,44 @@ Thank you,`,
   const lockedAssessmentType = am2eEligibleQualifications.has(selectedQualification)
     ? "AM2E"
     : "AM2";
+  const registrationScreen = registrationFormData?.data.screen;
+  const assessmentRegistrationScreen = assessmentFormData?.data.screen;
+  const activeRegistrationScreen =
+    currentStep === "assessment" && assessmentRegistrationScreen
+      ? assessmentRegistrationScreen
+      : registrationScreen;
+  const registrationStepItems =
+    activeRegistrationScreen?.steps
+      ?.map((step) => {
+        if (
+          step.id === "candidate" ||
+          step.id === "assessment" ||
+          step.id === "employer" ||
+          step.id === "training" ||
+          step.id === "privacy"
+        ) {
+          return { key: step.id, label: step.label };
+        }
 
-  React.useEffect(() => {
-    setAssessment((current) => ({
-      ...current,
-      assessmentType: lockedAssessmentType,
-    }));
-  }, [lockedAssessmentType]);
+        return null;
+      })
+      .filter((step): step is { key: RegistrationStepKey; label: string } => step !== null) ??
+    registrationSteps;
+  const currentRegistrationSteps =
+    registrationStepItems.length > 0 ? registrationStepItems : registrationSteps;
+  const candidateSection =
+    registrationScreen?.sections.find((section) => section.id === "candidate-details") ??
+    registrationScreen?.sections[0];
+  const candidateFields = candidateSection?.fields ?? [];
+  const assessmentSection =
+    assessmentRegistrationScreen?.sections.find(
+      (section) => section.id === "assessment-details"
+    ) ?? assessmentRegistrationScreen?.sections[0];
+  const assessmentFields = assessmentSection?.fields ?? [];
+  const registrationContinueLabel =
+    activeRegistrationScreen?.submission?.continueLabel ??
+    activeRegistrationScreen?.navigation?.next?.label ??
+    "Continue";
 
   React.useEffect(() => {
     const initialUploads = netFlowContent[netFlowType].requirements
@@ -1770,11 +1847,60 @@ Thank you,`,
     );
   }, [requestedFlow, requestedNetStep, requestedReviewStatus]);
 
-  const currentIndex = registrationSteps.findIndex(
+  const currentIndex = currentRegistrationSteps.findIndex(
     (step) => step.key === currentStep
   );
 
+  React.useEffect(() => {
+    if (!registrationScreen?.submission?.payloadTemplate?.personalDetails) {
+      return;
+    }
+
+    const personalDetails = registrationScreen.submission.payloadTemplate.personalDetails;
+
+    setCandidate((current) => ({
+      ...current,
+      title: current.title || personalDetails.title || "",
+      firstName: current.firstName || personalDetails.firstName || "",
+      lastName: current.lastName || personalDetails.lastName || "",
+      dob: current.dob || personalDetails.dateOfBirth || "",
+      niNumber: current.niNumber || personalDetails.niNumber || "",
+      email: current.email || personalDetails.email || "",
+      mobileNumber: current.mobileNumber || personalDetails.mobileNumber || "",
+      address1: current.address1 || personalDetails.addressLine1 || "",
+      address2: current.address2 || personalDetails.addressLine2 || "",
+      town: current.town || personalDetails.town || "",
+      postcode: current.postcode || personalDetails.postcode || "",
+    }));
+  }, [registrationScreen]);
+
+  React.useEffect(() => {
+    if (!assessmentRegistrationScreen?.submission?.payloadTemplate?.assessmentDetails) {
+      return;
+    }
+
+    const assessmentDetails =
+      assessmentRegistrationScreen.submission.payloadTemplate.assessmentDetails;
+
+    setAssessment((current) => ({
+      ...current,
+      apprentice: current.apprentice || assessmentDetails.apprentice || "",
+      uln: current.uln || assessmentDetails.uln || "",
+      funding: current.funding || assessmentDetails.funding || "",
+      awardingBody: current.awardingBody || assessmentDetails.awardingBody || "",
+      adjustments:
+        current.adjustments || assessmentDetails.reasonableAdjustments || "",
+      recognition:
+        current.recognition ||
+        assessmentDetails.recognitionOfPriorLearning ||
+        "",
+      assessmentType:
+        current.assessmentType || assessmentDetails.assessmentType || "",
+    }));
+  }, [assessmentRegistrationScreen]);
+
   const updateCandidate = (field: keyof CandidateFormState, value: string) => {
+    setCandidateStepError("");
     setCandidate((current) => ({ ...current, [field]: value }));
   };
 
@@ -1782,6 +1908,7 @@ Thank you,`,
     field: keyof AssessmentFormState,
     value: string
   ) => {
+    setAssessmentStepError("");
     setAssessment((current) => ({ ...current, [field]: value }));
   };
 
@@ -1815,7 +1942,7 @@ Thank you,`,
     payment.cvc.length >= 3;
 
   const selectAssessmentType = (value: string) => {
-    if (value !== lockedAssessmentType) {
+    if (normalizeAssessmentValue(value) !== normalizeAssessmentValue(lockedAssessmentType)) {
       return;
     }
 
@@ -1823,6 +1950,38 @@ Thank you,`,
   };
 
   const moveNext = () => {
+    if (currentStep === "candidate") {
+      const requiredCandidateFields = candidateFields.filter(
+        (field) => field.required && candidateFieldIdMap[field.id]
+      );
+      const hasMissingCandidateField = requiredCandidateFields.some((field) => {
+        const stateKey = candidateFieldIdMap[field.id];
+        return candidate[stateKey].trim().length === 0;
+      });
+
+      if (hasMissingCandidateField) {
+        setCandidateStepError("Please complete all required candidate fields before continuing.");
+        return;
+      }
+    }
+
+    if (currentStep === "assessment") {
+      const requiredAssessmentFields = assessmentFields.filter(
+        (field) => field.required && assessmentFieldIdMap[field.id]
+      );
+      const hasMissingAssessmentField = requiredAssessmentFields.some((field) => {
+        const stateKey = assessmentFieldIdMap[field.id];
+        return assessment[stateKey].trim().length === 0;
+      });
+
+      if (hasMissingAssessmentField) {
+        setAssessmentStepError(
+          "Please complete all required assessment fields before continuing."
+        );
+        return;
+      }
+    }
+
     if (currentStep === "employer") {
       if (hasEmployer === "no") {
         setEmployerStepError("");
@@ -1839,14 +1998,14 @@ Thank you,`,
       }
     }
 
-    const nextStep = registrationSteps[currentIndex + 1];
+    const nextStep = currentRegistrationSteps[currentIndex + 1];
     if (nextStep) {
       setCurrentStep(nextStep.key);
     }
   };
 
   const moveBack = () => {
-    const previousStep = registrationSteps[currentIndex - 1];
+    const previousStep = currentRegistrationSteps[currentIndex - 1];
     if (previousStep) {
       setCurrentStep(previousStep.key);
     }
@@ -1933,12 +2092,17 @@ Thank you,`,
         {phase === "registration" ? (
           <>
             <h1 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-[#2d3f8f]">
-              NET Candidate Registration Form
+              {registrationScreen?.title ?? "NET Candidate Registration Form"}
             </h1>
             <p className="mt-3 max-w-[920px] text-sm leading-6 text-[#667795]">
-              Once this form is completed please return it to your assessment centre.
-              All fields are mandatory. To view how NET uses candidate data please
-              view our Privacy Policy at www.netservices.org.uk/policies
+              {registrationScreen?.description ??
+                "Once this form is completed please return it to your assessment centre. All fields are mandatory."}
+              {registrationScreen?.assistanceText ? (
+                <>
+                  {" "}
+                  {registrationScreen.assistanceText}
+                </>
+              ) : null}
             </p>
           </>
         ) : (
@@ -1957,7 +2121,7 @@ Thank you,`,
       <PanelCard className="rounded-[24px] border-[#d7e5f7] bg-[#eef6ff] p-4 sm:p-5">
         {phase === "registration" ? (
           <Stepper
-            steps={registrationSteps}
+            steps={currentRegistrationSteps}
             currentStep={currentStep}
             activeClassName="bg-[#17a85a] text-white"
           />
@@ -1970,241 +2134,309 @@ Thank you,`,
         )}
 
         <div className="mt-5 rounded-[18px] border border-[#d7e5f7] bg-white/75 p-4 sm:p-5">
-          {phase === "registration" && currentStep === "candidate" ? (
+          {phase === "registration" && isRegistrationFormLoading ? (
+            <div className="space-y-4 animate-pulse">
+              <div className="h-8 w-72 rounded bg-[#e4edf8]" />
+              <div className="h-5 w-full rounded bg-[#edf3fb]" />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="h-11 rounded bg-[#edf3fb]" />
+                <div className="h-11 rounded bg-[#edf3fb]" />
+              </div>
+              <div className="h-11 rounded bg-[#edf3fb]" />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="h-11 rounded bg-[#edf3fb]" />
+                <div className="h-11 rounded bg-[#edf3fb]" />
+              </div>
+            </div>
+          ) : null}
+
+          {phase === "registration" && isRegistrationFormError ? (
+            <div className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+              {resolveApiErrorMessage(
+                registrationFormError,
+                "We could not load the candidate registration form right now."
+              )}
+            </div>
+          ) : null}
+
+          {phase === "registration" &&
+          !isRegistrationFormLoading &&
+          !isRegistrationFormError &&
+          currentStep === "candidate" ? (
             <>
               <div>
                 <h2 className="text-[1.6rem] font-semibold text-[#3849a0]">
-                  Candidate Details
+                  {candidateSection?.title ?? "Candidate Details"}
                 </h2>
                 <p className="mt-2 text-sm text-[#7a88a3]">
-                  Please complete all fields. All fields in this section are
-                  mandatory.
+                  {candidateSection?.description ??
+                    "Please complete all fields. All fields in this section are mandatory."}
                 </p>
               </div>
 
               <div className="mt-5 grid gap-4">
-                <div>
-                  <FieldLabel>Title *</FieldLabel>
-                  <TextField
-                    value={candidate.title}
-                    onChange={(value) => updateCandidate("title", value)}
-                    placeholder="Enter title"
-                  />
-                </div>
+                {(() => {
+                  const renderedFieldRows: React.ReactNode[] = [];
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <FieldLabel>First Name *</FieldLabel>
-                    <TextField
-                      value={candidate.firstName}
-                      onChange={(value) => updateCandidate("firstName", value)}
-                      placeholder="Enter first name"
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel>Last Name *</FieldLabel>
-                    <TextField
-                      value={candidate.lastName}
-                      onChange={(value) => updateCandidate("lastName", value)}
-                      placeholder="Enter last name"
-                    />
-                  </div>
-                </div>
+                  for (let index = 0; index < candidateFields.length; index += 1) {
+                    const field = candidateFields[index];
+                    const nextField = candidateFields[index + 1];
+                    const stateKey = candidateFieldIdMap[field.id];
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <FieldLabel>Date of Birth *</FieldLabel>
-                    <TextField
-                      icon={<CalendarDays className="h-4 w-4" />}
-                      value={candidate.dob}
-                      onChange={(value) => updateCandidate("dob", value)}
-                      placeholder="mm/dd/yyyy"
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel>NI Number *</FieldLabel>
-                    <TextField
-                      value={candidate.niNumber}
-                      onChange={(value) => updateCandidate("niNumber", value)}
-                      placeholder="Enter NI Number"
-                    />
-                  </div>
-                </div>
+                    if (!stateKey) {
+                      continue;
+                    }
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <FieldLabel>Email *</FieldLabel>
-                    <TextField
-                      icon={<Mail className="h-4 w-4" />}
-                      value={candidate.email}
-                      onChange={(value) => updateCandidate("email", value)}
-                      placeholder="Enter email address"
-                      type="email"
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel>Mobile Number *</FieldLabel>
-                    <TextField
-                      icon={<Phone className="h-4 w-4" />}
-                      value={candidate.mobileNumber}
-                      onChange={(value) => updateCandidate("mobileNumber", value)}
-                      placeholder="Enter mobile number"
-                    />
-                  </div>
-                </div>
+                    const renderField = (currentField: CourseRegistrationField) => {
+                      const currentStateKey = candidateFieldIdMap[currentField.id];
 
-                <div>
-                  <FieldLabel>Address 1 *</FieldLabel>
-                  <TextField
-                    value={candidate.address1}
-                    onChange={(value) => updateCandidate("address1", value)}
-                    placeholder="Enter address line 1"
-                  />
-                </div>
+                      if (!currentStateKey) {
+                        return null;
+                      }
 
-                <div>
-                  <FieldLabel>Address 2 *</FieldLabel>
-                  <TextField
-                    value={candidate.address2}
-                    onChange={(value) => updateCandidate("address2", value)}
-                    placeholder="Enter address line 2"
-                  />
-                </div>
+                      const icon =
+                        currentField.id === "dateOfBirth" ? (
+                          <CalendarDays className="h-4 w-4" />
+                        ) : currentField.id === "email" ? (
+                          <Mail className="h-4 w-4" />
+                        ) : currentField.id === "mobileNumber" ? (
+                          <Phone className="h-4 w-4" />
+                        ) : undefined;
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <FieldLabel>Town *</FieldLabel>
-                    <TextField
-                      value={candidate.town}
-                      onChange={(value) => updateCandidate("town", value)}
-                      placeholder="Enter town"
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel>Postcode *</FieldLabel>
-                    <TextField
-                      value={candidate.postcode}
-                      onChange={(value) => updateCandidate("postcode", value)}
-                      placeholder="Enter postcode"
-                    />
-                  </div>
-                </div>
+                      return (
+                        <div key={currentField.id}>
+                          <FieldLabel>
+                            {currentField.label}
+                            {currentField.required ? " *" : ""}
+                          </FieldLabel>
+                          <TextField
+                            icon={icon}
+                            value={candidate[currentStateKey]}
+                            onChange={(value) => updateCandidate(currentStateKey, value)}
+                            placeholder={currentField.placeholder ?? ""}
+                            type={currentField.type}
+                          />
+                          {currentField.helperText ? (
+                            <p className="mt-2 text-xs text-[#7a88a3]">
+                              {currentField.helperText}
+                            </p>
+                          ) : null}
+                        </div>
+                      );
+                    };
+
+                    const shouldGroupWithNext =
+                      nextField &&
+                      ["firstName", "dateOfBirth", "email", "town"].includes(field.id) &&
+                      ["lastName", "niNumber", "mobileNumber", "postcode"].includes(
+                        nextField.id
+                      );
+
+                    if (shouldGroupWithNext) {
+                      renderedFieldRows.push(
+                        <div
+                          key={`${field.id}-${nextField.id}`}
+                          className="grid gap-4 md:grid-cols-2"
+                        >
+                          {renderField(field)}
+                          {renderField(nextField)}
+                        </div>
+                      );
+                      index += 1;
+                      continue;
+                    }
+
+                    renderedFieldRows.push(renderField(field));
+                  }
+
+                  return renderedFieldRows;
+                })()}
+
+                {candidateStepError ? (
+                  <p className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+                    {candidateStepError}
+                  </p>
+                ) : null}
               </div>
             </>
           ) : null}
 
-          {phase === "registration" && currentStep === "assessment" ? (
+          {phase === "registration" && currentStep === "assessment" && isAssessmentFormLoading ? (
+            <div className="space-y-4 animate-pulse">
+              <div className="h-8 w-80 rounded bg-[#e4edf8]" />
+              <div className="h-5 w-60 rounded bg-[#edf3fb]" />
+              <div className="h-16 rounded bg-[#edf3fb]" />
+              <div className="h-24 rounded bg-[#edf3fb]" />
+              <div className="h-24 rounded bg-[#edf3fb]" />
+            </div>
+          ) : null}
+
+          {phase === "registration" && currentStep === "assessment" && isAssessmentFormError ? (
+            <div className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+              {resolveApiErrorMessage(
+                assessmentFormError,
+                "We could not load the assessment registration form right now."
+              )}
+            </div>
+          ) : null}
+
+          {phase === "registration" &&
+          currentStep === "assessment" &&
+          !isAssessmentFormLoading &&
+          !isAssessmentFormError ? (
             <>
               <div>
                 <h2 className="text-[1.6rem] font-semibold text-[#3849a0]">
-                  Assessment & Registration Details
+                  {assessmentSection?.title ?? "Assessment & Registration Details"}
                 </h2>
                 <p className="mt-2 text-sm text-[#7a88a3]">
-                  Please complete all fields.
+                  {assessmentRegistrationScreen?.description ?? "Please complete all fields."}
                 </p>
               </div>
 
               <div className="mt-5 grid gap-5">
-                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
-                  <div>
-                    <FieldLabel>Apprentice *</FieldLabel>
-                    <RadioRow
-                      name="apprentice"
-                      options={["Yes", "No"]}
-                      value={assessment.apprentice}
-                      onChange={(value) => updateAssessment("apprentice", value)}
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel>U.L.N.</FieldLabel>
-                    <TextField
-                      value={assessment.uln}
-                      onChange={(value) => updateAssessment("uln", value)}
-                      placeholder="Enter U.L.N."
-                    />
-                  </div>
-                </div>
+                {assessmentFields.map((field) => {
+                  const stateKey = assessmentFieldIdMap[field.id];
 
-                <div>
-                  <FieldLabel>Funding *</FieldLabel>
-                  <RadioRow
-                    name="funding"
-                    options={fundingOptions}
-                    value={assessment.funding}
-                    onChange={(value) => updateAssessment("funding", value)}
-                    columns="md:grid-cols-3"
-                  />
-                </div>
+                  if (!stateKey) {
+                    return null;
+                  }
 
-                <div>
-                  <FieldLabel>Awarding Body</FieldLabel>
-                  <RadioRow
-                    name="awarding-body"
-                    options={awardingBodyOptions}
-                    value={assessment.awardingBody}
-                    onChange={(value) => updateAssessment("awardingBody", value)}
-                    columns="md:grid-cols-4"
-                  />
-                </div>
-
-                <div>
-                  <FieldLabel>
-                    Does the candidate require any reasonable adjustments? *
-                  </FieldLabel>
-                  <RadioRow
-                    name="adjustments"
-                    options={["Yes", "No"]}
-                    value={assessment.adjustments}
-                    onChange={(value) => updateAssessment("adjustments", value)}
-                  />
-                  <p className="mt-2 text-xs leading-5 text-[#8795af]">
-                    If Yes, the Reasonable Adjustments Request Form must be
-                    submitted and evidence provided.
-                  </p>
-                </div>
-
-                <div>
-                  <FieldLabel>Recognition of Prior Learning *</FieldLabel>
-                  <RadioRow
-                    name="recognition"
-                    options={["Yes", "No"]}
-                    value={assessment.recognition}
-                    onChange={(value) => updateAssessment("recognition", value)}
-                  />
-                </div>
-
-                <div>
-                  <FieldLabel>Type of assessment</FieldLabel>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    {assessmentTypeOptions.map((option) => {
-                      const checked = assessment.assessmentType === option;
-                      const disabled = option !== lockedAssessmentType;
-
-                      return (
-                        <label
-                          key={option}
-                          className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition ${
-                            disabled
-                              ? "cursor-not-allowed border-[#e6edf7] bg-[#f6f9fc] text-[#aab6c9]"
-                              : checked
-                                ? "cursor-pointer border-[#8ed7f8] bg-[#dff5ff] text-[#24346b]"
-                                : "cursor-pointer border-[#dde9f7] bg-[#f4f9ff] text-[#5f6f90]"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="assessment-type"
-                            checked={checked}
-                            disabled={disabled}
-                            onChange={() => selectAssessmentType(option)}
-                            className="h-4 w-4 accent-[#1ea6df]"
+                  if (field.id === "apprentice") {
+                    return (
+                      <div
+                        key={field.id}
+                        className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]"
+                      >
+                        <div>
+                          <FieldLabel>
+                            {field.label}
+                            {field.required ? " *" : ""}
+                          </FieldLabel>
+                          <RadioRow
+                            name={field.id}
+                            options={field.options?.map((option) => option.label) ?? []}
+                            value={assessment[stateKey]}
+                            onChange={(value) => updateAssessment(stateKey, value)}
                           />
-                          <span>{option}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
+                        </div>
+                        {assessmentFields
+                          .filter((candidateField) => candidateField.id === "uln")
+                          .map((ulnField) => (
+                            <div key={ulnField.id}>
+                              <FieldLabel>
+                                {ulnField.label}
+                                {ulnField.required ? " *" : ""}
+                              </FieldLabel>
+                              <TextField
+                                value={assessment.uln}
+                                onChange={(value) => updateAssessment("uln", value)}
+                                placeholder={ulnField.placeholder ?? ""}
+                                type={ulnField.type}
+                              />
+                            </div>
+                          ))}
+                      </div>
+                    );
+                  }
+
+                  if (field.id === "uln") {
+                    return null;
+                  }
+
+                  if (field.type === "radio") {
+                    const columns =
+                      field.options?.length === 4
+                        ? "md:grid-cols-4"
+                        : field.options?.length === 3
+                          ? "md:grid-cols-3"
+                          : "md:grid-cols-2";
+
+                    return (
+                      <div key={field.id}>
+                        <FieldLabel>
+                          {field.label}
+                          {field.required ? " *" : ""}
+                        </FieldLabel>
+                        <RadioRow
+                          name={field.id}
+                          options={field.options?.map((option) => option.label) ?? []}
+                          value={assessment[stateKey]}
+                          onChange={(value) => updateAssessment(stateKey, value)}
+                          columns={columns}
+                        />
+                        {field.helperText ? (
+                          <p className="mt-2 text-xs leading-5 text-[#8795af]">
+                            {field.helperText}
+                          </p>
+                        ) : null}
+                      </div>
+                    );
+                  }
+
+                  if (field.type === "choice-grid") {
+                    return (
+                      <div key={field.id}>
+                        <FieldLabel>
+                          {field.label}
+                          {field.required ? " *" : ""}
+                        </FieldLabel>
+                        <div className="grid gap-3 md:grid-cols-3">
+                          {field.options?.map((option) => {
+                            const checked = assessment[stateKey] === option.label;
+                            const disabled =
+                              normalizeAssessmentValue(option.label) !==
+                              normalizeAssessmentValue(lockedAssessmentType);
+
+                            return (
+                              <label
+                                key={option.id}
+                                className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition ${
+                                  disabled
+                                    ? "cursor-not-allowed border-[#e6edf7] bg-[#f6f9fc] text-[#aab6c9]"
+                                    : checked
+                                      ? "cursor-pointer border-[#8ed7f8] bg-[#dff5ff] text-[#24346b]"
+                                      : "cursor-pointer border-[#dde9f7] bg-[#f4f9ff] text-[#5f6f90]"
+                                }`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={field.id}
+                                  checked={checked}
+                                  disabled={disabled}
+                                  onChange={() => selectAssessmentType(option.label)}
+                                  className="h-4 w-4 accent-[#1ea6df]"
+                                />
+                                <span>{option.label}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={field.id}>
+                      <FieldLabel>
+                        {field.label}
+                        {field.required ? " *" : ""}
+                      </FieldLabel>
+                      <TextField
+                        value={assessment[stateKey]}
+                        onChange={(value) => updateAssessment(stateKey, value)}
+                        placeholder={field.placeholder ?? ""}
+                        type={field.type}
+                      />
+                    </div>
+                  );
+                })}
+
+                {assessmentStepError ? (
+                  <p className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+                    {assessmentStepError}
+                  </p>
+                ) : null}
               </div>
             </>
           ) : null}
@@ -2526,9 +2758,18 @@ Thank you,`,
                 <button
                   type="button"
                   onClick={moveNext}
-                  className="rounded-lg bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] px-5 py-2.5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
+                  disabled={
+                    currentStep === "candidate" &&
+                    (isRegistrationFormLoading || isRegistrationFormError)
+                  }
+                  className={`rounded-lg px-5 py-2.5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)] ${
+                    currentStep === "candidate" &&
+                    (isRegistrationFormLoading || isRegistrationFormError)
+                      ? "cursor-not-allowed bg-[#a6dff6]"
+                      : "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)]"
+                  }`}
                 >
-                  Continue
+                  {currentStep === "candidate" ? registrationContinueLabel : "Continue"}
                 </button>
               )}
             </div>
