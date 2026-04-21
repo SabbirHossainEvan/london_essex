@@ -242,14 +242,14 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
   const steps = isAm2Flow ? am2Steps : standardSteps;
   const [currentStep, setCurrentStep] = React.useState<StepKey>(steps[0].key);
   const [details, setDetails] = React.useState<DetailFormState>({
-    fullName: "Jenny Wilson",
-    email: "jeni.wilson@example.com",
-    phone: "+44 20 7946 0958",
-    dob: "17/08/1997",
-    address: "72 New Kent Road",
-    location: "London Training Centre",
-    city: "London",
-    postcode: "SE1 6TJ",
+    fullName: "",
+    email: "",
+    phone: "",
+    dob: "",
+    address: "",
+    location: "",
+    city: "",
+    postcode: "",
   });
   const [payment, setPayment] = React.useState<PaymentState>({
     acceptedTerms: false,
@@ -280,6 +280,14 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
   };
 
   const moveNext = () => {
+    if (
+      currentStep === "details" &&
+      !isAm2Flow &&
+      Object.values(details).some((value) => value.trim().length === 0)
+    ) {
+      return;
+    }
+
     if (currentStep === "documents" && isAm2Flow) {
       setEligibilityOpen(true);
       return;
@@ -353,7 +361,9 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
               <div>
                 <h2 className="text-lg font-semibold text-[#314092]">Personal Details</h2>
                 <p className="mt-1 text-sm text-[#7a88a3]">
-                  Please provide your details for the booking.
+                  {isAm2Flow
+                    ? "Please provide your details for the booking."
+                    : "Please provide your details for the booking."}
                 </p>
               </div>
 
@@ -364,7 +374,7 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
                     icon={<User className="h-4 w-4" />}
                     value={details.fullName}
                     onChange={(value) => updateDetails("fullName", value)}
-                    placeholder="Full name"
+                    placeholder="Enter full name"
                   />
                 </div>
                 <div>
@@ -373,7 +383,7 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
                     icon={<Mail className="h-4 w-4" />}
                     value={details.email}
                     onChange={(value) => updateDetails("email", value)}
-                    placeholder="Email address"
+                    placeholder="Enter email address"
                     type="email"
                   />
                 </div>
@@ -383,7 +393,7 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
                     icon={<Phone className="h-4 w-4" />}
                     value={details.phone}
                     onChange={(value) => updateDetails("phone", value)}
-                    placeholder="Phone number"
+                    placeholder="Enter phone number"
                   />
                 </div>
                 <div>
@@ -401,7 +411,7 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
                     icon={<MapPin className="h-4 w-4" />}
                     value={details.address}
                     onChange={(value) => updateDetails("address", value)}
-                    placeholder="Address"
+                    placeholder="Enter address"
                   />
                 </div>
                 <div className="md:col-span-2">
@@ -410,7 +420,7 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
                     icon={<MapPin className="h-4 w-4" />}
                     value={details.location}
                     onChange={(value) => updateDetails("location", value)}
-                    placeholder="Training centre"
+                    placeholder="e.g. London Training Centre"
                   />
                 </div>
                 <div>
@@ -419,7 +429,7 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
                     icon={<MapPin className="h-4 w-4" />}
                     value={details.city}
                     onChange={(value) => updateDetails("city", value)}
-                    placeholder="City"
+                    placeholder="Enter city"
                   />
                 </div>
                 <div>
@@ -428,7 +438,7 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
                     icon={<MapPin className="h-4 w-4" />}
                     value={details.postcode}
                     onChange={(value) => updateDetails("postcode", value)}
-                    placeholder="Postcode"
+                    placeholder="Enter postcode"
                   />
                 </div>
               </div>
@@ -548,17 +558,21 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-[#d7efdf] bg-[#effcf3] px-4 py-3 text-sm text-[#26915a]">
-                <div className="flex items-center gap-2 font-medium">
-                  <Lock className="h-4 w-4" />
-                  Secure encrypted payment
+              {!isAm2Flow ? (
+                <div className="rounded-2xl border border-[#cdeccf] bg-[#effcf3] px-4 py-3 text-sm text-[#26915a]">
+                  <div className="flex items-center gap-2 font-medium">
+                    <CircleCheckBig className="h-4 w-4" />
+                    Admin Approved Your documents, checklist, and signatures have been verified.
+                  </div>
                 </div>
-              </div>
+              ) : null}
 
               <div className="rounded-2xl border border-[#cae6f8] bg-[#e9f6ff] p-4">
                 <div className="flex items-end justify-between gap-4">
                   <div>
-                    <p className="text-xl font-semibold text-[#3646a5]">{course.title}</p>
+                    <p className="text-xl font-semibold text-[#3646a5]">
+                      {isAm2Flow ? course.title : "Normal Courses"}
+                    </p>
                     <p className="mt-1 text-sm text-[#7990a8]">
                       {isAm2Flow ? "Assessment preparation package" : "Billed monthly"}
                     </p>
@@ -566,6 +580,13 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
                   <p className="text-2xl font-semibold text-[#3646a5]">
                     {isAm2Flow ? normalizedPrice : installmentPrice}
                   </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-[#d7efdf] bg-[#effcf3] px-4 py-3 text-sm text-[#26915a]">
+                <div className="flex items-center gap-2 font-medium">
+                  <Lock className="h-4 w-4" />
+                  Secure encrypted payment
                 </div>
               </div>
 
@@ -621,7 +642,9 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
               <span className="grid h-20 w-20 place-items-center rounded-full bg-[#def5ff] text-[#1aa6de]">
                 <CircleCheckBig className="h-10 w-10" />
               </span>
-              <h2 className="mt-6 text-2xl font-semibold text-[#2e3e98]">Booking Confirmed</h2>
+              <h2 className="mt-6 text-2xl font-semibold text-[#2e3e98]">
+                {isAm2Flow ? "Booking Confirmed" : "Booking Confirmed!"}
+              </h2>
               <p className="mt-3 max-w-[560px] text-sm leading-7 text-[#72819b]">
                 {completionNotes[course.bookingFlow]}
               </p>
@@ -667,7 +690,18 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
               <button
                 type="button"
                 onClick={moveNext}
-                className="rounded-xl bg-[#1ea6df] px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(30,166,223,0.18)]"
+                disabled={
+                  currentStep === "details" &&
+                  !isAm2Flow &&
+                  Object.values(details).some((value) => value.trim().length === 0)
+                }
+                className={`rounded-xl px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(30,166,223,0.18)] ${
+                  currentStep === "details" &&
+                  !isAm2Flow &&
+                  Object.values(details).some((value) => value.trim().length === 0)
+                    ? "cursor-not-allowed bg-[#9fdcf3]"
+                    : "bg-[#1ea6df]"
+                }`}
               >
                 {currentStep === "payment"
                   ? `Pay ${isAm2Flow ? normalizedPrice : depositPrice}`

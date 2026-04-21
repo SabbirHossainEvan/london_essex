@@ -48,6 +48,8 @@ export default function CourseDetailsContent({
 }: CourseDetailsContentProps) {
   const router = useRouter();
   const [fetchBookNowModal, bookNowModalQuery] = useLazyGetCourseBookNowQuery();
+  const shouldUseDashboardBookingModal =
+    dashboardMode && course.bookingFlow === "am2";
   const [selectedImage, setSelectedImage] = React.useState(
     course.gallery[defaultSelectedImageIndex] ?? course.gallery[0] ?? course.heroImage
   );
@@ -131,6 +133,11 @@ export default function CourseDetailsContent({
   };
 
   const openBookingModal = async () => {
+    if (!shouldUseDashboardBookingModal) {
+      goToBookingPage();
+      return;
+    }
+
     if (!dashboardMode) {
       onBookNow?.();
       return;
@@ -263,7 +270,7 @@ export default function CourseDetailsContent({
               >
                 Book Now
               </button>
-            ) : dashboardMode ? (
+            ) : shouldUseDashboardBookingModal ? (
               <button
                 type="button"
                 onClick={() => {
@@ -370,7 +377,7 @@ export default function CourseDetailsContent({
         </div>
       </div>
 
-      {dashboardMode && bookingOpen ? (
+      {shouldUseDashboardBookingModal && bookingOpen ? (
         <>
           <div
             className={`fixed inset-0 z-40 bg-[#12214d]/42 backdrop-blur-[2px] transition ${
