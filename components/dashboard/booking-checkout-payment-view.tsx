@@ -22,6 +22,20 @@ type PaymentFormState = {
   cvc: string;
 };
 
+function getPaymentMethodIdFromCardNumber(cardNumber: string) {
+  const digits = cardNumber.replace(/\D/g, "");
+
+  if (digits === "4242424242424242") {
+    return "pm_card_visa";
+  }
+
+  if (digits === "4000000000000002") {
+    return "pm_card_visa_chargeDeclined";
+  }
+
+  return null;
+}
+
 function resolveErrorMessage(error: unknown, fallback = "We could not load the payment screen right now.") {
   if (
     typeof error === "object" &&
@@ -132,6 +146,8 @@ export default function BookingCheckoutPaymentView({
   });
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const isSubmitting = isCreatingIntent || isCompletingPayment;
+  const isStripeTestMode = screen?.stripe?.enabled === false;
+  const selectedPaymentMethodId = getPaymentMethodIdFromCardNumber(payment.cardNumber);
 
   React.useEffect(() => {
     if (!screen?.terms) {
@@ -172,7 +188,8 @@ export default function BookingCheckoutPaymentView({
     (!screen.terms?.required || payment.acceptedTerms) &&
     payment.cardNumber.replace(/\s/g, "").length === 16 &&
     payment.expiry.replace(/\D/g, "").length === 4 &&
-    payment.cvc.length >= 3;
+    payment.cvc.length >= 3 &&
+    (!isStripeTestMode || selectedPaymentMethodId !== null);
 
   async function handlePay() {
     if (!canPay || isSubmitting) {
@@ -188,12 +205,28 @@ export default function BookingCheckoutPaymentView({
 
       const paymentIntentId = intentResponse.data.paymentIntent.id;
 
-      await completePayment({
+      if (isStripeTestMode && !selectedPaymentMethodId) {
+        setSubmitError(
+          "Only supported Stripe test cards can be used right now. Use 4242 4242 4242 4242 for success or 4000 0000 0000 0002 to simulate a failed payment.",
+        );
+        return;
+      }
+
+      const paymentResponse = await completePayment({
         bookingId,
         agreedToTerms: payment.acceptedTerms,
         paymentIntentId,
-        paymentMethodId: "pm_card_visa",
+        paymentMethodId: selectedPaymentMethodId || undefined,
       }).unwrap();
+
+      if (!paymentResponse.success) {
+        setSubmitError(
+          paymentResponse.data.booking.payment?.failureReason ||
+            paymentResponse.message ||
+            "Payment failed. Please check your card details and try again.",
+        );
+        return;
+      }
 
       router.push(`/dashboard/bookings/${bookingId}/checkout/confirm`);
     } catch (submitPaymentError) {
@@ -272,6 +305,16 @@ export default function BookingCheckoutPaymentView({
               Secure encrypted payment
             </div>
           </div>
+
+          {isStripeTestMode ? (
+            <div className="rounded-2xl border border-[#fde68a] bg-[#fff8db] px-4 py-3 text-sm text-[#9a6700]">
+              Test mode is active right now. The typed card number is used only to choose a Stripe
+              test payment method.
+              <span className="font-semibold"> 4242 4242 4242 4242</span> will succeed and
+              <span className="font-semibold"> 4000 0000 0000 0002</span> will show a payment
+              failure.
+            </div>
+          ) : null}
 
           <div className="grid gap-4">
             <div>
