@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Bell, Menu } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { useAppSelector } from "@/lib/redux/hooks";
 
 type DashboardTopbarProps = {
   onMenuClick: () => void;
@@ -19,6 +20,7 @@ const breadcrumbMap: Record<string, string[]> = {
 
 export function DashboardTopbar({ onMenuClick }: DashboardTopbarProps) {
   const pathname = usePathname();
+  const user = useAppSelector((state) => state.auth.user);
   const crumbs =
     pathname.startsWith("/dashboard/courses/")
       ? pathname.endsWith("/book")
@@ -70,17 +72,17 @@ export function DashboardTopbar({ onMenuClick }: DashboardTopbarProps) {
           >
             <Image
               src="/hero-1.png"
-              alt="Jenny Wilson"
+              alt={user?.fullName || "User avatar"}
               width={42}
               height={42}
               className="h-10 w-10 rounded-full object-cover"
             />
             <div>
               <p className="text-[16px] font-medium leading-none text-[#3646a5]">
-                Jenny Wilson
+                {user?.fullName || "Learner"}
               </p>
               <p className="mt-1 text-xs text-[#93a2ba]">
-                jeni.wilson@example.com
+                {user?.email || "No email available"}
               </p>
             </div>
           </Link>

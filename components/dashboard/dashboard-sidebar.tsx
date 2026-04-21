@@ -12,7 +12,9 @@ import {
   Ticket,
   X,
 } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
+import { clearCredentials } from "@/lib/redux/features/auth/auth-slice";
 
 type DashboardSidebarProps = {
   open: boolean;
@@ -31,7 +33,10 @@ export function DashboardSidebar({
   open,
   onClose,
 }: DashboardSidebarProps) {
+  const dispatch = useAppDispatch();
+  const router = useRouter();
   const pathname = usePathname();
+  const user = useAppSelector((state) => state.auth.user);
 
   return (
     <>
@@ -128,26 +133,32 @@ export function DashboardSidebar({
             <div className="flex items-center gap-3">
               <Image
                 src="/hero-1.png"
-                alt="Jenny Wilson"
+                alt={user?.fullName || "User avatar"}
                 width={42}
                 height={42}
                 className="h-11 w-11 rounded-full object-cover"
               />
               <div>
                 <p className="text-[15px] font-medium text-[#2f3fa0]">
-                  Jenny Wilson
+                  {user?.fullName || "Learner"}
                 </p>
-                <p className="text-xs text-[#93a2ba]">jeni.wilson@example.com</p>
+                <p className="text-xs text-[#93a2ba]">
+                  {user?.email || "No email available"}
+                </p>
               </div>
             </div>
 
-            <Link
-              href="/login"
+            <button
+              type="button"
+              onClick={() => {
+                dispatch(clearCredentials());
+                router.push("/login");
+              }}
               className="mt-5 flex w-full items-center justify-center gap-2 rounded-full border border-[#9ddafd] bg-[#eef8ff] px-4 py-3 text-lg font-medium text-[#2f3fa0] shadow-[0_10px_22px_rgba(37,167,230,0.12)]"
             >
               <LogOut className="h-5 w-5" />
               Log out
-            </Link>
+            </button>
           </div>
         </div>
       </aside>
