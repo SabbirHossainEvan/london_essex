@@ -4,13 +4,20 @@ import React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  AlertTriangle,
+  BadgeCheck,
   CalendarDays,
   Check,
   CircleCheckBig,
+  Clock3,
   ChevronRight,
+  CreditCard,
+  FileText,
+  Lock,
   Mail,
   PenTool,
   Phone,
+  PartyPopper,
   Signature,
 } from "lucide-react";
 import type { CourseSummary } from "@/app/(website)/courses/courses-data";
@@ -35,6 +42,14 @@ type NetStepKey =
   | "review"
   | "payment"
   | "confirmed";
+
+type ReviewStatus = "pending" | "approved";
+type PaymentFormState = {
+  acceptedTerms: boolean;
+  cardNumber: string;
+  expiry: string;
+  cvc: string;
+};
 
 type CandidateFormState = {
   title: string;
@@ -667,22 +682,459 @@ function NetSubmitPanel() {
     <>
       <div>
         <h2 className="text-[1rem] font-semibold text-[#3849a0]">
-          Submission Pack
+          Review & Submit
         </h2>
         <p className="mt-1 text-xs text-[#7a88a3]">
-          Your checklist and signatures are ready for the next review step.
+          Review your application before submitting to the admin for approval.
         </p>
       </div>
 
       <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
-        <div className="rounded-xl border border-[#dbe7f4] bg-white p-5">
-          <p className="text-sm font-semibold text-[#3849a0]">
-            Submission draft prepared
-          </p>
-          <p className="mt-2 text-sm leading-6 text-[#6e7f9b]">
-            Candidate checklist, supporting documents, and signatures have been
-            collected. You can continue to the next step of the booking flow.
-          </p>
+        <div className="rounded-lg border border-[#f2c463] bg-[#fffaf1] px-4 py-3 text-sm text-[#8f6413]">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#f59e0b]" />
+            <p>
+              Once submitted, the admin will review your documents, checklist,
+              and signatures. You&apos;ll be notified when your application is
+              approved and you can proceed to payment.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {[
+            {
+              label: "NET Candidate Registration Form",
+              status: "Uploaded",
+            },
+            {
+              label: "AM2 Checklist",
+              status: "Completed",
+            },
+            {
+              label: "Candidate Signature",
+              status: "Signed",
+            },
+            {
+              label: "Training Provider Signature",
+              status: "Signed",
+            },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="flex items-center justify-between gap-3 rounded-xl border border-[#dbe7f4] bg-white px-4 py-3"
+            >
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#e8f8ee] text-[#16a34a]">
+                  <FileText className="h-4.5 w-4.5" />
+                </span>
+                <p className="text-sm font-medium text-[#32439b]">{item.label}</p>
+              </div>
+
+              <span className="inline-flex items-center gap-2 rounded-full bg-[#dcfce7] px-3 py-1 text-xs font-medium text-[#16a34a]">
+                <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                {item.status}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function NetReviewPanel({
+  reviewStatus,
+}: {
+  reviewStatus: ReviewStatus;
+}) {
+  const isApproved = reviewStatus === "approved";
+
+  return (
+    <>
+      <div>
+        <h2 className="text-[1rem] font-semibold text-[#3849a0]">
+          Admin Review
+        </h2>
+        <p className="mt-1 text-xs text-[#7a88a3]">
+          Your application is being reviewed by the admin team.
+        </p>
+      </div>
+
+      <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
+        <div className="rounded-lg border border-[#f2c463] bg-[#fffaf1] px-4 py-3 text-sm text-[#8f6413]">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#f59e0b]" />
+            <p>
+              Once submitted, the admin will review your documents, checklist,
+              and signatures. You&apos;ll be notified when your application is
+              approved and you can proceed to payment.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid min-h-[220px] place-items-center rounded-xl border border-[#dbe7f4] bg-white px-6 py-10">
+          <div className="text-center">
+            <span
+              className={`mx-auto grid h-11 w-11 place-items-center rounded-full ${
+                isApproved
+                  ? "bg-[#e8f8ee] text-[#16a34a]"
+                  : "bg-[#eef2ff] text-[#4451ac]"
+              }`}
+            >
+              {isApproved ? (
+                <BadgeCheck className="h-5 w-5" />
+              ) : (
+                <Clock3 className="h-5 w-5" />
+              )}
+            </span>
+
+            <p
+              className={`mt-5 text-2xl font-semibold ${
+                isApproved ? "text-[#16a34a]" : "text-[#32439b]"
+              }`}
+            >
+              {isApproved ? "Application Approved!" : "Under Review"}
+            </p>
+            <p className="mt-3 max-w-[540px] text-sm leading-6 text-[#7a88a3]">
+              {isApproved
+                ? "The admin has reviewed and approved your documents, checklist, and signatures. You can now proceed to payment."
+                : "Admin is currently reviewing your application. You&apos;ll be notified once it has been approved."}
+            </p>
+            <span
+              className={`mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${
+                isApproved
+                  ? "bg-[#dcfce7] text-[#16a34a]"
+                  : "bg-[#e0f2fe] text-[#0284c7]"
+              }`}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-current" />
+              {isApproved ? "Approved" : "Under Review"}
+            </span>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function NetPaymentPanelLegacy() {
+  return (
+    <>
+      <div>
+        <h2 className="text-[1rem] font-semibold text-[#3849a0]">
+          Payment
+        </h2>
+        <p className="mt-1 text-xs text-[#7a88a3]">
+          Complete payment to confirm your AM2 application.
+        </p>
+      </div>
+
+      <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
+        <div className="rounded-lg border border-[#b7efc9] bg-[#e9fbe9] px-4 py-3 text-sm text-[#16803c]">
+          <div className="flex items-center gap-3">
+            <BadgeCheck className="h-4 w-4 shrink-0" />
+            <p>
+              Admin approved your documents, checklist, and signatures have
+              been verified.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl bg-[linear-gradient(180deg,#bfe8fb_0%,#b5e0f6_100%)] px-5 py-4">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[1.8rem] font-semibold text-[#32439b]">
+                Normal Courses
+              </p>
+              <p className="mt-1 text-sm text-[#5d6f92]">Billed monthly</p>
+            </div>
+            <p className="text-[1.9rem] font-semibold text-[#32439b]">£44/mo</p>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl bg-[linear-gradient(180deg,#bfe8fb_0%,#b5e0f6_100%)] px-5 py-4">
+          <label className="flex items-start gap-3 text-sm leading-6 text-[#32439b]">
+            <input
+              type="checkbox"
+              className="mt-1 h-5 w-5 rounded border-[#9bb8d1] accent-[#1ea6df]"
+              checked={false}
+              readOnly
+            />
+            <span>
+              I agree to the <span className="font-medium text-[#0f76c5]">Terms and Conditions</span> and{" "}
+              <span className="font-medium text-[#0f76c5]">Privacy Policy</span>, and
+              consent to share my information with the training provider.
+            </span>
+          </label>
+        </div>
+
+        <div className="mt-6 rounded-[18px] border border-[#dbe7f4] bg-white px-5 py-5">
+          <div className="rounded-lg border border-[#b7efc9] bg-[#e9fbe9] px-4 py-3 text-sm text-[#16803c]">
+            <div className="flex items-center gap-3">
+              <Lock className="h-4 w-4 shrink-0" />
+              <p>Secure encrypted payment</p>
+            </div>
+          </div>
+
+          <p className="mt-4 text-lg font-semibold text-[#1f2f67]">Pay by card</p>
+
+          <div className="mt-4 space-y-4">
+            <div className="relative">
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#96a3b8]">
+                <CreditCard className="h-4 w-4" />
+              </span>
+              <input
+                type="text"
+                readOnly
+                value=""
+                placeholder="Card number"
+                className="h-11 w-full rounded-lg border border-[#dde9f7] bg-[#f7fbff] pl-11 pr-4 text-sm text-[#27396b] outline-none"
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <input
+                type="text"
+                readOnly
+                value=""
+                placeholder="MM / YY"
+                className="h-11 w-full rounded-lg border border-[#dde9f7] bg-[#f7fbff] px-4 text-sm text-[#27396b] outline-none"
+              />
+              <input
+                type="text"
+                readOnly
+                value=""
+                placeholder="CVC"
+                className="h-11 w-full rounded-lg border border-[#dde9f7] bg-[#f7fbff] px-4 text-sm text-[#27396b] outline-none"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function formatCardNumber(value: string) {
+  return value
+    .replace(/\D/g, "")
+    .slice(0, 16)
+    .replace(/(.{4})/g, "$1 ")
+    .trim();
+}
+
+function formatExpiry(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+
+  if (digits.length <= 2) {
+    return digits;
+  }
+
+  return `${digits.slice(0, 2)} / ${digits.slice(2)}`;
+}
+
+function buildBookingReference() {
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const tail = String(now.getHours() * 100 + now.getMinutes()).padStart(4, "0");
+
+  return `#AM2-${yyyy}${mm}${dd}-${tail}`;
+}
+
+function formatAssignedDate() {
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
+}
+
+function normalizeCurrency(value: string) {
+  return value.replace(/Â£/g, "£");
+}
+
+function NetPaymentPanel({
+  payment,
+  onUpdatePayment,
+}: {
+  payment: PaymentFormState;
+  onUpdatePayment: (
+    field: keyof PaymentFormState,
+    value: string | boolean
+  ) => void;
+}) {
+  return (
+    <>
+      <div>
+        <h2 className="text-[1rem] font-semibold text-[#3849a0]">
+          Complete Payment
+        </h2>
+        <p className="mt-1 text-xs text-[#7a88a3]">
+          Your application is approved. Complete payment to secure your place.
+        </p>
+      </div>
+
+      <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
+        <div className="rounded-lg border border-[#b7efc9] bg-[#e9fbe9] px-4 py-3 text-sm text-[#16803c]">
+          <div className="flex items-center gap-3">
+            <BadgeCheck className="h-4 w-4 shrink-0" />
+            <p>
+              Admin approved your documents, checklist, and signatures have
+              been verified.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl bg-[linear-gradient(180deg,#bfe8fb_0%,#b5e0f6_100%)] px-5 py-4">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[1.8rem] font-semibold text-[#32439b]">
+                Normal Courses
+              </p>
+              <p className="mt-1 text-sm text-[#5d6f92]">Billed monthly</p>
+            </div>
+            <p className="text-[1.9rem] font-semibold text-[#32439b]">£44/mo</p>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl bg-[linear-gradient(180deg,#bfe8fb_0%,#b5e0f6_100%)] px-5 py-4">
+          <label className="flex items-start gap-3 text-sm leading-6 text-[#32439b]">
+            <input
+              type="checkbox"
+              className="mt-1 h-5 w-5 rounded border-[#9bb8d1] accent-[#1ea6df]"
+              checked={payment.acceptedTerms}
+              onChange={(event) =>
+                onUpdatePayment("acceptedTerms", event.target.checked)
+              }
+            />
+            <span>
+              I agree to the <span className="font-medium text-[#0f76c5]">Terms and Conditions</span> and{" "}
+              <span className="font-medium text-[#0f76c5]">Privacy Policy</span>, and
+              consent to share my information with the training provider.
+            </span>
+          </label>
+        </div>
+
+        <div className="mt-6 rounded-[18px] border border-[#dbe7f4] bg-white px-5 py-5">
+          <div className="rounded-lg border border-[#b7efc9] bg-[#e9fbe9] px-4 py-3 text-sm text-[#16803c]">
+            <div className="flex items-center gap-3">
+              <Lock className="h-4 w-4 shrink-0" />
+              <p>Secure encrypted payment</p>
+            </div>
+          </div>
+
+          <p className="mt-4 text-lg font-semibold text-[#1f2f67]">Pay by card</p>
+
+          <div className="mt-4 space-y-4">
+            <div className="relative">
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#96a3b8]">
+                <CreditCard className="h-4 w-4" />
+              </span>
+              <input
+                type="text"
+                value={payment.cardNumber}
+                onChange={(event) =>
+                  onUpdatePayment("cardNumber", formatCardNumber(event.target.value))
+                }
+                placeholder="Card number"
+                className="h-11 w-full rounded-lg border border-[#dde9f7] bg-[#f7fbff] pl-11 pr-4 text-sm text-[#27396b] outline-none transition focus:border-[#28aee5] focus:bg-white"
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <input
+                type="text"
+                value={payment.expiry}
+                onChange={(event) =>
+                  onUpdatePayment("expiry", formatExpiry(event.target.value))
+                }
+                placeholder="MM / YY"
+                className="h-11 w-full rounded-lg border border-[#dde9f7] bg-[#f7fbff] px-4 text-sm text-[#27396b] outline-none transition focus:border-[#28aee5] focus:bg-white"
+              />
+              <input
+                type="text"
+                value={payment.cvc}
+                onChange={(event) =>
+                  onUpdatePayment(
+                    "cvc",
+                    event.target.value.replace(/\D/g, "").slice(0, 4)
+                  )
+                }
+                placeholder="CVC"
+                className="h-11 w-full rounded-lg border border-[#dde9f7] bg-[#f7fbff] px-4 text-sm text-[#27396b] outline-none transition focus:border-[#28aee5] focus:bg-white"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function NetConfirmedPanel({ course }: { course: CourseSummary }) {
+  const bookingReference = buildBookingReference();
+  const assignedDate = formatAssignedDate();
+
+  return (
+    <>
+      <div>
+        <h2 className="text-[1rem] font-semibold text-[#3849a0]">
+          Confirmation
+        </h2>
+        <p className="mt-1 text-xs text-[#7a88a3]">
+          Your AM2 application is fully completed.
+        </p>
+      </div>
+
+      <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
+        <div className="grid min-h-[220px] place-items-center rounded-xl border border-[#dbe7f4] bg-white px-6 py-10">
+          <div className="text-center">
+            <span className="mx-auto grid h-18 w-18 place-items-center rounded-full bg-[#e8f8ee] text-[#16a34a]">
+              <PartyPopper className="h-8 w-8" />
+            </span>
+            <p className="mt-5 text-[2.2rem] font-semibold text-[#1f2f67]">
+              Booking Confirmed!
+            </p>
+            <p className="mt-3 max-w-[520px] text-sm leading-6 text-[#7a88a3]">
+              Your payment was successful and your place is secured.
+            </p>
+
+            <div className="mt-6 w-full max-w-[540px] overflow-hidden rounded-2xl border border-[#dbe7f4] bg-[#fbfdff] text-left">
+              {[
+                ["Course", course.title],
+                ["Assigned Date", assignedDate],
+                ["Time", course.schedule],
+                ["Location", course.location],
+                ["Amount Paid", normalizeCurrency(course.price)],
+                ["Reference", bookingReference],
+              ].map(([label, value], index) => (
+                <div
+                  key={label}
+                  className={`grid grid-cols-[150px_minmax(0,1fr)] gap-4 px-4 py-3 text-sm ${
+                    index === 4 ? "border-t border-[#e7eef7]" : ""
+                  }`}
+                >
+                  <span className="text-[#6d7d97]">{label}</span>
+                  <span
+                    className={`text-right font-medium ${
+                      label === "Amount Paid"
+                        ? "text-[#2563eb]"
+                        : label === "Reference"
+                          ? "text-[#ef4444]"
+                          : "text-[#1f2f67]"
+                    }`}
+                  >
+                    {value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </>
@@ -852,10 +1304,19 @@ export default function Am2RegistrationFlow({
     React.useState<NvqTiming>("before-september-2023");
   const [candidateSigned, setCandidateSigned] = React.useState(false);
   const [providerSigned, setProviderSigned] = React.useState(false);
+  const [reviewStatus, setReviewStatus] =
+    React.useState<ReviewStatus>("pending");
+  const [payment, setPayment] = React.useState<PaymentFormState>({
+    acceptedTerms: false,
+    cardNumber: "",
+    expiry: "",
+    cvc: "",
+  });
 
   const selectedQualification = searchParams.get("qualification") ?? "";
   const requestedFlow = searchParams.get("flow");
   const requestedNetStep = searchParams.get("netStep");
+  const requestedReviewStatus = searchParams.get("reviewStatus");
   const lockedAssessmentType = am2eEligibleQualifications.has(selectedQualification)
     ? "AM2E"
     : "AM2";
@@ -902,7 +1363,10 @@ export default function Am2RegistrationFlow({
     setNetFlowType(resolvedFlow);
     setPhase("net");
     setCurrentNetStep(resolvedStep);
-  }, [requestedFlow, requestedNetStep]);
+    setReviewStatus(
+      requestedReviewStatus === "approved" ? "approved" : "pending"
+    );
+  }, [requestedFlow, requestedNetStep, requestedReviewStatus]);
 
   const currentIndex = registrationSteps.findIndex(
     (step) => step.key === currentStep
@@ -927,6 +1391,19 @@ export default function Am2RegistrationFlow({
   const updateTraining = (field: keyof TrainingFormState, value: string) => {
     setTraining((current) => ({ ...current, [field]: value }));
   };
+
+  const updatePayment = (
+    field: keyof PaymentFormState,
+    value: string | boolean
+  ) => {
+    setPayment((current) => ({ ...current, [field]: value }));
+  };
+
+  const isPaymentComplete =
+    payment.acceptedTerms &&
+    payment.cardNumber.replace(/\s/g, "").length === 16 &&
+    payment.expiry.replace(/\D/g, "").length === 4 &&
+    payment.cvc.length >= 3;
 
   const selectAssessmentType = (value: string) => {
     if (value !== lockedAssessmentType) {
@@ -1002,6 +1479,34 @@ export default function Am2RegistrationFlow({
       `/dashboard/courses/${course.slug}/book?flow=${netFlowType}&netStep=submit`
     );
   };
+
+  const syncNetRoute = React.useCallback(
+    (step: NetStepKey, nextReviewStatus?: ReviewStatus) => {
+      const params = new URLSearchParams();
+      params.set("flow", netFlowType);
+      params.set("netStep", step);
+
+      if (nextReviewStatus) {
+        params.set("reviewStatus", nextReviewStatus);
+      }
+
+      router.replace(`/dashboard/courses/${course.slug}/book?${params.toString()}`);
+    },
+    [course.slug, netFlowType, router]
+  );
+
+  const moveToNetStep = React.useCallback(
+    (step: NetStepKey, nextReviewStatus?: ReviewStatus) => {
+      setCurrentNetStep(step);
+
+      if (nextReviewStatus) {
+        setReviewStatus(nextReviewStatus);
+      }
+
+      syncNetRoute(step, nextReviewStatus);
+    },
+    [syncNetRoute]
+  );
 
   return (
     <div className="space-y-6">
@@ -1562,6 +2067,18 @@ export default function Am2RegistrationFlow({
             <NetSubmitPanel />
           ) : null}
 
+          {phase === "net" && currentNetStep === "review" ? (
+            <NetReviewPanel reviewStatus={reviewStatus} />
+          ) : null}
+
+          {phase === "net" && currentNetStep === "payment" ? (
+            <NetPaymentPanel payment={payment} onUpdatePayment={updatePayment} />
+          ) : null}
+
+          {phase === "net" && currentNetStep === "confirmed" ? (
+            <NetConfirmedPanel course={course} />
+          ) : null}
+
           {phase === "registration" ? (
             <div className="mt-6 flex items-center justify-between gap-3 border-t border-[#dbe7f4] pt-5">
               <div className="flex gap-3">
@@ -1605,6 +2122,115 @@ export default function Am2RegistrationFlow({
                   Continue
                 </button>
               )}
+            </div>
+          ) : null}
+
+          {phase === "net" ? (
+            <div className="mt-6 flex items-center justify-between gap-3 border-t border-[#dbe7f4] pt-5">
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentNetStep === "documents") {
+                    setPhase("registration");
+                    setCurrentStep("privacy");
+                    router.replace(`/dashboard/courses/${course.slug}/book`);
+                    return;
+                  }
+
+                  if (currentNetStep === "checklist") {
+                    moveToNetStep("documents");
+                    return;
+                  }
+
+                  if (currentNetStep === "signatures") {
+                    moveToNetStep("checklist");
+                    return;
+                  }
+
+                  if (currentNetStep === "submit") {
+                    moveToNetStep("signatures");
+                    return;
+                  }
+
+                  if (currentNetStep === "review") {
+                    moveToNetStep("submit");
+                    return;
+                  }
+
+                  if (currentNetStep === "payment") {
+                    moveToNetStep("review", "approved");
+                    return;
+                  }
+
+                  moveToNetStep("payment");
+                }}
+                className="rounded-lg border border-[#d8e5f4] bg-white px-4 py-2.5 text-sm font-medium text-[#384a77]"
+              >
+                Back
+              </button>
+
+              <div className="flex items-center gap-3">
+                {currentNetStep === "submit" ? (
+                  <button
+                    type="button"
+                    onClick={() => moveToNetStep("review", "pending")}
+                    className="rounded-lg bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] px-5 py-2.5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
+                  >
+                    Submit Application
+                  </button>
+                ) : null}
+
+                {currentNetStep === "review" ? (
+                  <>
+                    {reviewStatus === "pending" ? (
+                      <button
+                        type="button"
+                        onClick={() => moveToNetStep("review", "approved")}
+                        className="rounded-lg border border-[#d8e5f4] bg-white px-5 py-2.5 text-sm font-medium text-[#384a77]"
+                      >
+                        Mark as Approved
+                      </button>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      disabled={reviewStatus !== "approved"}
+                      onClick={() => moveToNetStep("payment")}
+                      className={`rounded-lg px-5 py-2.5 text-sm font-medium ${
+                        reviewStatus === "approved"
+                          ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
+                          : "cursor-not-allowed bg-[#dce4ec] text-[#9eacba]"
+                      }`}
+                    >
+                      Proceed to Payment
+                    </button>
+                  </>
+                ) : null}
+
+                {currentNetStep === "payment" ? (
+                  <button
+                    type="button"
+                    disabled={!isPaymentComplete}
+                    onClick={() => moveToNetStep("confirmed")}
+                    className={`rounded-lg px-5 py-2.5 text-sm font-medium ${
+                      isPaymentComplete
+                        ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
+                        : "cursor-not-allowed bg-[#dce4ec] text-[#9eacba]"
+                    }`}
+                  >
+                    Pay {normalizeCurrency(course.price)}
+                  </button>
+                ) : null}
+
+                {currentNetStep === "confirmed" ? (
+                  <Link
+                    href="/dashboard/bookings"
+                    className="rounded-lg bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] px-5 py-2.5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
+                  >
+                    View My Bookings
+                  </Link>
+                ) : null}
+              </div>
             </div>
           ) : null}
         </div>
