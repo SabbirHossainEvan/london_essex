@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import type { CourseSummary } from "@/app/(website)/courses/courses-data";
 import PanelCard from "@/components/dashboard/panel-card";
+import { useCreateNormalBookingMutation } from "@/lib/redux/features/bookings/booking-api";
 
 type BookingFlowProps = {
   course: CourseSummary;
@@ -55,6 +56,11 @@ type PaymentState = {
   cardNumber: string;
   expiry: string;
   cvc: string;
+};
+
+type SubmittedBookingState = {
+  bookingNumber: string;
+  paymentDisplayAmount: string;
 };
 
 const standardSteps: Array<{ key: StandardStepKey; label: string }> = [
@@ -148,6 +154,54 @@ function formatExpiry(value: string) {
   return digits.length < 3 ? digits : `${digits.slice(0, 2)}/${digits.slice(2)}`;
 }
 
+function splitFullName(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return { firstName: "", lastName: "" };
+  }
+
+  const [firstName, ...rest] = trimmed.split(/\s+/);
+
+  return {
+    firstName,
+    lastName: rest.join(" "),
+  };
+}
+
+function formatDateForApi(value: string) {
+  const trimmed = value.trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  const match = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+
+  if (!match) {
+    return trimmed;
+  }
+
+  const [, day, month, year] = match;
+  return `${year}-${month}-${day}`;
+}
+
+function resolveErrorMessage(error: unknown, fallback: string) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "data" in error &&
+    typeof error.data === "object" &&
+    error.data !== null &&
+    "message" in error.data &&
+    typeof error.data.message === "string"
+  ) {
+    return error.data.message;
+  }
+
+  return fallback;
+}
+
 function BookingStepper({
   steps,
   currentStep,
@@ -239,6 +293,8 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 export default function CourseBookingFlow({ course }: BookingFlowProps) {
   const isAm2Flow = course.bookingFlow === "am2";
+  const [createNormalBooking, createNormalBookingState] =
+    useCreateNormalBookingMutation();
   const steps = isAm2Flow ? am2Steps : standardSteps;
   const [currentStep, setCurrentStep] = React.useState<StepKey>(steps[0].key);
   const [details, setDetails] = React.useState<DetailFormState>({
@@ -261,6 +317,9 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
   const [nvqDateOpen, setNvqDateOpen] = React.useState(false);
   const [selectedQualification, setSelectedQualification] = React.useState("");
   const [nvqTiming, setNvqTiming] = React.useState("");
+  const [detailsError, setDetailsError] = React.useState("");
+  const [submittedBooking, setSubmittedBooking] =
+    React.useState<SubmittedBookingState | null>(null);
 
   const stepOrder = steps.map((step) => step.key);
   const currentIndex = stepOrder.indexOf(currentStep);
@@ -273,18 +332,67 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
 
   const moveToStep = (step: StepKey) => setCurrentStep(step);
   const updateDetails = (field: keyof DetailFormState, value: string) => {
+    setDetailsError("");
     setDetails((current) => ({ ...current, [field]: value }));
   };
   const updatePayment = (field: keyof PaymentState, value: string | boolean) => {
     setPayment((current) => ({ ...current, [field]: value }));
   };
 
-  const moveNext = () => {
+  const moveNext = async () => {
     if (
       currentStep === "details" &&
       !isAm2Flow &&
       Object.values(details).some((value) => value.trim().length === 0)
     ) {
+      return;
+    }
+
+    if (currentStep === "details" && !isAm2Flow) {
+      const { firstName, lastName } = splitFullName(details.fullName);
+
+      if (!firstName || !lastName) {
+        setDetailsError("Please enter both first name and last name.");
+        return;
+      }
+
+      try {
+        const response = await createNormalBooking({
+          courseSlug: course.slug,
+          personalDetails: {
+            title: "",
+            firstName,
+            lastName,
+            dateOfBirth: formatDateForApi(details.dob),
+            niNumber: "",
+            email: details.email.trim(),
+            mobileNumber: details.phone.trim(),
+            addressLine1: details.address.trim(),
+            addressLine2: "",
+            town: details.city.trim(),
+            postcode: details.postcode.trim(),
+            trainingCenter: details.location.trim(),
+          },
+        }).unwrap();
+
+        setSubmittedBooking({
+          bookingNumber: response.data.booking.bookingNumber,
+          paymentDisplayAmount:
+            response.data.booking.payment?.displayAmount ||
+            response.data.booking.course?.displayPrice ||
+            normalizedPrice,
+        });
+
+        moveToStep("payment");
+      } catch (error) {
+        setDetailsError(
+          resolveErrorMessage(
+            error,
+            "We could not save your booking details right now."
+          )
+        );
+      }
+
       return;
     }
 
@@ -442,6 +550,12 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
                   />
                 </div>
               </div>
+
+              {detailsError ? (
+                <p className="rounded-xl border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+                  {detailsError}
+                </p>
+              ) : null}
             </section>
           )}
 
@@ -578,7 +692,9 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
                     </p>
                   </div>
                   <p className="text-2xl font-semibold text-[#3646a5]">
-                    {isAm2Flow ? normalizedPrice : installmentPrice}
+                    {isAm2Flow
+                      ? normalizedPrice
+                      : submittedBooking?.paymentDisplayAmount || installmentPrice}
                   </p>
                 </div>
               </div>
@@ -648,6 +764,11 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
               <p className="mt-3 max-w-[560px] text-sm leading-7 text-[#72819b]">
                 {completionNotes[course.bookingFlow]}
               </p>
+              {!isAm2Flow && submittedBooking?.bookingNumber ? (
+                <p className="mt-2 text-sm font-medium text-[#2e3e98]">
+                  Booking Reference: {submittedBooking.bookingNumber}
+                </p>
+              ) : null}
               <div className="mt-8 grid w-full max-w-[540px] gap-3 sm:grid-cols-2">
                 <Link
                   href="/dashboard/bookings"
@@ -691,19 +812,27 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
                 type="button"
                 onClick={moveNext}
                 disabled={
-                  currentStep === "details" &&
-                  !isAm2Flow &&
-                  Object.values(details).some((value) => value.trim().length === 0)
+                  (currentStep === "details" &&
+                    !isAm2Flow &&
+                    (Object.values(details).some((value) => value.trim().length === 0) ||
+                      createNormalBookingState.isLoading)) ||
+                  (currentStep === "payment" &&
+                    !payment.acceptedTerms)
                 }
                 className={`rounded-xl px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(30,166,223,0.18)] ${
-                  currentStep === "details" &&
-                  !isAm2Flow &&
-                  Object.values(details).some((value) => value.trim().length === 0)
+                  (currentStep === "details" &&
+                    !isAm2Flow &&
+                    (Object.values(details).some((value) => value.trim().length === 0) ||
+                      createNormalBookingState.isLoading)) ||
+                  (currentStep === "payment" &&
+                    !payment.acceptedTerms)
                     ? "cursor-not-allowed bg-[#9fdcf3]"
                     : "bg-[#1ea6df]"
                 }`}
               >
-                {currentStep === "payment"
+                {currentStep === "details" && !isAm2Flow && createNormalBookingState.isLoading
+                  ? "Saving..."
+                  : currentStep === "payment"
                   ? `Pay ${isAm2Flow ? normalizedPrice : depositPrice}`
                   : "Continue"}
               </button>

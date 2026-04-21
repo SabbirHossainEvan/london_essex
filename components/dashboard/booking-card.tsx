@@ -19,7 +19,7 @@ export default function BookingCard({ booking }: BookingCardProps) {
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="flex gap-3">
           <Image
-            src="/hero-collage.png"
+            src={booking.imageUrl || "/hero-collage.png"}
             alt={booking.title}
             width={92}
             height={92}
@@ -52,10 +52,10 @@ export default function BookingCard({ booking }: BookingCardProps) {
         </div>
 
         <Link
-          href="/dashboard/courses/am2-assessment-preparation"
+          href={booking.detailsUrl || "/dashboard/courses"}
           className="rounded-[10px] border border-[#d9e6f8] bg-[#f4f8ff] px-5 py-3 text-sm font-medium text-[#4556ad] shadow-[0_6px_16px_rgba(56,91,169,0.06)]"
         >
-          Course Details
+          {booking.detailsLabel || "Course Details"}
         </Link>
       </div>
     </div>
