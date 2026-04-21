@@ -26,7 +26,10 @@ import type { CourseSummary } from "@/app/(website)/courses/courses-data";
 import PanelCard from "@/components/dashboard/panel-card";
 import {
   useGetCourseAssessmentRegistrationFormQuery,
+  useGetCourseEmployerRegistrationFormQuery,
+  useGetCoursePrivacyRegistrationFormQuery,
   useGetCourseRegistrationFormQuery,
+  useGetCourseTrainingRegistrationFormQuery,
   type CourseRegistrationField,
 } from "@/lib/redux/features/courses/course-api";
 
@@ -118,6 +121,8 @@ type UploadedDocumentState = {
 
 type CandidateFieldKey = keyof CandidateFormState;
 type AssessmentFieldKey = keyof AssessmentFormState;
+type EmployerFieldKey = keyof EmployerFormState;
+type TrainingFieldKey = keyof TrainingFormState;
 
 const registrationSteps: Array<{ key: RegistrationStepKey; label: string }> = [
   { key: "candidate", label: "Candidate" },
@@ -149,6 +154,32 @@ const assessmentFieldIdMap: Record<string, AssessmentFieldKey> = {
   reasonableAdjustments: "adjustments",
   recognitionOfPriorLearning: "recognition",
   assessmentType: "assessmentType",
+};
+
+const employerFieldIdMap: Record<string, EmployerFieldKey> = {
+  "employer.companyName": "companyName",
+  "employer.email": "email",
+  "employer.contactName": "contactName",
+  "employer.contactNumber": "contactNumber",
+  "employer.address1": "address1",
+  "employer.address2": "address2",
+  "employer.address3": "address3",
+  "employer.address4": "address4",
+  "employer.town": "town",
+  "employer.postcode": "postcode",
+};
+
+const trainingFieldIdMap: Record<string, TrainingFieldKey> = {
+  "trainingProvider.companyName": "companyName",
+  "trainingProvider.email": "email",
+  "trainingProvider.contactName": "contactName",
+  "trainingProvider.contactNumber": "contactNumber",
+  "trainingProvider.address1": "address1",
+  "trainingProvider.address2": "address2",
+  "trainingProvider.address3": "address3",
+  "trainingProvider.address4": "address4",
+  "trainingProvider.town": "town",
+  "trainingProvider.postcode": "postcode",
 };
 
 const netSteps: Array<{ key: NetStepKey; label: string }> = [
@@ -1667,6 +1698,24 @@ export default function Am2RegistrationFlow({
     isError: isAssessmentFormError,
     error: assessmentFormError,
   } = useGetCourseAssessmentRegistrationFormQuery(course.slug);
+  const {
+    data: employerFormData,
+    isLoading: isEmployerFormLoading,
+    isError: isEmployerFormError,
+    error: employerFormError,
+  } = useGetCourseEmployerRegistrationFormQuery(course.slug);
+  const {
+    data: trainingFormData,
+    isLoading: isTrainingFormLoading,
+    isError: isTrainingFormError,
+    error: trainingFormError,
+  } = useGetCourseTrainingRegistrationFormQuery(course.slug);
+  const {
+    data: privacyFormData,
+    isLoading: isPrivacyFormLoading,
+    isError: isPrivacyFormError,
+    error: privacyFormError,
+  } = useGetCoursePrivacyRegistrationFormQuery(course.slug);
   const [phase, setPhase] = React.useState<"registration" | "net">(
     "registration"
   );
@@ -1713,6 +1762,7 @@ export default function Am2RegistrationFlow({
   const [candidateStepError, setCandidateStepError] = React.useState("");
   const [assessmentStepError, setAssessmentStepError] = React.useState("");
   const [employerStepError, setEmployerStepError] = React.useState("");
+  const [trainingStepError, setTrainingStepError] = React.useState("");
   const [training, setTraining] = React.useState<TrainingFormState>({
     companyName: "",
     email: "",
@@ -1770,10 +1820,19 @@ Thank you,`,
     : "AM2";
   const registrationScreen = registrationFormData?.data.screen;
   const assessmentRegistrationScreen = assessmentFormData?.data.screen;
+  const employerRegistrationScreen = employerFormData?.data.screen;
+  const trainingRegistrationScreen = trainingFormData?.data.screen;
+  const privacyRegistrationScreen = privacyFormData?.data.screen;
   const activeRegistrationScreen =
     currentStep === "assessment" && assessmentRegistrationScreen
       ? assessmentRegistrationScreen
-      : registrationScreen;
+      : currentStep === "employer" && employerRegistrationScreen
+        ? employerRegistrationScreen
+        : currentStep === "training" && trainingRegistrationScreen
+          ? trainingRegistrationScreen
+          : currentStep === "privacy" && privacyRegistrationScreen
+            ? privacyRegistrationScreen
+            : registrationScreen;
   const registrationStepItems =
     activeRegistrationScreen?.steps
       ?.map((step) => {
@@ -1802,6 +1861,23 @@ Thank you,`,
       (section) => section.id === "assessment-details"
     ) ?? assessmentRegistrationScreen?.sections[0];
   const assessmentFields = assessmentSection?.fields ?? [];
+  const employerSection =
+    employerRegistrationScreen?.sections.find(
+      (section) => section.id === "employer-details"
+    ) ?? employerRegistrationScreen?.sections[0];
+  const employerFields = employerSection?.fields ?? [];
+  const trainingSection =
+    trainingRegistrationScreen?.sections.find(
+      (section) => section.id === "training-provider-details"
+    ) ?? trainingRegistrationScreen?.sections[0];
+  const trainingFields = trainingSection?.fields ?? [];
+  const privacySection =
+    privacyRegistrationScreen?.sections.find(
+      (section) => section.id === "privacy-confirmation"
+    ) ?? privacyRegistrationScreen?.sections[0];
+  const privacyConfirmationField = privacySection?.fields.find(
+    (field) => field.id === "privacyConfirmation"
+  );
   const registrationContinueLabel =
     activeRegistrationScreen?.submission?.continueLabel ??
     activeRegistrationScreen?.navigation?.next?.label ??
@@ -1899,6 +1975,52 @@ Thank you,`,
     }));
   }, [assessmentRegistrationScreen]);
 
+  React.useEffect(() => {
+    if (!employerRegistrationScreen?.submission?.payloadTemplate?.employerDetails) {
+      return;
+    }
+
+    const employerDetails =
+      employerRegistrationScreen.submission.payloadTemplate.employerDetails;
+
+    setEmployer((current) => ({
+      ...current,
+      companyName: current.companyName || employerDetails.companyName || "",
+      email: current.email || employerDetails.email || "",
+      contactName: current.contactName || employerDetails.contactName || "",
+      contactNumber: current.contactNumber || employerDetails.contactNumber || "",
+      address1: current.address1 || employerDetails.address1 || "",
+      address2: current.address2 || employerDetails.address2 || "",
+      address3: current.address3 || employerDetails.address3 || "",
+      address4: current.address4 || employerDetails.address4 || "",
+      town: current.town || employerDetails.town || "",
+      postcode: current.postcode || employerDetails.postcode || "",
+    }));
+  }, [employerRegistrationScreen]);
+
+  React.useEffect(() => {
+    if (!trainingRegistrationScreen?.submission?.payloadTemplate?.trainingProviderDetails) {
+      return;
+    }
+
+    const trainingProviderDetails =
+      trainingRegistrationScreen.submission.payloadTemplate.trainingProviderDetails;
+
+    setTraining((current) => ({
+      ...current,
+      companyName: current.companyName || trainingProviderDetails.companyName || "",
+      email: current.email || trainingProviderDetails.email || "",
+      contactName: current.contactName || trainingProviderDetails.contactName || "",
+      contactNumber: current.contactNumber || trainingProviderDetails.contactNumber || "",
+      address1: current.address1 || trainingProviderDetails.address1 || "",
+      address2: current.address2 || trainingProviderDetails.address2 || "",
+      address3: current.address3 || trainingProviderDetails.address3 || "",
+      address4: current.address4 || trainingProviderDetails.address4 || "",
+      town: current.town || trainingProviderDetails.town || "",
+      postcode: current.postcode || trainingProviderDetails.postcode || "",
+    }));
+  }, [trainingRegistrationScreen]);
+
   const updateCandidate = (field: keyof CandidateFormState, value: string) => {
     setCandidateStepError("");
     setCandidate((current) => ({ ...current, [field]: value }));
@@ -1918,6 +2040,7 @@ Thank you,`,
   };
 
   const updateTraining = (field: keyof TrainingFormState, value: string) => {
+    setTrainingStepError("");
     setTraining((current) => ({ ...current, [field]: value }));
   };
 
@@ -1986,15 +2109,37 @@ Thank you,`,
       if (hasEmployer === "no") {
         setEmployerStepError("");
       } else {
-        const employerValues = Object.values(employer).map((value) => value.trim());
-        const hasMissingEmployerField = employerValues.some((value) => value.length === 0);
+        const requiredEmployerFields = employerFields.filter(
+          (field) => field.required && employerFieldIdMap[field.id]
+        );
+        const hasMissingEmployerField = requiredEmployerFields.some((field) => {
+          const stateKey = employerFieldIdMap[field.id];
+          return employer[stateKey].trim().length === 0;
+        });
 
         if (hasMissingEmployerField) {
           setEmployerStepError(
-            "Please complete all employer fields, or select No if you are self-employed or do not have an employer."
+            "Please complete all required employer fields before continuing."
           );
           return;
         }
+      }
+    }
+
+    if (currentStep === "training") {
+      const requiredTrainingFields = trainingFields.filter(
+        (field) => field.required && trainingFieldIdMap[field.id]
+      );
+      const hasMissingTrainingField = requiredTrainingFields.some((field) => {
+        const stateKey = trainingFieldIdMap[field.id];
+        return training[stateKey].trim().length === 0;
+      });
+
+      if (hasMissingTrainingField) {
+        setTrainingStepError(
+          "Please complete all required training provider fields before continuing."
+        );
+        return;
       }
     }
 
@@ -2441,14 +2586,41 @@ Thank you,`,
             </>
           ) : null}
 
-          {phase === "registration" && currentStep === "employer" ? (
+          {phase === "registration" && currentStep === "employer" && isEmployerFormLoading ? (
+            <div className="space-y-4 animate-pulse">
+              <div className="h-8 w-52 rounded bg-[#e4edf8]" />
+              <div className="h-5 w-48 rounded bg-[#edf3fb]" />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="h-11 rounded bg-[#edf3fb]" />
+                <div className="h-11 rounded bg-[#edf3fb]" />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="h-11 rounded bg-[#edf3fb]" />
+                <div className="h-11 rounded bg-[#edf3fb]" />
+              </div>
+            </div>
+          ) : null}
+
+          {phase === "registration" && currentStep === "employer" && isEmployerFormError ? (
+            <div className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+              {resolveApiErrorMessage(
+                employerFormError,
+                "We could not load the employer registration form right now."
+              )}
+            </div>
+          ) : null}
+
+          {phase === "registration" &&
+          currentStep === "employer" &&
+          !isEmployerFormLoading &&
+          !isEmployerFormError ? (
             <>
               <div>
                 <h2 className="text-[1.6rem] font-semibold text-[#3849a0]">
-                  Current Employer
+                  {employerSection?.title ?? employerRegistrationScreen?.title ?? "Current Employer"}
                 </h2>
                 <p className="mt-2 text-sm text-[#7a88a3]">
-                  Please complete all fields.
+                  {employerRegistrationScreen?.description ?? "Please complete all fields."}
                 </p>
               </div>
 
@@ -2469,83 +2641,70 @@ Thank you,`,
                   />
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <FieldLabel>Company Name *</FieldLabel>
-                    <TextField
-                      value={employer.companyName}
-                      onChange={(value) => updateEmployer("companyName", value)}
-                      placeholder="Enter employer company name"
-                      disabled={hasEmployer === "no"}
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel>Email *</FieldLabel>
-                    <TextField
-                      value={employer.email}
-                      onChange={(value) => updateEmployer("email", value)}
-                      placeholder="Enter employer email address"
-                      type="email"
-                      disabled={hasEmployer === "no"}
-                    />
-                  </div>
-                </div>
+                {(() => {
+                  const renderedFieldRows: React.ReactNode[] = [];
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <FieldLabel>Contact Name *</FieldLabel>
-                    <TextField
-                      value={employer.contactName}
-                      onChange={(value) => updateEmployer("contactName", value)}
-                      placeholder="Enter employer contact name"
-                      disabled={hasEmployer === "no"}
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel>Contact Number *</FieldLabel>
-                    <TextField
-                      value={employer.contactNumber}
-                      onChange={(value) => updateEmployer("contactNumber", value)}
-                      placeholder="Enter employer mobile number"
-                      disabled={hasEmployer === "no"}
-                    />
-                  </div>
-                </div>
+                  for (let index = 0; index < employerFields.length; index += 1) {
+                    const field = employerFields[index];
+                    const nextField = employerFields[index + 1];
+                    const stateKey = employerFieldIdMap[field.id];
 
-                {["address1", "address2", "address3", "address4"].map((field, index) => (
-                  <div key={field}>
-                    <FieldLabel>{`Address ${index + 1} *`}</FieldLabel>
-                    <TextField
-                      value={employer[field as keyof EmployerFormState] as string}
-                      onChange={(value) =>
-                        updateEmployer(field as keyof EmployerFormState, value)
+                    if (!stateKey) {
+                      continue;
+                    }
+
+                    const renderField = (currentField: CourseRegistrationField) => {
+                      const currentStateKey = employerFieldIdMap[currentField.id];
+
+                      if (!currentStateKey) {
+                        return null;
                       }
-                      placeholder={`Enter address line ${index + 1}`}
-                      disabled={hasEmployer === "no"}
-                    />
-                  </div>
-                ))}
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <FieldLabel>Town *</FieldLabel>
-                    <TextField
-                      value={employer.town}
-                      onChange={(value) => updateEmployer("town", value)}
-                      placeholder="Enter town"
-                      disabled={hasEmployer === "no"}
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel>Postcode *</FieldLabel>
-                    <TextField
-                      value={employer.postcode}
-                      onChange={(value) => updateEmployer("postcode", value)}
-                      placeholder="Enter postcode"
-                      disabled={hasEmployer === "no"}
-                    />
-                  </div>
-                </div>
+                      return (
+                        <div key={currentField.id}>
+                          <FieldLabel>
+                            {currentField.label}
+                            {currentField.required ? " *" : ""}
+                          </FieldLabel>
+                          <TextField
+                            value={employer[currentStateKey]}
+                            onChange={(value) => updateEmployer(currentStateKey, value)}
+                            placeholder={currentField.placeholder ?? ""}
+                            type={currentField.type}
+                            disabled={hasEmployer === "no"}
+                          />
+                        </div>
+                      );
+                    };
+
+                    const shouldGroupWithNext =
+                      nextField &&
+                      ["employer.companyName", "employer.contactName", "employer.town"].includes(
+                        field.id
+                      ) &&
+                      ["employer.email", "employer.contactNumber", "employer.postcode"].includes(
+                        nextField.id
+                      );
+
+                    if (shouldGroupWithNext) {
+                      renderedFieldRows.push(
+                        <div
+                          key={`${field.id}-${nextField.id}`}
+                          className="grid gap-4 md:grid-cols-2"
+                        >
+                          {renderField(field)}
+                          {renderField(nextField)}
+                        </div>
+                      );
+                      index += 1;
+                      continue;
+                    }
+
+                    renderedFieldRows.push(renderField(field));
+                  }
+
+                  return renderedFieldRows;
+                })()}
 
                 {employerStepError ? (
                   <p className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
@@ -2556,114 +2715,163 @@ Thank you,`,
             </>
           ) : null}
 
-          {phase === "registration" && currentStep === "training" ? (
+          {phase === "registration" && currentStep === "training" && isTrainingFormLoading ? (
+            <div className="space-y-4 animate-pulse">
+              <div className="h-8 w-72 rounded bg-[#e4edf8]" />
+              <div className="h-5 w-full rounded bg-[#edf3fb]" />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="h-11 rounded bg-[#edf3fb]" />
+                <div className="h-11 rounded bg-[#edf3fb]" />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="h-11 rounded bg-[#edf3fb]" />
+                <div className="h-11 rounded bg-[#edf3fb]" />
+              </div>
+            </div>
+          ) : null}
+
+          {phase === "registration" && currentStep === "training" && isTrainingFormError ? (
+            <div className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+              {resolveApiErrorMessage(
+                trainingFormError,
+                "We could not load the training registration form right now."
+              )}
+            </div>
+          ) : null}
+
+          {phase === "registration" &&
+          currentStep === "training" &&
+          !isTrainingFormLoading &&
+          !isTrainingFormError ? (
             <>
               <div>
                 <h2 className="text-[1.6rem] font-semibold text-[#3849a0]">
-                  Training Provider / Certificate Issuer
+                  {trainingSection?.title ??
+                    trainingRegistrationScreen?.title ??
+                    "Training Provider / Certificate Issuer"}
                 </h2>
                 <p className="mt-2 text-sm text-[#7a88a3]">
-                  Please enter the details of the training provider or college
-                  where you gained the qualifications to enable you to apply for
-                  this assessment. This section is mandatory. Please complete all
-                  fields.
+                  {trainingRegistrationScreen?.description ??
+                    "Please enter the details of the training provider or college where you gained the qualifications to enable you to apply for this assessment. This section is mandatory."}
                 </p>
               </div>
 
               <div className="mt-5 grid gap-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <FieldLabel>Company Name</FieldLabel>
-                    <TextField
-                      value={training.companyName}
-                      onChange={(value) => updateTraining("companyName", value)}
-                      placeholder="Enter training provider or college name"
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel>Email</FieldLabel>
-                    <TextField
-                      value={training.email}
-                      onChange={(value) => updateTraining("email", value)}
-                      placeholder="Enter provider email"
-                      type="email"
-                    />
-                  </div>
-                </div>
+                {(() => {
+                  const renderedFieldRows: React.ReactNode[] = [];
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <FieldLabel>Contact Name</FieldLabel>
-                    <TextField
-                      value={training.contactName}
-                      onChange={(value) => updateTraining("contactName", value)}
-                      placeholder="Enter contact name"
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel>Contact Number</FieldLabel>
-                    <TextField
-                      value={training.contactNumber}
-                      onChange={(value) => updateTraining("contactNumber", value)}
-                      placeholder="Enter contact number"
-                    />
-                  </div>
-                </div>
+                  for (let index = 0; index < trainingFields.length; index += 1) {
+                    const field = trainingFields[index];
+                    const nextField = trainingFields[index + 1];
+                    const stateKey = trainingFieldIdMap[field.id];
 
-                {["address1", "address2", "address3", "address4"].map((field, index) => (
-                  <div key={field}>
-                    <FieldLabel>{`Address ${index + 1}`}</FieldLabel>
-                    <TextField
-                      value={training[field as keyof TrainingFormState] as string}
-                      onChange={(value) =>
-                        updateTraining(field as keyof TrainingFormState, value)
+                    if (!stateKey) {
+                      continue;
+                    }
+
+                    const renderField = (currentField: CourseRegistrationField) => {
+                      const currentStateKey = trainingFieldIdMap[currentField.id];
+
+                      if (!currentStateKey) {
+                        return null;
                       }
-                      placeholder={`Enter address line ${index + 1}`}
-                    />
-                  </div>
-                ))}
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <FieldLabel>Town</FieldLabel>
-                    <TextField
-                      value={training.town}
-                      onChange={(value) => updateTraining("town", value)}
-                      placeholder="Enter town"
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel>Postcode</FieldLabel>
-                    <TextField
-                      value={training.postcode}
-                      onChange={(value) => updateTraining("postcode", value)}
-                      placeholder="Enter postcode"
-                    />
-                  </div>
-                </div>
+                      return (
+                        <div key={currentField.id}>
+                          <FieldLabel>
+                            {currentField.label}
+                            {currentField.required ? " *" : ""}
+                          </FieldLabel>
+                          <TextField
+                            value={training[currentStateKey]}
+                            onChange={(value) => updateTraining(currentStateKey, value)}
+                            placeholder={currentField.placeholder ?? ""}
+                            type={currentField.type}
+                          />
+                        </div>
+                      );
+                    };
+
+                    const shouldGroupWithNext =
+                      nextField &&
+                      [
+                        "trainingProvider.companyName",
+                        "trainingProvider.contactName",
+                        "trainingProvider.town",
+                      ].includes(field.id) &&
+                      [
+                        "trainingProvider.email",
+                        "trainingProvider.contactNumber",
+                        "trainingProvider.postcode",
+                      ].includes(nextField.id);
+
+                    if (shouldGroupWithNext) {
+                      renderedFieldRows.push(
+                        <div
+                          key={`${field.id}-${nextField.id}`}
+                          className="grid gap-4 md:grid-cols-2"
+                        >
+                          {renderField(field)}
+                          {renderField(nextField)}
+                        </div>
+                      );
+                      index += 1;
+                      continue;
+                    }
+
+                    renderedFieldRows.push(renderField(field));
+                  }
+
+                  return renderedFieldRows;
+                })()}
+
+                {trainingStepError ? (
+                  <p className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+                    {trainingStepError}
+                  </p>
+                ) : null}
               </div>
             </>
           ) : null}
 
-          {phase === "registration" && currentStep === "privacy" ? (
+          {phase === "registration" && currentStep === "privacy" && isPrivacyFormLoading ? (
+            <div className="space-y-4 animate-pulse">
+              <div className="h-8 w-64 rounded bg-[#e4edf8]" />
+              <div className="h-5 w-full rounded bg-[#edf3fb]" />
+              <div className="h-5 w-full rounded bg-[#edf3fb]" />
+              <div className="h-5 w-11/12 rounded bg-[#edf3fb]" />
+              <div className="h-16 rounded bg-[#edf3fb]" />
+            </div>
+          ) : null}
+
+          {phase === "registration" && currentStep === "privacy" && isPrivacyFormError ? (
+            <div className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+              {resolveApiErrorMessage(
+                privacyFormError,
+                "We could not load the privacy registration form right now."
+              )}
+            </div>
+          ) : null}
+
+          {phase === "registration" &&
+          currentStep === "privacy" &&
+          !isPrivacyFormLoading &&
+          !isPrivacyFormError ? (
             <>
               <div>
                 <h2 className="text-[1.6rem] font-semibold text-[#3849a0]">
-                  Privacy Notice & Confirmation
+                  {privacySection?.title ??
+                    privacyRegistrationScreen?.title ??
+                    "Privacy Notice & Confirmation"}
                 </h2>
               </div>
 
               <div className="mt-5 space-y-4 text-sm leading-6 text-[#6e7f9b]">
-                <p>
-                  NET and the Assessment Centre you attend are both Data
-                  Controllers for the purposes of Data Protection Law. Where
-                  applicable they will jointly uphold your rights. Information
-                  that you include in this form is necessary for the completion
-                  of your assessment and will only be shared between the
-                  Controllers for this purpose or if the provision of legal
-                  obligations. In accordance with our terms and conditions, data
-                  may be retained in line with the applicable retention policy.
-                </p>
+                <p>{privacyRegistrationScreen?.description}</p>
+
+                {privacySection?.content?.map((paragraph, index) => (
+                  <p key={`${privacySection.id}-${index}`}>{paragraph}</p>
+                ))}
 
                 <label className="flex items-start gap-3 rounded-lg border border-[#dde9f7] bg-[#f4f9ff] px-4 py-3 text-[#33446d]">
                   <input
@@ -2673,8 +2881,8 @@ Thank you,`,
                     className="mt-1 h-4 w-4 accent-[#1ea6df]"
                   />
                   <span>
-                    I confirm that the information provided in this registration
-                    form is complete and accurate.
+                    {privacyConfirmationField?.label ??
+                      "I confirm that the information provided in this registration form is complete and accurate."}
                   </span>
                 </label>
               </div>
@@ -2744,27 +2952,45 @@ Thank you,`,
               {currentStep === "privacy" ? (
                 <button
                   type="button"
-                  disabled={!privacyConfirmed}
+                  disabled={
+                    !privacyConfirmed ||
+                    isPrivacyFormLoading ||
+                    isPrivacyFormError
+                  }
                   onClick={handlePrivacyContinue}
                   className={`rounded-lg px-5 py-2.5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)] ${
-                    privacyConfirmed
+                    privacyConfirmed &&
+                    !isPrivacyFormLoading &&
+                    !isPrivacyFormError
                       ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)]"
                       : "cursor-not-allowed bg-[#a6dff6]"
                   }`}
                 >
-                  Continue
+                  {registrationContinueLabel}
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={moveNext}
                   disabled={
-                    currentStep === "candidate" &&
-                    (isRegistrationFormLoading || isRegistrationFormError)
+                    (currentStep === "candidate" &&
+                      (isRegistrationFormLoading || isRegistrationFormError)) ||
+                    (currentStep === "assessment" &&
+                      (isAssessmentFormLoading || isAssessmentFormError)) ||
+                    (currentStep === "employer" &&
+                      (isEmployerFormLoading || isEmployerFormError)) ||
+                    (currentStep === "training" &&
+                      (isTrainingFormLoading || isTrainingFormError))
                   }
                   className={`rounded-lg px-5 py-2.5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)] ${
-                    currentStep === "candidate" &&
-                    (isRegistrationFormLoading || isRegistrationFormError)
+                    (currentStep === "candidate" &&
+                      (isRegistrationFormLoading || isRegistrationFormError)) ||
+                    (currentStep === "assessment" &&
+                      (isAssessmentFormLoading || isAssessmentFormError)) ||
+                    (currentStep === "employer" &&
+                      (isEmployerFormLoading || isEmployerFormError)) ||
+                    (currentStep === "training" &&
+                      (isTrainingFormLoading || isTrainingFormError))
                       ? "cursor-not-allowed bg-[#a6dff6]"
                       : "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)]"
                   }`}

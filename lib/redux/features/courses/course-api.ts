@@ -225,10 +225,12 @@ export type CourseRegistrationField = {
     | "tel"
     | "radio"
     | "choice-grid"
+    | "checkbox"
     | string;
   required: boolean;
   placeholder?: string;
   helperText?: string;
+  group?: string;
   options?: Array<{
     id: string;
     label: string;
@@ -239,6 +241,7 @@ export type CourseRegistrationSection = {
   id: string;
   title: string;
   description?: string;
+  content?: string[];
   fields: CourseRegistrationField[];
 };
 
@@ -277,6 +280,9 @@ export type CourseRegistrationFormResponse = {
           courseSlug?: string;
           personalDetails?: Record<string, string>;
           assessmentDetails?: Record<string, string>;
+          employerDetails?: Record<string, string>;
+          trainingProviderDetails?: Record<string, string>;
+          privacyConfirmation?: boolean;
         };
         continueLabel?: string;
       };
@@ -285,6 +291,9 @@ export type CourseRegistrationFormResponse = {
 };
 
 export type CourseAssessmentRegistrationFormResponse = CourseRegistrationFormResponse;
+export type CourseEmployerRegistrationFormResponse = CourseRegistrationFormResponse;
+export type CourseTrainingRegistrationFormResponse = CourseRegistrationFormResponse;
+export type CoursePrivacyRegistrationFormResponse = CourseRegistrationFormResponse;
 
 export const courseApi = baseApi.injectEndpoints({
   overrideExisting: process.env.NODE_ENV === "development",
@@ -327,6 +336,36 @@ export const courseApi = baseApi.injectEndpoints({
       }),
       providesTags: ["Course"],
     }),
+    getCourseEmployerRegistrationForm: builder.query<
+      CourseEmployerRegistrationFormResponse,
+      string
+    >({
+      query: (courseSlug) => ({
+        url: `/courses/${courseSlug}/registration-form/employer`,
+        method: "GET",
+      }),
+      providesTags: ["Course"],
+    }),
+    getCourseTrainingRegistrationForm: builder.query<
+      CourseTrainingRegistrationFormResponse,
+      string
+    >({
+      query: (courseSlug) => ({
+        url: `/courses/${courseSlug}/registration-form/training`,
+        method: "GET",
+      }),
+      providesTags: ["Course"],
+    }),
+    getCoursePrivacyRegistrationForm: builder.query<
+      CoursePrivacyRegistrationFormResponse,
+      string
+    >({
+      query: (courseSlug) => ({
+        url: `/courses/${courseSlug}/registration-form/privacy`,
+        method: "GET",
+      }),
+      providesTags: ["Course"],
+    }),
   }),
 });
 
@@ -336,4 +375,7 @@ export const {
   useLazyGetCourseBookNowQuery,
   useGetCourseRegistrationFormQuery,
   useGetCourseAssessmentRegistrationFormQuery,
+  useGetCourseEmployerRegistrationFormQuery,
+  useGetCourseTrainingRegistrationFormQuery,
+  useGetCoursePrivacyRegistrationFormQuery,
 } = courseApi;
