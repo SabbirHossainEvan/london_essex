@@ -19,6 +19,8 @@ import {
   Phone,
   PartyPopper,
   Signature,
+  Upload,
+  X,
 } from "lucide-react";
 import type { CourseSummary } from "@/app/(website)/courses/courses-data";
 import PanelCard from "@/components/dashboard/panel-card";
@@ -49,6 +51,13 @@ type PaymentFormState = {
   cardNumber: string;
   expiry: string;
   cvc: string;
+};
+type SignatureTab = "draw" | "upload";
+type ProviderSignatureRequestState = {
+  email: string;
+  name: string;
+  subject: string;
+  message: string;
 };
 
 type CandidateFormState = {
@@ -671,6 +680,383 @@ function NetSignaturesPanel({
           >
             Continue
           </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function SignatureUploadModal({
+  open,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const isDrawingRef = React.useRef(false);
+  const [activeTab, setActiveTab] = React.useState<SignatureTab>("draw");
+  const [hasDrawn, setHasDrawn] = React.useState(false);
+  const [uploadedFileName, setUploadedFileName] = React.useState("");
+  const [uploadedPreview, setUploadedPreview] = React.useState("");
+
+  React.useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const canvas = canvasRef.current;
+
+    if (!canvas) {
+      return;
+    }
+
+    const context = canvas.getContext("2d");
+
+    if (!context) {
+      return;
+    }
+
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.strokeStyle = "#2f3fa0";
+    context.lineWidth = 2;
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    setHasDrawn(false);
+  }, [open]);
+
+  React.useEffect(() => {
+    return () => {
+      if (uploadedPreview) {
+        URL.revokeObjectURL(uploadedPreview);
+      }
+    };
+  }, [uploadedPreview]);
+
+  if (!open) {
+    return null;
+  }
+
+  const getCoordinates = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+
+    return {
+      x: ((event.clientX - rect.left) / rect.width) * event.currentTarget.width,
+      y:
+        ((event.clientY - rect.top) / rect.height) * event.currentTarget.height,
+    };
+  };
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
+
+    if (!canvas || !context) {
+      return;
+    }
+
+    const { x, y } = getCoordinates(event);
+
+    isDrawingRef.current = true;
+    context.beginPath();
+    context.moveTo(x, y);
+    setHasDrawn(true);
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawingRef.current) {
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
+
+    if (!canvas || !context) {
+      return;
+    }
+
+    const { x, y } = getCoordinates(event);
+    context.lineTo(x, y);
+    context.stroke();
+  };
+
+  const stopDrawing = () => {
+    isDrawingRef.current = false;
+  };
+
+  const clearDrawing = () => {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext("2d");
+
+    if (!canvas || !context) {
+      return;
+    }
+
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    setHasDrawn(false);
+  };
+
+  const handleUploadChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (uploadedPreview) {
+      URL.revokeObjectURL(uploadedPreview);
+    }
+
+    setUploadedFileName(file.name);
+    setUploadedPreview(URL.createObjectURL(file));
+  };
+
+  const canSubmit =
+    activeTab === "draw" ? hasDrawn : uploadedFileName.trim().length > 0;
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-[#1f2937]/70" onClick={onClose} />
+      <div className="fixed inset-0 z-[60] grid place-items-center p-4">
+        <div className="w-full max-w-[820px] rounded-[18px] border border-[#dbe7f4] bg-white p-4 shadow-[0_26px_80px_rgba(18,33,77,0.35)]">
+          <div className="flex items-center justify-between gap-4 px-2 pb-3">
+            <div className="flex items-center gap-2 text-lg font-medium text-[#3849a0]">
+              <Signature className="h-4.5 w-4.5" />
+              <span>Upload your signature</span>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-2 text-[#4451ac] transition hover:bg-[#eef5ff]"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="rounded-[18px] border border-[#e1ebf7] bg-[#f8fbff] p-3">
+            <div className="grid grid-cols-2 rounded-[14px] bg-[#e8f1fa] p-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab("draw")}
+                className={`rounded-[10px] px-4 py-3 text-base font-medium transition ${
+                  activeTab === "draw"
+                    ? "bg-white text-[#32439b] shadow-sm"
+                    : "text-[#50637f]"
+                }`}
+              >
+                Draw
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("upload")}
+                className={`rounded-[10px] px-4 py-3 text-base font-medium transition ${
+                  activeTab === "upload"
+                    ? "bg-white text-[#1f2f67] shadow-sm"
+                    : "text-[#50637f]"
+                }`}
+              >
+                Upload
+              </button>
+            </div>
+
+            {activeTab === "draw" ? (
+              <div className="mt-3">
+                <div className="grid min-h-[300px] rounded-[16px] border border-[#dde9f7] bg-white">
+                  <canvas
+                    ref={canvasRef}
+                    width={760}
+                    height={300}
+                    onPointerDown={handlePointerDown}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={stopDrawing}
+                    onPointerLeave={stopDrawing}
+                    className="h-[300px] w-full cursor-crosshair rounded-[16px]"
+                  />
+                  {!hasDrawn ? (
+                    <div className="pointer-events-none -mt-[180px] text-center text-[2rem] font-medium text-[#32439b]">
+                      Sign here
+                    </div>
+                  ) : null}
+                </div>
+                <div className="mt-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={clearDrawing}
+                    className="rounded-lg border border-[#d8e5f4] bg-white px-4 py-2 text-sm font-medium text-[#384a77]"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-3 rounded-[16px] border border-[#dde9f7] bg-white p-4">
+                <div className="rounded-[14px] border border-[#e7eef7] bg-[#fbfdff] p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="grid h-20 w-20 place-items-center rounded-xl bg-[#eef2f7] text-[#a0aec0]">
+                      {uploadedPreview ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={uploadedPreview}
+                          alt="Uploaded signature preview"
+                          className="h-16 w-16 rounded object-cover"
+                        />
+                      ) : (
+                        <Upload className="h-8 w-8" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[1.1rem] font-medium text-[#32439b]">
+                        Please upload square image, size less than 100KB
+                      </p>
+                      <div className="mt-4 flex flex-wrap items-center gap-5">
+                        <label className="inline-flex cursor-pointer items-center rounded-xl border border-[#d8e5f4] bg-white px-6 py-3 text-base font-medium text-[#4451ac]">
+                          Re upload
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            className="hidden"
+                            onChange={handleUploadChange}
+                          />
+                        </label>
+                        <span className="text-base text-[#5d6f92]">
+                          {uploadedFileName || "file...name.jpg"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              disabled={!canSubmit}
+              onClick={onSubmit}
+              className={`mt-4 w-full rounded-lg px-4 py-3 text-base font-semibold ${
+                canSubmit
+                  ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] text-white"
+                  : "cursor-not-allowed bg-[#dce4ec] text-[#9eacba]"
+              }`}
+            >
+              Submit Signature
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function AskForSignedModal({
+  open,
+  value,
+  onChange,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  value: ProviderSignatureRequestState;
+  onChange: (field: keyof ProviderSignatureRequestState, value: string) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  if (!open) {
+    return null;
+  }
+
+  const isValid =
+    value.email.trim() !== "" &&
+    value.subject.trim() !== "" &&
+    value.message.trim() !== "";
+
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-[#1f2937]/70" onClick={onClose} />
+      <div className="fixed inset-0 z-[60] grid place-items-center p-4">
+        <div className="w-full max-w-[460px] rounded-[18px] border border-[#dbe7f4] bg-white p-4 shadow-[0_26px_80px_rgba(18,33,77,0.35)]">
+          <div className="pb-3 text-lg font-medium text-[#5f6f90]">
+            Ask for signed
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-[#3849a0]">
+                Training Provider Email <span className="text-[#ef4444]">*</span>
+              </label>
+              <input
+                type="email"
+                value={value.email}
+                onChange={(event) => onChange("email", event.target.value)}
+                placeholder="Enter last name"
+                className="h-12 w-full rounded-xl border border-[#d7e5f7] bg-[#eef7ff] px-4 text-base text-[#32439b] outline-none focus:border-[#1ea6df] focus:bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-[#3849a0]">
+                Training Provider Name (Optional)
+              </label>
+              <input
+                type="text"
+                value={value.name}
+                onChange={(event) => onChange("name", event.target.value)}
+                placeholder="Enter last name"
+                className="h-12 w-full rounded-xl border border-[#d7e5f7] bg-[#eef7ff] px-4 text-base text-[#32439b] outline-none focus:border-[#1ea6df] focus:bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-[#3849a0]">
+                Subject <span className="text-[#ef4444]">*</span>
+              </label>
+              <input
+                type="text"
+                value={value.subject}
+                onChange={(event) => onChange("subject", event.target.value)}
+                placeholder="Enter last name"
+                className="h-12 w-full rounded-xl border border-[#d7e5f7] bg-[#eef7ff] px-4 text-base text-[#32439b] outline-none focus:border-[#1ea6df] focus:bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-[#3849a0]">
+                Message <span className="text-[#ef4444]">*</span>
+              </label>
+              <textarea
+                value={value.message}
+                onChange={(event) => onChange("message", event.target.value)}
+                rows={9}
+                className="w-full rounded-xl border border-[#d7e5f7] bg-[#eef7ff] px-4 py-4 text-base leading-8 text-[#32439b] outline-none focus:border-[#1ea6df] focus:bg-white"
+              />
+            </div>
+
+            <div className="flex justify-end gap-4 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-xl border border-[#d8e5f4] bg-white px-6 py-3 text-base font-semibold text-[#384a77]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!isValid}
+                onClick={onSubmit}
+                className={`rounded-xl px-6 py-3 text-base font-semibold ${
+                  isValid
+                    ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] text-white"
+                    : "cursor-not-allowed bg-[#dce4ec] text-[#9eacba]"
+                }`}
+              >
+                Send Request
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </>
@@ -1304,6 +1690,22 @@ export default function Am2RegistrationFlow({
     React.useState<NvqTiming>("before-september-2023");
   const [candidateSigned, setCandidateSigned] = React.useState(false);
   const [providerSigned, setProviderSigned] = React.useState(false);
+  const [signatureModalOpen, setSignatureModalOpen] = React.useState(false);
+  const [providerRequestModalOpen, setProviderRequestModalOpen] =
+    React.useState(false);
+  const [providerSignatureRequest, setProviderSignatureRequest] =
+    React.useState<ProviderSignatureRequestState>({
+      email: "",
+      name: "",
+      subject: "Signature request for AM2 registration",
+      message: `Hello,
+
+I have completed my registration form and require your signature as my training provider to finalize the process.
+
+Please review my details and provide your signature.
+
+Thank you,`,
+    });
   const [reviewStatus, setReviewStatus] =
     React.useState<ReviewStatus>("pending");
   const [payment, setPayment] = React.useState<PaymentFormState>({
@@ -1397,6 +1799,13 @@ export default function Am2RegistrationFlow({
     value: string | boolean
   ) => {
     setPayment((current) => ({ ...current, [field]: value }));
+  };
+
+  const updateProviderSignatureRequest = (
+    field: keyof ProviderSignatureRequestState,
+    value: string
+  ) => {
+    setProviderSignatureRequest((current) => ({ ...current, [field]: value }));
   };
 
   const isPaymentComplete =
@@ -2057,8 +2466,8 @@ export default function Am2RegistrationFlow({
             <NetSignaturesPanel
               candidateSigned={candidateSigned}
               providerSigned={providerSigned}
-              onCandidateSign={() => setCandidateSigned(true)}
-              onProviderRequest={() => setProviderSigned(true)}
+              onCandidateSign={() => setSignatureModalOpen(true)}
+              onProviderRequest={() => setProviderRequestModalOpen(true)}
               onContinue={handleSignaturesContinue}
             />
           ) : null}
@@ -2235,6 +2644,26 @@ export default function Am2RegistrationFlow({
           ) : null}
         </div>
       </PanelCard>
+
+      <SignatureUploadModal
+        open={signatureModalOpen}
+        onClose={() => setSignatureModalOpen(false)}
+        onSubmit={() => {
+          setCandidateSigned(true);
+          setSignatureModalOpen(false);
+        }}
+      />
+
+      <AskForSignedModal
+        open={providerRequestModalOpen}
+        value={providerSignatureRequest}
+        onChange={updateProviderSignatureRequest}
+        onClose={() => setProviderRequestModalOpen(false)}
+        onSubmit={() => {
+          setProviderSigned(true);
+          setProviderRequestModalOpen(false);
+        }}
+      />
 
       <NvqRegistrationDateModal
         open={nvqModalOpen}
