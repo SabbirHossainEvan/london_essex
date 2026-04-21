@@ -186,6 +186,29 @@ export type CourseDetailScreenResponse = {
   };
 };
 
+export type CourseBookNowResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    course: {
+      id: string;
+      title: string;
+      slug: string;
+    };
+    modal: {
+      type: string;
+      title: string;
+      question: string;
+      selectionMode: "single" | "multiple" | string;
+      cancelLabel?: string;
+      confirmLabel?: string;
+      options: CourseDetailBookingModalOption[];
+      initialStepId?: string;
+      steps?: CourseDetailBookingModalStep[];
+    };
+  };
+};
+
 export const courseApi = baseApi.injectEndpoints({
   overrideExisting: process.env.NODE_ENV === "development",
   endpoints: (builder) => ({
@@ -203,10 +226,18 @@ export const courseApi = baseApi.injectEndpoints({
       }),
       providesTags: ["Course"],
     }),
+    getCourseBookNow: builder.query<CourseBookNowResponse, string>({
+      query: (courseSlug) => ({
+        url: `/courses/${courseSlug}/book-now`,
+        method: "GET",
+      }),
+      providesTags: ["Course"],
+    }),
   }),
 });
 
 export const {
   useGetCourseCatalogScreenQuery,
   useGetCourseDetailScreenQuery,
+  useLazyGetCourseBookNowQuery,
 } = courseApi;

@@ -11,6 +11,7 @@ import type {
   CourseDetailBookingModalStep,
   CourseDetailBreadcrumb,
 } from "@/lib/redux/features/courses/course-api";
+import { useLazyGetCourseBookNowQuery } from "@/lib/redux/features/courses/course-api";
 
 type CourseDetailsContentProps = {
   course: CourseSummary;
@@ -46,15 +47,17 @@ export default function CourseDetailsContent({
   bookingModal,
 }: CourseDetailsContentProps) {
   const router = useRouter();
+  const [fetchBookNowModal, bookNowModalQuery] = useLazyGetCourseBookNowQuery();
   const [selectedImage, setSelectedImage] = React.useState(
     course.gallery[defaultSelectedImageIndex] ?? course.gallery[0] ?? course.heroImage
   );
   const [openSection, setOpenSection] = React.useState<AccordionKey>("learning");
   const [relatedIndex, setRelatedIndex] = React.useState(0);
   const [bookingOpen, setBookingOpen] = React.useState(false);
-  const modalSteps = bookingModal?.steps ?? [];
+  const effectiveBookingModal = bookNowModalQuery.data?.data.modal ?? bookingModal;
+  const modalSteps = effectiveBookingModal?.steps ?? [];
   const initialModalStepId =
-    bookingModal?.initialStepId ?? modalSteps[0]?.id ?? "";
+    effectiveBookingModal?.initialStepId ?? modalSteps[0]?.id ?? "";
   const [activeModalStepId, setActiveModalStepId] = React.useState(initialModalStepId);
   const [selectedModalOptionId, setSelectedModalOptionId] = React.useState("");
   const activeModalStep =
@@ -110,17 +113,52 @@ export default function CourseDetailsContent({
   React.useEffect(() => {
     setActiveModalStepId(initialModalStepId);
     setSelectedModalOptionId("");
-  }, [initialModalStepId, bookingModal?.title]);
+  }, [initialModalStepId, effectiveBookingModal?.title]);
 
-  const openBookingModal = () => {
-    if (!bookingModal?.steps?.length || !dashboardMode) {
+  const goToBookingPage = (selectedQualification?: string) => {
+    const bookingBasePath = bookingHrefBasePath ?? coursesHrefBasePath;
+
+    if (!bookingBasePath) {
+      onBookNow?.();
+      return;
+    }
+
+    const qualificationQuery = selectedQualification
+      ? `?qualification=${encodeURIComponent(selectedQualification)}`
+      : "";
+
+    router.push(`${bookingBasePath}/${course.slug}/book${qualificationQuery}`);
+  };
+
+  const openBookingModal = async () => {
+    if (!dashboardMode) {
       onBookNow?.();
       return;
     }
 
     setBookingOpen(true);
-    setActiveModalStepId(initialModalStepId);
     setSelectedModalOptionId("");
+
+    if (effectiveBookingModal?.steps?.length) {
+      setActiveModalStepId(initialModalStepId);
+      return;
+    }
+
+    try {
+      const response = await fetchBookNowModal(course.slug).unwrap();
+      const nextInitialStepId =
+        response.data.modal.initialStepId ?? response.data.modal.steps?.[0]?.id ?? "";
+
+      if (!response.data.modal.steps?.length) {
+        closeBookingModal();
+        goToBookingPage();
+        return;
+      }
+
+      setActiveModalStepId(nextInitialStepId);
+    } catch {
+      setActiveModalStepId("");
+    }
   };
 
   const closeBookingModal = () => {
@@ -147,12 +185,7 @@ export default function CourseDetailsContent({
     closeBookingModal();
 
     const selectedQualification = selectedOption?.label ?? selectedModalOptionId;
-    const bookingBasePath = bookingHrefBasePath ?? coursesHrefBasePath;
-    const destination = `${bookingBasePath}/${course.slug}/book?qualification=${encodeURIComponent(
-      selectedQualification
-    )}`;
-
-    router.push(destination);
+    goToBookingPage(selectedQualification);
   };
 
   return (
@@ -230,13 +263,15 @@ export default function CourseDetailsContent({
               >
                 Book Now
               </button>
-            ) : dashboardMode && bookingModal?.steps?.length ? (
+            ) : dashboardMode ? (
               <button
                 type="button"
-                onClick={openBookingModal}
+                onClick={() => {
+                  void openBookingModal();
+                }}
                 className="mt-5 block w-full rounded-[8px] bg-[#1ea9de] px-6 py-4 text-center text-base font-semibold text-white shadow-[0_4px_0_#315063]"
               >
-                {bookingModal.confirmLabel ?? "Book Now"}
+                Book Now
               </button>
             ) : (
               <Link
@@ -335,7 +370,7 @@ export default function CourseDetailsContent({
         </div>
       </div>
 
-      {dashboardMode && bookingModal?.steps?.length ? (
+      {dashboardMode && bookingOpen ? (
         <>
           <div
             className={`fixed inset-0 z-40 bg-[#12214d]/42 backdrop-blur-[2px] transition ${
@@ -357,7 +392,7 @@ export default function CourseDetailsContent({
                 <div className="flex items-center justify-between gap-3 border-b border-[#e7eef8] px-4 py-3">
                   <div className="text-[#3346a5]">
                     <h2 className="text-base font-semibold">
-                      {activeModalStep?.title ?? bookingModal.title}
+                      {activeModalStep?.title ?? effectiveBookingModal?.title ?? "Book Now"}
                     </h2>
                   </div>
 
@@ -372,38 +407,72 @@ export default function CourseDetailsContent({
                 </div>
 
                 <div className="p-3">
-                  <div className="rounded-[14px] border border-[#51c4ff] bg-[linear-gradient(180deg,#f9fbff_0%,#f4f7fc_100%)] p-3">
-                    <p className="text-[0.95rem] font-medium leading-6 text-[#3546a5]">
-                      {activeModalStep?.question ?? bookingModal.question}
-                    </p>
-                    <p className="mt-2 text-xs font-medium text-[#7a88a7]">Ans:</p>
-
-                    <div className="mt-2 max-h-[560px] space-y-2 overflow-y-auto pr-1">
-                      {activeModalStep?.options.map((option) => {
-                        const isSelected = selectedModalOptionId === option.id;
-
-                        return (
-                          <label
-                            key={option.id}
-                            className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 text-[0.8rem] leading-5 transition ${
-                              isSelected
-                                ? "border-[#b9e7ff] bg-[#fcfeff] text-[#3346a5]"
-                                : "border-[#d9e7f5] bg-white text-[#44577e]"
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name={`booking-step-${activeModalStep.id}`}
-                              checked={isSelected}
-                              onChange={() => setSelectedModalOptionId(option.id)}
-                              className="mt-0.5 h-4 w-4 accent-[#1ea6df]"
-                            />
-                            <span>{option.label}</span>
-                          </label>
-                        );
-                      })}
+                  {bookNowModalQuery.isFetching ? (
+                    <div className="rounded-[14px] border border-[#d9e7f5] bg-[linear-gradient(180deg,#f9fbff_0%,#f4f7fc_100%)] p-5 text-sm text-[#5a6d96]">
+                      Loading booking options...
                     </div>
-                  </div>
+                  ) : bookNowModalQuery.isError ? (
+                    <div className="rounded-[14px] border border-[#fecaca] bg-[#fff3f3] p-4">
+                      <p className="text-sm font-medium text-[#dc2626]">
+                        {"error" in bookNowModalQuery &&
+                        typeof bookNowModalQuery.error === "object" &&
+                        bookNowModalQuery.error !== null &&
+                        "data" in bookNowModalQuery.error &&
+                        typeof bookNowModalQuery.error.data === "object" &&
+                        bookNowModalQuery.error.data !== null &&
+                        "message" in bookNowModalQuery.error.data &&
+                        typeof bookNowModalQuery.error.data.message === "string"
+                          ? bookNowModalQuery.error.data.message
+                          : "We could not load the booking options right now."}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void fetchBookNowModal(course.slug);
+                        }}
+                        className="mt-3 rounded-md bg-[#1ea9de] px-4 py-2 text-sm font-medium text-white"
+                      >
+                        Try again
+                      </button>
+                    </div>
+                  ) : activeModalStep ? (
+                    <div className="rounded-[14px] border border-[#51c4ff] bg-[linear-gradient(180deg,#f9fbff_0%,#f4f7fc_100%)] p-3">
+                      <p className="text-[0.95rem] font-medium leading-6 text-[#3546a5]">
+                        {activeModalStep.question ?? effectiveBookingModal?.question}
+                      </p>
+                      <p className="mt-2 text-xs font-medium text-[#7a88a7]">Ans:</p>
+
+                      <div className="mt-2 max-h-[560px] space-y-2 overflow-y-auto pr-1">
+                        {activeModalStep.options.map((option) => {
+                          const isSelected = selectedModalOptionId === option.id;
+
+                          return (
+                            <label
+                              key={option.id}
+                              className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 text-[0.8rem] leading-5 transition ${
+                                isSelected
+                                  ? "border-[#b9e7ff] bg-[#fcfeff] text-[#3346a5]"
+                                  : "border-[#d9e7f5] bg-white text-[#44577e]"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name={`booking-step-${activeModalStep.id}`}
+                                checked={isSelected}
+                                onChange={() => setSelectedModalOptionId(option.id)}
+                                className="mt-0.5 h-4 w-4 accent-[#1ea6df]"
+                              />
+                              <span>{option.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-[14px] border border-[#d9e7f5] bg-[linear-gradient(180deg,#f9fbff_0%,#f4f7fc_100%)] p-5 text-sm text-[#5a6d96]">
+                      No booking steps are available for this course yet.
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-end gap-2 border-t border-[#e7eef8] px-4 py-3">
@@ -412,19 +481,19 @@ export default function CourseDetailsContent({
                     onClick={closeBookingModal}
                     className="rounded-md border border-[#d8e5f4] bg-white px-4 py-2 text-sm font-medium text-[#384a77]"
                   >
-                    {bookingModal.cancelLabel ?? "Cancel"}
+                    {effectiveBookingModal?.cancelLabel ?? "Cancel"}
                   </button>
                   <button
                     type="button"
-                    disabled={!selectedModalOptionId}
+                    disabled={!selectedModalOptionId || bookNowModalQuery.isFetching || bookNowModalQuery.isError}
                     onClick={handleBookingContinue}
                     className={`rounded-md px-4 py-2 text-sm font-medium ${
-                      selectedModalOptionId
+                      selectedModalOptionId && !bookNowModalQuery.isFetching && !bookNowModalQuery.isError
                         ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] text-white shadow-[0_12px_24px_rgba(30,166,223,0.26)]"
                         : "cursor-not-allowed bg-[#dce4ec] text-[#9eacba]"
                     }`}
                   >
-                    {activeModalStep?.confirmLabel ?? bookingModal.confirmLabel ?? "Continue"}
+                    {activeModalStep?.confirmLabel ?? effectiveBookingModal?.confirmLabel ?? "Continue"}
                   </button>
                 </div>
               </div>

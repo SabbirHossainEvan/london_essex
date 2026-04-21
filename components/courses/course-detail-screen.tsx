@@ -80,7 +80,6 @@ export default function CourseDetailScreen({
       bookingHrefBasePath={bookingHrefBasePath}
       dashboardMode={dashboardMode}
       breadcrumbs={screen.breadcrumbs}
-      bookingModal={screen.course.bookNowModal}
     />
   );
 }
