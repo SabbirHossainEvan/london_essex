@@ -5,7 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarDays, ChevronRight, Mail, MapPin, Phone, User } from "lucide-react";
 import PanelCard from "@/components/dashboard/panel-card";
-import { useGetBookingCheckoutDetailsQuery } from "@/lib/redux/features/bookings/booking-api";
+import {
+  useGetBookingCheckoutDetailsQuery,
+  useUpdateBookingCheckoutDetailsMutation,
+} from "@/lib/redux/features/bookings/booking-api";
 
 type BookingCheckoutDetailsViewProps = {
   bookingId: string;
@@ -13,7 +16,7 @@ type BookingCheckoutDetailsViewProps = {
 
 type CheckoutFieldState = Record<string, string>;
 
-function resolveErrorMessage(error: unknown) {
+function resolveErrorMessage(error: unknown, fallback = "We could not load the checkout details right now.") {
   if (
     typeof error === "object" &&
     error !== null &&
@@ -26,7 +29,7 @@ function resolveErrorMessage(error: unknown) {
     return error.data.message;
   }
 
-  return "We could not load the checkout details right now.";
+  return fallback;
 }
 
 function CheckoutStepper({
@@ -122,10 +125,13 @@ export default function BookingCheckoutDetailsView({
   bookingId,
 }: BookingCheckoutDetailsViewProps) {
   const router = useRouter();
+  const [updateCheckoutDetails, updateCheckoutDetailsState] =
+    useUpdateBookingCheckoutDetailsMutation();
   const { data, isLoading, isError, error } = useGetBookingCheckoutDetailsQuery(bookingId);
   const screen = data?.data.screen;
   const section = screen?.sections[0];
   const [fields, setFields] = React.useState<CheckoutFieldState>({});
+  const [submitError, setSubmitError] = React.useState("");
 
   React.useEffect(() => {
     if (!section?.fields) {
@@ -225,17 +231,52 @@ export default function BookingCheckoutDetailsView({
             </Link>
             <button
               type="button"
-              disabled={isFormIncomplete}
-              onClick={() => {
-                router.push(`/dashboard/bookings/${bookingId}/checkout/payment`);
+              disabled={isFormIncomplete || updateCheckoutDetailsState.isLoading}
+              onClick={async () => {
+                setSubmitError("");
+
+                try {
+                  await updateCheckoutDetails({
+                    bookingId,
+                    personalDetails: {
+                      fullName: fields.fullName || "",
+                      email: fields.email || "",
+                      phoneNumber: fields.phoneNumber || "",
+                      dateOfBirth: fields.dateOfBirth || "",
+                      address: fields.address || "",
+                      trainingCenter: fields.trainingCenter || "",
+                      city: fields.city || "",
+                      postcode: fields.postcode || "",
+                    },
+                  }).unwrap();
+
+                  router.push(`/dashboard/bookings/${bookingId}/checkout/payment`);
+                } catch (submitError) {
+                  setSubmitError(
+                    resolveErrorMessage(
+                      submitError,
+                      "We could not update the booking details right now."
+                    )
+                  );
+                }
               }}
               className={`rounded-xl px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(30,166,223,0.18)] ${
-                isFormIncomplete ? "cursor-not-allowed bg-[#9fdcf3]" : "bg-[#1ea6df]"
+                isFormIncomplete || updateCheckoutDetailsState.isLoading
+                  ? "cursor-not-allowed bg-[#9fdcf3]"
+                  : "bg-[#1ea6df]"
               }`}
             >
-              {screen.actions?.continue?.label || "Continue"}
+              {updateCheckoutDetailsState.isLoading
+                ? "Saving..."
+                : screen.actions?.continue?.label || "Continue"}
             </button>
           </div>
+
+          {submitError ? (
+            <p className="rounded-xl border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+              {submitError}
+            </p>
+          ) : null}
         </section>
       </PanelCard>
     </div>

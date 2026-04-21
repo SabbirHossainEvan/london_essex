@@ -283,6 +283,107 @@ export type GetBookingCheckoutPaymentResponse = {
   };
 };
 
+export type UpdateBookingCheckoutDetailsRequest = {
+  bookingId: string;
+  personalDetails: {
+    fullName: string;
+    email: string;
+    phoneNumber: string;
+    dateOfBirth: string;
+    address: string;
+    trainingCenter: string;
+    city: string;
+    postcode: string;
+  };
+};
+
+export type CreateBookingPaymentIntentRequest = {
+  bookingId: string;
+  agreedToTerms: boolean;
+};
+
+export type CreateBookingPaymentIntentResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    paymentIntent: {
+      id: string;
+      clientSecret: string;
+      status: string;
+      amount: number;
+      currency: string;
+    };
+    stripe: {
+      publishableKey: string;
+    };
+    booking: GetBookingByIdResponse["data"]["booking"];
+  };
+};
+
+export type CompleteBookingPaymentRequest = {
+  bookingId: string;
+  agreedToTerms: boolean;
+  paymentIntentId: string;
+  paymentMethodId?: string;
+};
+
+export type CompleteBookingPaymentResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    booking: GetBookingByIdResponse["data"]["booking"];
+    paymentIntent?: {
+      id: string;
+      status: string;
+    };
+  };
+};
+
+export type BookingCheckoutConfirmationScreen = {
+  steps: BookingCheckoutStep[];
+  title: string;
+  description: string;
+  booking: {
+    id: string;
+    bookingNumber: string;
+    status: string;
+    paymentStatus: string;
+    confirmedAt?: string | null;
+  };
+  receipt?: {
+    transactionId?: string;
+    amount?: number;
+    currency?: string;
+    displayAmount?: string;
+    cardBrand?: string;
+    cardLast4?: string;
+    paidAt?: string | null;
+  };
+  actions?: {
+    primary?: {
+      label?: string;
+      apiUrl?: string;
+    };
+  };
+};
+
+export type GetBookingCheckoutConfirmationResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    screen: BookingCheckoutConfirmationScreen;
+  };
+};
+
+export type GetBookingPaymentStatusResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    booking: GetBookingByIdResponse["data"]["booking"];
+    confirmation: BookingCheckoutConfirmationScreen;
+  };
+};
+
 export const bookingApi = baseApi.injectEndpoints({
   overrideExisting: process.env.NODE_ENV === "development",
   endpoints: (builder) => ({
@@ -325,6 +426,56 @@ export const bookingApi = baseApi.injectEndpoints({
       }),
       providesTags: ["Booking"],
     }),
+    getBookingCheckoutConfirmation: builder.query<
+      GetBookingCheckoutConfirmationResponse,
+      string
+    >({
+      query: (bookingId) => ({
+        url: `/bookings/${bookingId}/checkout/confirmation`,
+        method: "GET",
+      }),
+      providesTags: ["Booking"],
+    }),
+    updateBookingCheckoutDetails: builder.mutation<
+      GetBookingByIdResponse,
+      UpdateBookingCheckoutDetailsRequest
+    >({
+      query: ({ bookingId, personalDetails }) => ({
+        url: `/bookings/${bookingId}/details`,
+        method: "PATCH",
+        body: { personalDetails },
+      }),
+      invalidatesTags: ["Booking"],
+    }),
+    createBookingPaymentIntent: builder.mutation<
+      CreateBookingPaymentIntentResponse,
+      CreateBookingPaymentIntentRequest
+    >({
+      query: ({ bookingId, agreedToTerms }) => ({
+        url: `/bookings/${bookingId}/payment/intent`,
+        method: "POST",
+        body: { agreedToTerms },
+      }),
+      invalidatesTags: ["Booking"],
+    }),
+    completeBookingPayment: builder.mutation<
+      CompleteBookingPaymentResponse,
+      CompleteBookingPaymentRequest
+    >({
+      query: ({ bookingId, ...body }) => ({
+        url: `/bookings/${bookingId}/payment`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Booking"],
+    }),
+    getBookingPaymentStatus: builder.query<GetBookingPaymentStatusResponse, string>({
+      query: (bookingId) => ({
+        url: `/bookings/${bookingId}/payment/status`,
+        method: "GET",
+      }),
+      providesTags: ["Booking"],
+    }),
   }),
 });
 
@@ -334,4 +485,10 @@ export const {
   useGetBookingByIdQuery,
   useGetBookingCheckoutDetailsQuery,
   useGetBookingCheckoutPaymentQuery,
+  useGetBookingCheckoutConfirmationQuery,
+  useUpdateBookingCheckoutDetailsMutation,
+  useCreateBookingPaymentIntentMutation,
+  useCompleteBookingPaymentMutation,
+  useGetBookingPaymentStatusQuery,
+  useLazyGetBookingPaymentStatusQuery,
 } = bookingApi;

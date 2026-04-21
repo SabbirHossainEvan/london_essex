@@ -5,7 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarDays, ChevronRight, CreditCard, Lock, ShieldCheck } from "lucide-react";
 import PanelCard from "@/components/dashboard/panel-card";
-import { useGetBookingCheckoutPaymentQuery } from "@/lib/redux/features/bookings/booking-api";
+import {
+  useCompleteBookingPaymentMutation,
+  useCreateBookingPaymentIntentMutation,
+  useGetBookingCheckoutPaymentQuery,
+} from "@/lib/redux/features/bookings/booking-api";
 
 type BookingCheckoutPaymentViewProps = {
   bookingId: string;
@@ -18,7 +22,7 @@ type PaymentFormState = {
   cvc: string;
 };
 
-function resolveErrorMessage(error: unknown) {
+function resolveErrorMessage(error: unknown, fallback = "We could not load the payment screen right now.") {
   if (
     typeof error === "object" &&
     error !== null &&
@@ -31,7 +35,7 @@ function resolveErrorMessage(error: unknown) {
     return error.data.message;
   }
 
-  return "We could not load the payment screen right now.";
+  return fallback;
 }
 
 function CheckoutStepper({
@@ -117,6 +121,8 @@ export default function BookingCheckoutPaymentView({
 }: BookingCheckoutPaymentViewProps) {
   const router = useRouter();
   const { data, isLoading, isError, error } = useGetBookingCheckoutPaymentQuery(bookingId);
+  const [createPaymentIntent, { isLoading: isCreatingIntent }] = useCreateBookingPaymentIntentMutation();
+  const [completePayment, { isLoading: isCompletingPayment }] = useCompleteBookingPaymentMutation();
   const screen = data?.data.screen;
   const [payment, setPayment] = React.useState<PaymentFormState>({
     acceptedTerms: false,
@@ -124,6 +130,8 @@ export default function BookingCheckoutPaymentView({
     expiry: "",
     cvc: "",
   });
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const isSubmitting = isCreatingIntent || isCompletingPayment;
 
   React.useEffect(() => {
     if (!screen?.terms) {
@@ -165,6 +173,38 @@ export default function BookingCheckoutPaymentView({
     payment.cardNumber.replace(/\s/g, "").length === 16 &&
     payment.expiry.replace(/\D/g, "").length === 4 &&
     payment.cvc.length >= 3;
+
+  async function handlePay() {
+    if (!canPay || isSubmitting) {
+      return;
+    }
+
+    try {
+      setSubmitError(null);
+      const intentResponse = await createPaymentIntent({
+        bookingId,
+        agreedToTerms: payment.acceptedTerms,
+      }).unwrap();
+
+      const paymentIntentId = intentResponse.data.paymentIntent.id;
+
+      await completePayment({
+        bookingId,
+        agreedToTerms: payment.acceptedTerms,
+        paymentIntentId,
+        paymentMethodId: "pm_card_visa",
+      }).unwrap();
+
+      router.push(`/dashboard/bookings/${bookingId}/checkout/confirm`);
+    } catch (submitPaymentError) {
+      setSubmitError(
+        resolveErrorMessage(
+          submitPaymentError,
+          "We could not prepare your payment right now.",
+        ),
+      );
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -298,23 +338,34 @@ export default function BookingCheckoutPaymentView({
             </div>
           </div>
 
+          {submitError ? (
+            <div className="rounded-2xl border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+              {submitError}
+            </div>
+          ) : null}
+
           <div className="flex flex-col-reverse justify-between gap-3 border-t border-[#e4edf8] pt-5 sm:flex-row">
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={() => router.push(`/dashboard/bookings/${bookingId}/checkout/details`)}
-              className="rounded-xl border border-[#d8e5f6] bg-white px-5 py-3 text-sm font-medium text-[#4356ad]"
+              className={`rounded-xl border border-[#d8e5f6] px-5 py-3 text-sm font-medium text-[#4356ad] ${
+                isSubmitting ? "cursor-not-allowed bg-[#f5f8fd] opacity-70" : "bg-white"
+              }`}
             >
               {screen.actions?.back?.label || "Back"}
             </button>
             <button
               type="button"
-              disabled={!canPay}
-              onClick={() => router.push(`/dashboard/bookings/${bookingId}`)}
+              disabled={!canPay || isSubmitting}
+              onClick={handlePay}
               className={`rounded-xl px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_22px_rgba(30,166,223,0.18)] ${
-                canPay ? "bg-[#1ea6df]" : "cursor-not-allowed bg-[#9fdcf3]"
+                canPay && !isSubmitting
+                  ? "bg-[#1ea6df]"
+                  : "cursor-not-allowed bg-[#9fdcf3]"
               }`}
             >
-              {screen.actions?.pay?.label || "Pay"}
+              {isSubmitting ? "Preparing payment..." : screen.actions?.pay?.label || "Pay"}
             </button>
           </div>
         </section>
