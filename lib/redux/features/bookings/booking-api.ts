@@ -302,6 +302,103 @@ export type CreateBookingPaymentIntentRequest = {
   agreedToTerms: boolean;
 };
 
+export type SaveRegistrationEligibilityRequest = {
+  bookingId: string;
+  qualificationId: string;
+  qualificationLabel: string;
+  nvqRegistrationDate?: string;
+};
+
+export type SaveRegistrationEligibilityResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    booking: GetBookingByIdResponse["data"]["booking"];
+  };
+};
+
+export type SaveRegistrationAssessmentRequest = {
+  bookingId: string;
+  assessmentDetails: {
+    apprentice: string;
+    uln: string;
+    funding: string;
+    awardingBody: string;
+    reasonableAdjustments: string;
+    recognitionOfPriorLearning: string;
+    assessmentType: string;
+  };
+};
+
+export type SaveRegistrationAssessmentResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    booking: GetBookingByIdResponse["data"]["booking"];
+  };
+};
+
+export type SaveRegistrationEmployerRequest = {
+  bookingId: string;
+  employerDetails: {
+    companyName: string;
+    email: string;
+    contactName: string;
+    contactNumber: string;
+    address1: string;
+    address2: string;
+    address3: string;
+    address4: string;
+    town: string;
+    postcode: string;
+  };
+};
+
+export type SaveRegistrationEmployerResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    booking: GetBookingByIdResponse["data"]["booking"];
+  };
+};
+
+export type SaveRegistrationTrainingRequest = {
+  bookingId: string;
+  trainingProviderDetails: {
+    companyName: string;
+    email: string;
+    contactName: string;
+    contactNumber: string;
+    address1: string;
+    address2: string;
+    address3: string;
+    address4: string;
+    town: string;
+    postcode: string;
+  };
+};
+
+export type SaveRegistrationTrainingResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    booking: GetBookingByIdResponse["data"]["booking"];
+  };
+};
+
+export type SaveRegistrationPrivacyRequest = {
+  bookingId: string;
+  privacyConfirmation: boolean;
+};
+
+export type SaveRegistrationPrivacyResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    booking: GetBookingByIdResponse["data"]["booking"];
+  };
+};
+
 export type CreateBookingPaymentIntentResponse = {
   success: boolean;
   message: string;
@@ -447,6 +544,61 @@ export const bookingApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Booking"],
     }),
+    saveRegistrationEligibility: builder.mutation<
+      SaveRegistrationEligibilityResponse,
+      SaveRegistrationEligibilityRequest
+    >({
+      query: ({ bookingId, ...body }) => ({
+        url: `/bookings/${bookingId}/registration/eligibility`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Booking"],
+    }),
+    saveRegistrationAssessment: builder.mutation<
+      SaveRegistrationAssessmentResponse,
+      SaveRegistrationAssessmentRequest
+    >({
+      query: ({ bookingId, assessmentDetails }) => ({
+        url: `/bookings/${bookingId}/registration/assessment`,
+        method: "POST",
+        body: { assessmentDetails },
+      }),
+      invalidatesTags: ["Booking"],
+    }),
+    saveRegistrationEmployer: builder.mutation<
+      SaveRegistrationEmployerResponse,
+      SaveRegistrationEmployerRequest
+    >({
+      query: ({ bookingId, employerDetails }) => ({
+        url: `/bookings/${bookingId}/registration/employer`,
+        method: "POST",
+        body: { employerDetails },
+      }),
+      invalidatesTags: ["Booking"],
+    }),
+    saveRegistrationTraining: builder.mutation<
+      SaveRegistrationTrainingResponse,
+      SaveRegistrationTrainingRequest
+    >({
+      query: ({ bookingId, trainingProviderDetails }) => ({
+        url: `/bookings/${bookingId}/registration/training`,
+        method: "POST",
+        body: { trainingProviderDetails },
+      }),
+      invalidatesTags: ["Booking"],
+    }),
+    saveRegistrationPrivacy: builder.mutation<
+      SaveRegistrationPrivacyResponse,
+      SaveRegistrationPrivacyRequest
+    >({
+      query: ({ bookingId, privacyConfirmation }) => ({
+        url: `/bookings/${bookingId}/registration/privacy`,
+        method: "POST",
+        body: { privacyConfirmation },
+      }),
+      invalidatesTags: ["Booking"],
+    }),
     createBookingPaymentIntent: builder.mutation<
       CreateBookingPaymentIntentResponse,
       CreateBookingPaymentIntentRequest
@@ -487,6 +639,11 @@ export const {
   useGetBookingCheckoutPaymentQuery,
   useGetBookingCheckoutConfirmationQuery,
   useUpdateBookingCheckoutDetailsMutation,
+  useSaveRegistrationEligibilityMutation,
+  useSaveRegistrationAssessmentMutation,
+  useSaveRegistrationEmployerMutation,
+  useSaveRegistrationTrainingMutation,
+  useSaveRegistrationPrivacyMutation,
   useCreateBookingPaymentIntentMutation,
   useCompleteBookingPaymentMutation,
   useGetBookingPaymentStatusQuery,

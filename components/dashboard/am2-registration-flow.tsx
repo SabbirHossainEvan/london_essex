@@ -25,6 +25,13 @@ import {
 import type { CourseSummary } from "@/app/(website)/courses/courses-data";
 import PanelCard from "@/components/dashboard/panel-card";
 import {
+  useSaveRegistrationAssessmentMutation,
+  useSaveRegistrationEmployerMutation,
+  useSaveRegistrationEligibilityMutation,
+  useSaveRegistrationPrivacyMutation,
+  useSaveRegistrationTrainingMutation,
+} from "@/lib/redux/features/bookings/booking-api";
+import {
   useGetCourseAssessmentRegistrationFormQuery,
   useGetCourseEmployerRegistrationFormQuery,
   useGetCoursePrivacyRegistrationFormQuery,
@@ -35,6 +42,7 @@ import {
 
 type Am2RegistrationFlowProps = {
   course: CourseSummary;
+  bookingId?: string;
 };
 
 type RegistrationStepKey =
@@ -107,7 +115,7 @@ type EmployerFormState = {
 
 type TrainingFormState = EmployerFormState;
 type NetFlowType = "am2" | "am2e" | "am2e-v1";
-type NvqTiming = "before-september-2023" | "after-september-2023";
+type NvqTiming = "before-3rd-september-2023" | "after-september-2023";
 type EmployerStatus = "yes" | "no";
 type DocumentRequirement = {
   id: string;
@@ -1596,12 +1604,14 @@ function NvqRegistrationDateModal({
   onChange,
   onClose,
   onContinue,
+  isSubmitting = false,
 }: {
   open: boolean;
   value: NvqTiming;
   onChange: (value: NvqTiming) => void;
   onClose: () => void;
   onContinue: () => void;
+  isSubmitting?: boolean;
 }) {
   if (!open) {
     return null;
@@ -1629,7 +1639,7 @@ function NvqRegistrationDateModal({
               <div className="mt-4 space-y-4">
                 {[
                   {
-                    key: "before-september-2023" as const,
+                    key: "before-3rd-september-2023" as const,
                     label: "Before 3rd September 2023",
                   },
                   {
@@ -1662,17 +1672,25 @@ function NvqRegistrationDateModal({
           <div className="mt-6 flex items-center justify-end gap-3">
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={onClose}
-              className="rounded-xl border border-[#d8e5f4] bg-white px-8 py-3 text-base font-medium text-[#384a77]"
+              className={`rounded-xl border border-[#d8e5f4] px-8 py-3 text-base font-medium text-[#384a77] ${
+                isSubmitting ? "cursor-not-allowed bg-[#f5f8fd] opacity-70" : "bg-white"
+              }`}
             >
               Cancel
             </button>
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={onContinue}
-              className="rounded-xl bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] px-8 py-3 text-base font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
+              className={`rounded-xl px-8 py-3 text-base font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)] ${
+                isSubmitting
+                  ? "cursor-not-allowed bg-[#a6dff6]"
+                  : "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)]"
+              }`}
             >
-              Continue
+              {isSubmitting ? "Saving..." : "Continue"}
             </button>
           </div>
         </div>
@@ -1683,9 +1701,20 @@ function NvqRegistrationDateModal({
 
 export default function Am2RegistrationFlow({
   course,
+  bookingId,
 }: Am2RegistrationFlowProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [saveRegistrationEligibility, { isLoading: isSavingEligibility }] =
+    useSaveRegistrationEligibilityMutation();
+  const [saveRegistrationAssessment, { isLoading: isSavingAssessment }] =
+    useSaveRegistrationAssessmentMutation();
+  const [saveRegistrationEmployer, { isLoading: isSavingEmployer }] =
+    useSaveRegistrationEmployerMutation();
+  const [saveRegistrationTraining, { isLoading: isSavingTraining }] =
+    useSaveRegistrationTrainingMutation();
+  const [saveRegistrationPrivacy, { isLoading: isSavingPrivacy }] =
+    useSaveRegistrationPrivacyMutation();
   const {
     data: registrationFormData,
     isLoading: isRegistrationFormLoading,
@@ -1763,6 +1792,7 @@ export default function Am2RegistrationFlow({
   const [assessmentStepError, setAssessmentStepError] = React.useState("");
   const [employerStepError, setEmployerStepError] = React.useState("");
   const [trainingStepError, setTrainingStepError] = React.useState("");
+  const [eligibilityStepError, setEligibilityStepError] = React.useState("");
   const [training, setTraining] = React.useState<TrainingFormState>({
     companyName: "",
     email: "",
@@ -1783,7 +1813,7 @@ export default function Am2RegistrationFlow({
   );
   const [nvqModalOpen, setNvqModalOpen] = React.useState(false);
   const [nvqTiming, setNvqTiming] =
-    React.useState<NvqTiming>("before-september-2023");
+    React.useState<NvqTiming>("before-3rd-september-2023");
   const [candidateSigned, setCandidateSigned] = React.useState(false);
   const [providerSigned, setProviderSigned] = React.useState(false);
   const [signatureModalOpen, setSignatureModalOpen] = React.useState(false);
@@ -1812,6 +1842,7 @@ Thank you,`,
   });
 
   const selectedQualification = searchParams.get("qualification") ?? "";
+  const selectedQualificationIdParam = searchParams.get("qualificationId") ?? "";
   const requestedFlow = searchParams.get("flow");
   const requestedNetStep = searchParams.get("netStep");
   const requestedReviewStatus = searchParams.get("reviewStatus");
@@ -1882,6 +1913,21 @@ Thank you,`,
     activeRegistrationScreen?.submission?.continueLabel ??
     activeRegistrationScreen?.navigation?.next?.label ??
     "Continue";
+
+  const resolvedBookingId = bookingId ?? searchParams.get("bookingId") ?? "";
+
+  const resolveQualificationId = React.useCallback(() => {
+    if (selectedQualificationIdParam) {
+      return selectedQualificationIdParam;
+    }
+
+    return selectedQualification
+      .trim()
+      .toLowerCase()
+      .replace(/&/g, " and ")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  }, [selectedQualification, selectedQualificationIdParam]);
 
   React.useEffect(() => {
     const initialUploads = netFlowContent[netFlowType].requirements
@@ -2072,7 +2118,7 @@ Thank you,`,
     updateAssessment("assessmentType", value);
   };
 
-  const moveNext = () => {
+  const moveNext = async () => {
     if (currentStep === "candidate") {
       const requiredCandidateFields = candidateFields.filter(
         (field) => field.required && candidateFieldIdMap[field.id]
@@ -2097,9 +2143,46 @@ Thank you,`,
         return assessment[stateKey].trim().length === 0;
       });
 
-      if (hasMissingAssessmentField) {
+        if (hasMissingAssessmentField) {
+          setAssessmentStepError(
+            "Please complete all required assessment fields before continuing."
+          );
+          return;
+        }
+
+      if (!resolvedBookingId) {
         setAssessmentStepError(
-          "Please complete all required assessment fields before continuing."
+          "We could not determine the booking reference for this registration yet."
+        );
+        return;
+      }
+
+      try {
+        setAssessmentStepError("");
+        await saveRegistrationAssessment({
+          bookingId: resolvedBookingId,
+          assessmentDetails: {
+            apprentice: assessment.apprentice.toLowerCase(),
+            uln: assessment.uln,
+            funding: assessment.funding
+              .toLowerCase()
+              .replace(/\s+/g, "-")
+              .replace(/\+/g, "-plus"),
+            awardingBody: assessment.awardingBody
+              .toLowerCase()
+              .replace(/\s*&\s*/g, "-and-")
+              .replace(/\s+/g, "-"),
+            reasonableAdjustments: assessment.adjustments.toLowerCase(),
+            recognitionOfPriorLearning: assessment.recognition.toLowerCase(),
+            assessmentType: assessment.assessmentType.toLowerCase(),
+          },
+        }).unwrap();
+      } catch (saveAssessmentError) {
+        setAssessmentStepError(
+          resolveApiErrorMessage(
+            saveAssessmentError,
+            "We could not save your assessment details right now."
+          )
         );
         return;
       }
@@ -2123,6 +2206,40 @@ Thank you,`,
           );
           return;
         }
+
+        if (!resolvedBookingId) {
+          setEmployerStepError(
+            "We could not determine the booking reference for this registration yet."
+          );
+          return;
+        }
+
+        try {
+          setEmployerStepError("");
+          await saveRegistrationEmployer({
+            bookingId: resolvedBookingId,
+            employerDetails: {
+              companyName: employer.companyName,
+              email: employer.email,
+              contactName: employer.contactName,
+              contactNumber: employer.contactNumber,
+              address1: employer.address1,
+              address2: employer.address2,
+              address3: employer.address3,
+              address4: employer.address4,
+              town: employer.town,
+              postcode: employer.postcode,
+            },
+          }).unwrap();
+        } catch (saveEmployerError) {
+          setEmployerStepError(
+            resolveApiErrorMessage(
+              saveEmployerError,
+              "We could not save your employer details right now."
+            )
+          );
+          return;
+        }
       }
     }
 
@@ -2138,6 +2255,40 @@ Thank you,`,
       if (hasMissingTrainingField) {
         setTrainingStepError(
           "Please complete all required training provider fields before continuing."
+        );
+        return;
+      }
+
+      if (!resolvedBookingId) {
+        setTrainingStepError(
+          "We could not determine the booking reference for this registration yet."
+        );
+        return;
+      }
+
+      try {
+        setTrainingStepError("");
+        await saveRegistrationTraining({
+          bookingId: resolvedBookingId,
+          trainingProviderDetails: {
+            companyName: training.companyName,
+            email: training.email,
+            contactName: training.contactName,
+            contactNumber: training.contactNumber,
+            address1: training.address1,
+            address2: training.address2,
+            address3: training.address3,
+            address4: training.address4,
+            town: training.town,
+            postcode: training.postcode,
+          },
+        }).unwrap();
+      } catch (saveTrainingError) {
+        setTrainingStepError(
+          resolveApiErrorMessage(
+            saveTrainingError,
+            "We could not save your training provider details right now."
+          )
         );
         return;
       }
@@ -2162,19 +2313,100 @@ Thank you,`,
     setCurrentNetStep("documents");
   };
 
-  const handlePrivacyContinue = () => {
+  const submitEligibility = React.useCallback(
+    async (registrationDate?: string) => {
+      if (!resolvedBookingId) {
+        setEligibilityStepError(
+          "We could not determine the booking reference for this registration yet."
+        );
+        return false;
+      }
+
+      const qualificationId = resolveQualificationId();
+
+      if (!qualificationId || !selectedQualification) {
+        setEligibilityStepError(
+          "Please start from Book Now and select a qualification before continuing."
+        );
+        return false;
+      }
+
+      try {
+        setEligibilityStepError("");
+        await saveRegistrationEligibility({
+          bookingId: resolvedBookingId,
+          qualificationId,
+          qualificationLabel: selectedQualification,
+          nvqRegistrationDate: registrationDate ?? "",
+        }).unwrap();
+        return true;
+      } catch (saveEligibilityError) {
+        setEligibilityStepError(
+          resolveApiErrorMessage(
+            saveEligibilityError,
+            "We could not save your eligibility details right now."
+          )
+        );
+        return false;
+      }
+    },
+    [
+      resolveQualificationId,
+      resolvedBookingId,
+      saveRegistrationEligibility,
+      selectedQualification,
+    ]
+  );
+
+  const handlePrivacyContinue = async () => {
+    if (!resolvedBookingId) {
+      setEligibilityStepError(
+        "We could not determine the booking reference for this registration yet."
+      );
+      return;
+    }
+
+    try {
+      setEligibilityStepError("");
+      await saveRegistrationPrivacy({
+        bookingId: resolvedBookingId,
+        privacyConfirmation: true,
+      }).unwrap();
+    } catch (savePrivacyError) {
+      setEligibilityStepError(
+        resolveApiErrorMessage(
+          savePrivacyError,
+          "We could not save your privacy confirmation right now."
+        )
+      );
+      return;
+    }
+
     if (am2eEligibleQualifications.has(selectedQualification)) {
+      setEligibilityStepError("");
       setNvqModalOpen(true);
+      return;
+    }
+
+    const saved = await submitEligibility();
+
+    if (!saved) {
       return;
     }
 
     startNetFlow("am2");
   };
 
-  const handleNqvContinue = () => {
+  const handleNqvContinue = async () => {
+    const saved = await submitEligibility(nvqTiming);
+
+    if (!saved) {
+      return;
+    }
+
     setNvqModalOpen(false);
     startNetFlow(
-      nvqTiming === "before-september-2023" ? "am2e" : "am2e-v1"
+      nvqTiming === "before-3rd-september-2023" ? "am2e" : "am2e-v1"
     );
   };
 
@@ -2883,8 +3115,14 @@ Thank you,`,
                   <span>
                     {privacyConfirmationField?.label ??
                       "I confirm that the information provided in this registration form is complete and accurate."}
-                  </span>
+                    </span>
                 </label>
+
+                {eligibilityStepError ? (
+                  <p className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+                    {eligibilityStepError}
+                  </p>
+                ) : null}
               </div>
             </>
           ) : null}
@@ -2955,18 +3193,24 @@ Thank you,`,
                   disabled={
                     !privacyConfirmed ||
                     isPrivacyFormLoading ||
-                    isPrivacyFormError
+                    isPrivacyFormError ||
+                    isSavingEligibility ||
+                    isSavingPrivacy
                   }
                   onClick={handlePrivacyContinue}
                   className={`rounded-lg px-5 py-2.5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)] ${
                     privacyConfirmed &&
                     !isPrivacyFormLoading &&
-                    !isPrivacyFormError
+                    !isPrivacyFormError &&
+                    !isSavingEligibility &&
+                    !isSavingPrivacy
                       ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)]"
                       : "cursor-not-allowed bg-[#a6dff6]"
                   }`}
                 >
-                  {registrationContinueLabel}
+                  {isSavingEligibility || isSavingPrivacy
+                    ? "Saving..."
+                    : registrationContinueLabel}
                 </button>
               ) : (
                 <button
@@ -2976,26 +3220,46 @@ Thank you,`,
                     (currentStep === "candidate" &&
                       (isRegistrationFormLoading || isRegistrationFormError)) ||
                     (currentStep === "assessment" &&
-                      (isAssessmentFormLoading || isAssessmentFormError)) ||
+                      (isAssessmentFormLoading ||
+                        isAssessmentFormError ||
+                        isSavingAssessment)) ||
                     (currentStep === "employer" &&
-                      (isEmployerFormLoading || isEmployerFormError)) ||
+                      (isEmployerFormLoading ||
+                        isEmployerFormError ||
+                        isSavingEmployer)) ||
                     (currentStep === "training" &&
-                      (isTrainingFormLoading || isTrainingFormError))
+                      (isTrainingFormLoading ||
+                        isTrainingFormError ||
+                        isSavingTraining))
                   }
                   className={`rounded-lg px-5 py-2.5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)] ${
                     (currentStep === "candidate" &&
                       (isRegistrationFormLoading || isRegistrationFormError)) ||
                     (currentStep === "assessment" &&
-                      (isAssessmentFormLoading || isAssessmentFormError)) ||
+                      (isAssessmentFormLoading ||
+                        isAssessmentFormError ||
+                        isSavingAssessment)) ||
                     (currentStep === "employer" &&
-                      (isEmployerFormLoading || isEmployerFormError)) ||
+                      (isEmployerFormLoading ||
+                        isEmployerFormError ||
+                        isSavingEmployer)) ||
                     (currentStep === "training" &&
-                      (isTrainingFormLoading || isTrainingFormError))
+                      (isTrainingFormLoading ||
+                        isTrainingFormError ||
+                        isSavingTraining))
                       ? "cursor-not-allowed bg-[#a6dff6]"
-                      : "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)]"
+                    : "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)]"
                   }`}
                 >
-                  {currentStep === "candidate" ? registrationContinueLabel : "Continue"}
+                  {currentStep === "assessment" && isSavingAssessment
+                    ? "Saving..."
+                    : currentStep === "employer" && isSavingEmployer
+                      ? "Saving..."
+                      : currentStep === "training" && isSavingTraining
+                        ? "Saving..."
+                      : currentStep === "candidate"
+                        ? registrationContinueLabel
+                        : "Continue"}
                 </button>
               )}
             </div>
@@ -3138,6 +3402,7 @@ Thank you,`,
         onChange={setNvqTiming}
         onClose={() => setNvqModalOpen(false)}
         onContinue={handleNqvContinue}
+        isSubmitting={isSavingEligibility}
       />
     </div>
   );

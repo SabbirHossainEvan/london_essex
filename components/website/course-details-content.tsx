@@ -117,7 +117,10 @@ export default function CourseDetailsContent({
     setSelectedModalOptionId("");
   }, [initialModalStepId, effectiveBookingModal?.title]);
 
-  const goToBookingPage = (selectedQualification?: string) => {
+  const goToBookingPage = (
+    selectedQualification?: string,
+    selectedQualificationId?: string,
+  ) => {
     const bookingBasePath = bookingHrefBasePath ?? coursesHrefBasePath;
 
     if (!bookingBasePath) {
@@ -125,11 +128,21 @@ export default function CourseDetailsContent({
       return;
     }
 
-    const qualificationQuery = selectedQualification
-      ? `?qualification=${encodeURIComponent(selectedQualification)}`
-      : "";
+    const params = new URLSearchParams();
 
-    router.push(`${bookingBasePath}/${course.slug}/book${qualificationQuery}`);
+    if (selectedQualification) {
+      params.set("qualification", selectedQualification);
+    }
+
+    if (selectedQualificationId) {
+      params.set("qualificationId", selectedQualificationId);
+    }
+
+    const qualificationQuery = params.toString();
+
+    router.push(
+      `${bookingBasePath}/${course.slug}/book${qualificationQuery ? `?${qualificationQuery}` : ""}`,
+    );
   };
 
   const openBookingModal = async () => {
@@ -192,7 +205,7 @@ export default function CourseDetailsContent({
     closeBookingModal();
 
     const selectedQualification = selectedOption?.label ?? selectedModalOptionId;
-    goToBookingPage(selectedQualification);
+    goToBookingPage(selectedQualification, selectedOption?.id);
   };
 
   return (
