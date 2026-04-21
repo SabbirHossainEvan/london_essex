@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   Check,
@@ -292,6 +293,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 export default function CourseBookingFlow({ course }: BookingFlowProps) {
+  const router = useRouter();
   const isAm2Flow = course.bookingFlow === "am2";
   const [createNormalBooking, createNormalBookingState] =
     useCreateNormalBookingMutation();
@@ -383,7 +385,7 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
             normalizedPrice,
         });
 
-        moveToStep("payment");
+        router.push(`/dashboard/bookings/${response.data.booking.id}/checkout/details`);
       } catch (error) {
         setDetailsError(
           resolveErrorMessage(

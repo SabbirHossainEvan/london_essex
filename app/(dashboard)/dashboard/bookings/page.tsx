@@ -23,20 +23,6 @@ function formatBookingDateTime(booking: {
   return parts.join(" | ");
 }
 
-function normalizeDetailsUrl(url?: string, slug?: string) {
-  if (slug) {
-    return `/dashboard/courses/${slug}`;
-  }
-
-  if (!url) {
-    return "/dashboard/courses";
-  }
-
-  return url.startsWith("/courses/")
-    ? url.replace("/courses/", "/dashboard/courses/")
-    : url;
-}
-
 function mapBookingsToItems(
   bookings: Array<{
     id: string;
@@ -55,8 +41,8 @@ function mapBookingsToItems(
     label: booking.statusBadge?.label || "Booking",
     status: booking.tab,
     imageUrl: booking.course?.thumbnailUrl,
-    detailsUrl: normalizeDetailsUrl(booking.actions?.detailsUrl, booking.course?.slug),
-    detailsLabel: booking.actions?.detailsLabel || "Course Details",
+    detailsUrl: `/dashboard/bookings/${booking.id}`,
+    detailsLabel: "View Booking",
   }));
 }
 
