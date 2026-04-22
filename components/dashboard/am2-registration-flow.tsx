@@ -25,12 +25,14 @@ import {
 import type { CourseSummary } from "@/app/(website)/courses/courses-data";
 import PanelCard from "@/components/dashboard/panel-card";
 import {
+  type GetBookingFlowSubmitResponse,
   type RequestTrainingProviderSignatureRequest,
   type SubmitCandidateSignatureRequest,
   useCreateNormalBookingMutation,
   useGetBookingFlowChecklistSummaryQuery,
   useGetBookingFlowDocumentsQuery,
   useGetBookingFlowSignaturesQuery,
+  useGetBookingFlowSubmitQuery,
   useRequestTrainingProviderSignatureMutation,
   useSaveRegistrationAssessmentMutation,
   useSaveRegistrationEmployerMutation,
@@ -1382,66 +1384,73 @@ function AskForSignedModal({
   );
 }
 
-function NetSubmitPanel() {
+function NetSubmitPanelContent({
+  screen,
+}: {
+  screen: GetBookingFlowSubmitResponse["data"]["screen"];
+}) {
+  const resolveSectionTone = (status: string) => {
+    if (status === "completed" || status === "signed") {
+      return {
+        iconClassName: "bg-[#e8f8ee] text-[#16a34a]",
+        badgeClassName: "bg-[#dcfce7] text-[#16a34a]",
+        label: status === "signed" ? "Signed" : "Completed",
+      };
+    }
+
+    return {
+      iconClassName: "bg-[#fff7df] text-[#9f6a00]",
+      badgeClassName: "bg-[#fff7df] text-[#9f6a00]",
+      label: "Pending",
+    };
+  };
+
   return (
     <>
       <div>
         <h2 className="text-[1rem] font-semibold text-[#3849a0]">
-          Review & Submit
+          {screen.title}
         </h2>
-        <p className="mt-1 text-xs text-[#7a88a3]">
-          Review your application before submitting to the admin for approval.
-        </p>
+        {screen.subtitle ? (
+          <p className="mt-1 text-xs text-[#7a88a3]">{screen.subtitle}</p>
+        ) : null}
       </div>
 
       <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
         <div className="rounded-lg border border-[#f2c463] bg-[#fffaf1] px-4 py-3 text-sm text-[#8f6413]">
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#f59e0b]" />
-            <p>
-              Once submitted, the admin will review your documents, checklist,
-              and signatures. You&apos;ll be notified when your application is
-              approved and you can proceed to payment.
-            </p>
+            <p>{screen.notice}</p>
           </div>
         </div>
 
         <div className="mt-4 space-y-3">
-          {[
-            {
-              label: "NET Candidate Registration Form",
-              status: "Uploaded",
-            },
-            {
-              label: "AM2 Checklist",
-              status: "Completed",
-            },
-            {
-              label: "Candidate Signature",
-              status: "Signed",
-            },
-            {
-              label: "Training Provider Signature",
-              status: "Signed",
-            },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="flex items-center justify-between gap-3 rounded-xl border border-[#dbe7f4] bg-white px-4 py-3"
-            >
-              <div className="flex items-center gap-3">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#e8f8ee] text-[#16a34a]">
-                  <FileText className="h-4.5 w-4.5" />
-                </span>
-                <p className="text-sm font-medium text-[#32439b]">{item.label}</p>
-              </div>
+          {screen.sections.map((item) => {
+            const tone = resolveSectionTone(item.status);
 
-              <span className="inline-flex items-center gap-2 rounded-full bg-[#dcfce7] px-3 py-1 text-xs font-medium text-[#16a34a]">
-                <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                {item.status}
-              </span>
-            </div>
-          ))}
+            return (
+              <div
+                key={item.id}
+                className="flex items-center justify-between gap-3 rounded-xl border border-[#dbe7f4] bg-white px-4 py-3"
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`grid h-9 w-9 place-items-center rounded-xl ${tone.iconClassName}`}
+                  >
+                    <FileText className="h-4.5 w-4.5" />
+                  </span>
+                  <p className="text-sm font-medium text-[#32439b]">{item.label}</p>
+                </div>
+
+                <span
+                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${tone.badgeClassName}`}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                  {tone.label}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
     </>
@@ -2200,6 +2209,14 @@ Thank you,`,
   } = useGetBookingFlowSignaturesQuery(resolvedBookingId, {
     skip: !resolvedBookingId || phase !== "net" || currentNetStep !== "signatures",
   });
+  const {
+    data: submitScreenData,
+    isLoading: isSubmitScreenLoading,
+    isError: isSubmitScreenError,
+    error: submitScreenError,
+  } = useGetBookingFlowSubmitQuery(resolvedBookingId, {
+    skip: !resolvedBookingId || phase !== "net" || currentNetStep !== "submit",
+  });
 
   const resolveQualificationId = React.useCallback(() => {
     if (selectedQualificationIdParam) {
@@ -2286,6 +2303,22 @@ Thank you,`,
       setActiveBookingId(serverBookingId);
     }
   }, [activeBookingId, signaturesScreenData]);
+
+  React.useEffect(() => {
+    const screen = submitScreenData?.data.screen;
+
+    if (!screen) {
+      return;
+    }
+
+    const serverBookingId =
+      extractBookingIdFromApiUrl(screen.actions?.submit?.apiUrl) ||
+      extractBookingIdFromApiUrl(screen.actions?.back?.apiUrl);
+
+    if (serverBookingId && serverBookingId !== activeBookingId) {
+      setActiveBookingId(serverBookingId);
+    }
+  }, [activeBookingId, submitScreenData]);
 
   React.useEffect(() => {
     const providerRequest = signaturesScreenData?.data.screen.items.find(
@@ -3842,7 +3875,31 @@ Thank you,`,
           ) : null}
 
           {phase === "net" && currentNetStep === "submit" ? (
-            <NetSubmitPanel />
+            <>
+              {isSubmitScreenLoading ? (
+                <div className="space-y-4 animate-pulse">
+                  <div className="h-8 w-60 rounded bg-[#e4edf8]" />
+                  <div className="h-16 rounded bg-[#edf3fb]" />
+                  <div className="h-12 rounded bg-[#edf3fb]" />
+                  <div className="h-12 rounded bg-[#edf3fb]" />
+                </div>
+              ) : null}
+
+              {!isSubmitScreenLoading && isSubmitScreenError ? (
+                <div className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+                  {resolveApiErrorMessage(
+                    submitScreenError,
+                    "We could not load the booking submit screen right now."
+                  )}
+                </div>
+              ) : null}
+
+              {!isSubmitScreenLoading &&
+              !isSubmitScreenError &&
+              submitScreenData?.data.screen ? (
+                <NetSubmitPanelContent screen={submitScreenData.data.screen} />
+              ) : null}
+            </>
           ) : null}
 
           {phase === "net" && currentNetStep === "review" ? (
@@ -4010,10 +4067,16 @@ Thank you,`,
                 {currentNetStep === "submit" ? (
                   <button
                     type="button"
+                    disabled={submitScreenData?.data.screen.actions?.submit?.enabled === false}
                     onClick={() => moveToNetStep("review", "pending")}
-                    className="rounded-lg bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] px-5 py-2.5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
+                    className={`rounded-lg px-5 py-2.5 text-sm font-medium ${
+                      submitScreenData?.data.screen.actions?.submit?.enabled === false
+                        ? "cursor-not-allowed bg-[#dce4ec] text-[#9eacba]"
+                        : "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
+                    }`}
                   >
-                    Submit Application
+                    {submitScreenData?.data.screen.actions?.submit?.label ||
+                      "Submit Application"}
                   </button>
                 ) : null}
 

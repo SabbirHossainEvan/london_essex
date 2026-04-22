@@ -642,6 +642,36 @@ export type RequestTrainingProviderSignatureResponse = {
   };
 };
 
+export type GetBookingFlowSubmitResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    screen: {
+      steps: BookingFlowStep[];
+      title: string;
+      subtitle?: string;
+      notice?: string;
+      sections: Array<{
+        id: string;
+        label: string;
+        status: "pending" | "completed" | "signed" | string;
+      }>;
+      actions?: {
+        back?: {
+          label?: string;
+          apiUrl?: string;
+        } | null;
+        submit?: {
+          label?: string;
+          method?: string;
+          enabled?: boolean;
+          apiUrl?: string;
+        } | null;
+      };
+    };
+  };
+};
+
 export type CreateBookingPaymentIntentResponse = {
   success: boolean;
   message: string;
@@ -880,6 +910,13 @@ export const bookingApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Booking"],
     }),
+    getBookingFlowSubmit: builder.query<GetBookingFlowSubmitResponse, string>({
+      query: (bookingId) => ({
+        url: `/bookings/${bookingId}/flow/submit`,
+        method: "GET",
+      }),
+      providesTags: ["Booking"],
+    }),
     getBookingCheckoutDetails: builder.query<GetBookingCheckoutDetailsResponse, string>({
       query: (bookingId) => ({
         url: `/bookings/${bookingId}/checkout/details`,
@@ -1010,6 +1047,7 @@ export const {
   useGetBookingFlowChecklistSummaryQuery,
   useGetBookingFlowChecklistFullQuery,
   useGetBookingFlowSignaturesQuery,
+  useGetBookingFlowSubmitQuery,
   useRequestTrainingProviderSignatureMutation,
   useSubmitCandidateSignatureMutation,
   useSaveBookingChecklistDraftMutation,
