@@ -62,12 +62,7 @@ export default function DashboardCourseBookingView({
   }
 
   if (course.slug === "am2-assessment-preparation") {
-    return (
-      <Am2RegistrationFlow
-        course={course}
-        bookingId={data?.data.screen.course.id}
-      />
-    );
+    return <Am2RegistrationFlow course={course} />;
   }
 
   return <CourseBookingFlow course={course} />;

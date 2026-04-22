@@ -25,6 +25,8 @@ import {
 import type { CourseSummary } from "@/app/(website)/courses/courses-data";
 import PanelCard from "@/components/dashboard/panel-card";
 import {
+  useCreateNormalBookingMutation,
+  useGetBookingFlowChecklistSummaryQuery,
   useGetBookingFlowDocumentsQuery,
   useSaveRegistrationAssessmentMutation,
   useSaveRegistrationEmployerMutation,
@@ -119,12 +121,6 @@ type TrainingFormState = EmployerFormState;
 type NetFlowType = "am2" | "am2e" | "am2e-v1";
 type NvqTiming = "before-3rd-september-2023" | "after-september-2023";
 type EmployerStatus = "yes" | "no";
-type DocumentRequirement = {
-  id: string;
-  title: string;
-  description: string;
-  initiallyUploaded?: boolean;
-};
 type CandidateFieldKey = keyof CandidateFormState;
 type AssessmentFieldKey = keyof AssessmentFormState;
 type EmployerFieldKey = keyof EmployerFormState;
@@ -202,96 +198,6 @@ const am2eEligibleQualifications = new Set([
   "(EWA) City & Guilds 2346",
   "EAL 603/5982/1",
 ]);
-
-const netFlowContent: Record<
-  NetFlowType,
-  {
-    documentsTitle: string;
-    documentsSubtitle: string;
-    checklistTitle: string;
-    checklistSubtitle: string;
-    requirements: DocumentRequirement[];
-  }
-> = {
-  am2: {
-    documentsTitle: "AM2 Readiness Checklist",
-    documentsSubtitle: "for those who don't already hold AM2",
-    checklistTitle: "AM2 Checklist",
-    checklistSubtitle:
-      "Readiness for Assessment: Candidate Self-Assessment Checklist",
-    requirements: [
-      {
-        id: "learner-history",
-        title: "Learner History Report or Walled Garden Report (City & Guilds)",
-        description: "Requested from your NVQ provider",
-      },
-    ],
-  },
-  am2e: {
-    documentsTitle: "AM2E Checklist",
-    documentsSubtitle:
-      "This required document must be uploaded for the assessment.",
-    checklistTitle: "AM2E Checklist",
-    checklistSubtitle:
-      "Readiness for Assessment: Candidate Self-Assessment Checklist",
-    requirements: [
-      {
-        id: "ewq-certificate",
-        title: "The Experienced Worker Qualification Certificate",
-        description:
-          "Certificate must show City & Guilds 2346 or EAL 603/5982/1",
-        initiallyUploaded: true,
-      },
-      {
-        id: "learner-history",
-        title:
-          "City & Guilds Walled Garden Report or EAL Learner History Report",
-        description: "Both must confirm your NVQ provider",
-      },
-      {
-        id: "still-in-scope",
-        title: "Still In Scope (Sep 2023)",
-        description:
-          "Skills Scan dated September 2023 onwards will be required if out of scope for two years",
-      },
-    ],
-  },
-  "am2e-v1": {
-    documentsTitle: "AM2E V1 Checklist",
-    documentsSubtitle:
-      "The required documents must be uploaded for the assessment.",
-    checklistTitle: "AM2E V1 Checklist",
-    checklistSubtitle:
-      "Readiness for Assessment: Candidate Self-Assessment Checklist",
-    requirements: [
-      {
-        id: "ewq-certificate",
-        title: "The Experienced Worker Qualification Certificate",
-        description:
-          "Certificate must show City & Guilds 2346 or EAL 603/5982/1",
-        initiallyUploaded: true,
-      },
-      {
-        id: "learner-history",
-        title:
-          "City & Guilds Walled Garden Report or EAL Learner History Report",
-        description: "Both must confirm your NVQ provider",
-      },
-      {
-        id: "still-in-scope",
-        title: "Still In Scope (Sep 2023)",
-        description:
-          "Skills Scan dated September 2023 onwards will be required if out of scope for two years",
-      },
-      {
-        id: "technical-certificate",
-        title: "Level 2 or Level 3 Technical Certificate",
-        description:
-          "For example City & Guilds 2365/5357 or EAL equivalent",
-      },
-    ],
-  },
-};
 
 function Stepper<T extends string>({
   steps,
@@ -415,8 +321,59 @@ function resolveBookingIdFromDocumentsScreen(screen: {
   );
 }
 
+function resolveBookingIdFromChecklistScreen(screen: {
+  actions?: {
+    openFullChecklist?: { apiUrl?: string } | null;
+    continue?: { apiUrl?: string } | null;
+  };
+}) {
+  return (
+    extractBookingIdFromApiUrl(screen.actions?.continue?.apiUrl) ||
+    extractBookingIdFromApiUrl(screen.actions?.openFullChecklist?.apiUrl) ||
+    ""
+  );
+}
+
+function resolveBookingIdFromRegistrationScreen(screen?: {
+  navigation?: {
+    previous?: { apiUrl?: string } | null;
+    next?: { apiUrl?: string } | null;
+  };
+  submission?: {
+    apiUrl?: string;
+  };
+}) {
+  if (!screen) {
+    return "";
+  }
+
+  return (
+    extractBookingIdFromApiUrl(screen.submission?.apiUrl) ||
+    extractBookingIdFromApiUrl(screen.navigation?.next?.apiUrl) ||
+    extractBookingIdFromApiUrl(screen.navigation?.previous?.apiUrl) ||
+    ""
+  );
+}
+
 function normalizeAssessmentValue(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, "");
+}
+
+function formatDateForApi(value: string) {
+  const trimmed = value.trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  const match = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+
+  if (!match) {
+    return trimmed;
+  }
+
+  const [, day, month, year] = match;
+  return `${year}-${month}-${day}`;
 }
 
 function TextField({
@@ -667,52 +624,86 @@ function NetDocumentsPanel({
   );
 }
 
-function NetChecklistPanel({ flow }: { flow: NetFlowType }) {
-  const content = netFlowContent[flow];
-
+function NetChecklistPanel({
+  screen,
+  fullChecklistHref,
+  onContinue,
+}: {
+  screen: {
+    card: {
+      title: string;
+      subtitle?: string;
+    };
+    importantInformation?: string;
+    overallCompletion: number;
+    notice?: string;
+    actions?: {
+      openFullChecklist?: {
+        label?: string;
+      } | null;
+      continue?: {
+        label?: string;
+        enabled?: boolean;
+      } | null;
+    };
+  };
+  fullChecklistHref: string;
+  onContinue: () => void;
+}) {
   return (
     <>
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-[1rem] font-semibold text-[#3849a0]">
-            {content.checklistTitle}
+            {screen.card.title}
           </h2>
-          <p className="mt-1 text-xs text-[#7a88a3]">{content.checklistSubtitle}</p>
+          {screen.card.subtitle ? (
+            <p className="mt-1 text-xs text-[#7a88a3]">{screen.card.subtitle}</p>
+          ) : null}
         </div>
         <button
           type="button"
           className="text-sm font-semibold text-[#4451ac]"
         >
-          Important Information
+          {screen.importantInformation || "Important Information"}
         </button>
       </div>
 
       <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
         <div className="flex items-center justify-between gap-4">
           <span className="text-xs text-[#7a88a3]">Overall Completion</span>
-          <span className="text-xs text-[#7a88a3]">0%</span>
+          <span className="text-xs text-[#7a88a3]">{screen.overallCompletion}%</span>
         </div>
         <div className="mt-3 h-2 rounded-full bg-white">
-          <div className="h-2 w-0 rounded-full bg-[#1ea6df]" />
+          <div
+            className="h-2 rounded-full bg-[#1ea6df] transition-all"
+            style={{ width: `${screen.overallCompletion}%` }}
+          />
         </div>
 
         <div className="mt-5 rounded-lg border border-[#d5e6f5] bg-[#dff1fd] px-4 py-3 text-sm text-[#46627d]">
-          Complete all sections of the checklist. You can use the full checklist
-          page for a detailed view.
+          {screen.notice ||
+            "Complete all sections of the checklist. You can use the full checklist page for a detailed view."}
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-[1fr_220px]">
           <Link
-            href={`/dashboard/courses/am2-assessment-preparation/book/full-checklist?flow=${flow}`}
+            href={fullChecklistHref}
             className="rounded-lg border border-[#d3dfef] bg-white px-4 py-3 text-sm font-medium text-[#2f407f]"
           >
-            Open Full Checklist
+            {screen.actions?.openFullChecklist?.label || "Open Full Checklist"}
           </Link>
           <button
             type="button"
-            className="rounded-lg bg-[#dce4ec] px-4 py-3 text-sm font-medium text-[#9eacba]"
+            disabled={screen.actions?.continue?.enabled === false}
+            onClick={onContinue}
+            className={`rounded-lg px-4 py-3 text-sm font-medium ${
+              screen.actions?.continue?.enabled === false
+                ? "cursor-not-allowed bg-[#dce4ec] text-[#9eacba]"
+                : "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] text-white"
+            }`}
           >
-            Continue
+            {screen.actions?.continue?.label || "Continue"}
           </button>
         </div>
       </div>
@@ -1798,6 +1789,8 @@ export default function Am2RegistrationFlow({
 }: Am2RegistrationFlowProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [createNormalBooking, { isLoading: isCreatingBooking }] =
+    useCreateNormalBookingMutation();
   const [saveRegistrationEligibility, { isLoading: isSavingEligibility }] =
     useSaveRegistrationEligibilityMutation();
   const [saveRegistrationAssessment, { isLoading: isSavingAssessment }] =
@@ -2017,6 +2010,14 @@ Thank you,`,
   } = useGetBookingFlowDocumentsQuery(resolvedBookingId, {
     skip: !resolvedBookingId || phase !== "net" || currentNetStep !== "documents",
   });
+  const {
+    data: checklistScreenData,
+    isLoading: isChecklistScreenLoading,
+    isError: isChecklistScreenError,
+    error: checklistScreenError,
+  } = useGetBookingFlowChecklistSummaryQuery(resolvedBookingId, {
+    skip: !resolvedBookingId || phase !== "net" || currentNetStep !== "checklist",
+  });
 
   const resolveQualificationId = React.useCallback(() => {
     if (selectedQualificationIdParam) {
@@ -2075,6 +2076,40 @@ Thank you,`,
       setActiveBookingId(serverBookingId);
     }
   }, [activeBookingId, documentsScreenData]);
+
+  React.useEffect(() => {
+    const screen = checklistScreenData?.data.screen;
+
+    if (!screen) {
+      return;
+    }
+
+    const serverBookingId = resolveBookingIdFromChecklistScreen(screen);
+
+    if (serverBookingId && serverBookingId !== activeBookingId) {
+      setActiveBookingId(serverBookingId);
+    }
+  }, [activeBookingId, checklistScreenData]);
+
+  React.useEffect(() => {
+    const serverBookingId =
+      resolveBookingIdFromRegistrationScreen(registrationScreen) ||
+      resolveBookingIdFromRegistrationScreen(assessmentRegistrationScreen) ||
+      resolveBookingIdFromRegistrationScreen(employerRegistrationScreen) ||
+      resolveBookingIdFromRegistrationScreen(trainingRegistrationScreen) ||
+      resolveBookingIdFromRegistrationScreen(privacyRegistrationScreen);
+
+    if (serverBookingId && serverBookingId !== activeBookingId) {
+      setActiveBookingId(serverBookingId);
+    }
+  }, [
+    activeBookingId,
+    assessmentRegistrationScreen,
+    employerRegistrationScreen,
+    privacyRegistrationScreen,
+    registrationScreen,
+    trainingRegistrationScreen,
+  ]);
 
   const currentIndex = currentRegistrationSteps.findIndex(
     (step) => step.key === currentStep
@@ -2238,6 +2273,56 @@ Thank you,`,
       if (hasMissingCandidateField) {
         setCandidateStepError("Please complete all required candidate fields before continuing.");
         return;
+      }
+
+      if (!resolvedBookingId) {
+        try {
+          setCandidateStepError("");
+          const response = await createNormalBooking({
+            courseSlug: course.slug,
+            personalDetails: {
+              title: candidate.title.trim(),
+              firstName: candidate.firstName.trim(),
+              lastName: candidate.lastName.trim(),
+              dateOfBirth: formatDateForApi(candidate.dob),
+              niNumber: candidate.niNumber.trim(),
+              email: candidate.email.trim(),
+              mobileNumber: candidate.mobileNumber.trim(),
+              addressLine1: candidate.address1.trim(),
+              addressLine2: candidate.address2.trim(),
+              town: candidate.town.trim(),
+              postcode: candidate.postcode.trim(),
+              trainingCenter:
+                registrationScreen?.courseContext.location?.trim() ||
+                course.location.trim(),
+            },
+          }).unwrap();
+          const nextBookingId = response.data.booking.id;
+
+          if (!nextBookingId) {
+            setCandidateStepError(
+              "We could not determine the booking reference returned from the candidate details response."
+            );
+            return;
+          }
+
+          setActiveBookingId(nextBookingId);
+          router.replace(
+            `/dashboard/courses/${course.slug}/book?${(() => {
+              const params = new URLSearchParams(searchParams.toString());
+              params.set("bookingId", nextBookingId);
+              return params.toString();
+            })()}`
+          );
+        } catch (createBookingError) {
+          setCandidateStepError(
+            resolveApiErrorMessage(
+              createBookingError,
+              "We could not save your candidate details right now."
+            )
+          );
+          return;
+        }
       }
     }
 
@@ -3359,7 +3444,42 @@ Thank you,`,
           ) : null}
 
           {phase === "net" && currentNetStep === "checklist" ? (
-            <NetChecklistPanel flow={netFlowType} />
+            <>
+              {isChecklistScreenLoading ? (
+                <div className="space-y-4 animate-pulse">
+                  <div className="h-8 w-60 rounded bg-[#e4edf8]" />
+                  <div className="h-5 w-80 rounded bg-[#edf3fb]" />
+                  <div className="h-16 rounded bg-[#edf3fb]" />
+                  <div className="h-12 rounded bg-[#edf3fb]" />
+                </div>
+              ) : null}
+
+              {!isChecklistScreenLoading && isChecklistScreenError ? (
+                <div className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+                  {resolveApiErrorMessage(
+                    checklistScreenError,
+                    "We could not load the booking checklist summary right now."
+                  )}
+                </div>
+              ) : null}
+
+              {!isChecklistScreenLoading &&
+              !isChecklistScreenError &&
+              checklistScreenData?.data.screen ? (
+                <NetChecklistPanel
+                  screen={checklistScreenData.data.screen}
+                  fullChecklistHref={`/dashboard/courses/${course.slug}/book/full-checklist?${(() => {
+                    const params = new URLSearchParams();
+                    params.set("flow", netFlowType);
+                    if (resolvedBookingId) {
+                      params.set("bookingId", resolvedBookingId);
+                    }
+                    return params.toString();
+                  })()}`}
+                  onContinue={() => moveToNetStep("signatures")}
+                />
+              ) : null}
+            </>
           ) : null}
 
           {phase === "net" && currentNetStep === "signatures" ? (
@@ -3440,7 +3560,9 @@ Thank you,`,
                   onClick={moveNext}
                   disabled={
                     (currentStep === "candidate" &&
-                      (isRegistrationFormLoading || isRegistrationFormError)) ||
+                      (isRegistrationFormLoading ||
+                        isRegistrationFormError ||
+                        isCreatingBooking)) ||
                     (currentStep === "assessment" &&
                       (isAssessmentFormLoading ||
                         isAssessmentFormError ||
@@ -3456,7 +3578,9 @@ Thank you,`,
                   }
                   className={`rounded-lg px-5 py-2.5 text-sm font-medium text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)] ${
                     (currentStep === "candidate" &&
-                      (isRegistrationFormLoading || isRegistrationFormError)) ||
+                      (isRegistrationFormLoading ||
+                        isRegistrationFormError ||
+                        isCreatingBooking)) ||
                     (currentStep === "assessment" &&
                       (isAssessmentFormLoading ||
                         isAssessmentFormError ||
@@ -3473,7 +3597,9 @@ Thank you,`,
                     : "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)]"
                   }`}
                 >
-                  {currentStep === "assessment" && isSavingAssessment
+                  {currentStep === "candidate" && isCreatingBooking
+                    ? "Saving..."
+                    : currentStep === "assessment" && isSavingAssessment
                     ? "Saving..."
                     : currentStep === "employer" && isSavingEmployer
                       ? "Saving..."

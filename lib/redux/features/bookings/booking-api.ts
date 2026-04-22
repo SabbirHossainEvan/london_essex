@@ -460,6 +460,106 @@ export type UploadBookingDocumentRequest = {
 
 export type UploadBookingDocumentResponse = GetBookingFlowDocumentsResponse;
 
+export type GetBookingFlowChecklistSummaryResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    screen: {
+      steps: BookingFlowStep[];
+      card: {
+        title: string;
+        subtitle?: string;
+      };
+      importantInformation?: string;
+      overallCompletion: number;
+      notice?: string;
+      actions?: {
+        openFullChecklist?: {
+          label?: string;
+          apiUrl?: string;
+        } | null;
+        continue?: {
+          label?: string;
+          enabled?: boolean;
+          apiUrl?: string;
+        } | null;
+      };
+    };
+  };
+};
+
+export type GetBookingFlowChecklistFullResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    screen: {
+      steps: BookingFlowStep[];
+      title: string;
+      subtitle?: string;
+      overallCompletion: number;
+      actions?: {
+        saveDraft?: {
+          label?: string;
+          method?: string;
+          apiUrl?: string;
+        } | null;
+        nextSection?: {
+          label?: string;
+          apiUrl?: string;
+        } | null;
+      };
+      sections: Array<{
+        id: string;
+        key: string;
+        label: string;
+        completedItems: number;
+        totalItems: number;
+        active: boolean;
+        apiUrl?: string;
+      }>;
+      activeSection: {
+        id: string;
+        key: string;
+        title: string;
+        summary?: string;
+        duration?: string;
+        completedItems: number;
+        totalItems: number;
+        items: Array<{
+          id: string;
+          no: number;
+          criterion: string;
+          knowledgeLevel?: string;
+          experienceLevel?: string;
+          completed: boolean;
+          options: {
+            knowledge: Array<{
+              id: string;
+              label: string;
+            }>;
+            experience: Array<{
+              id: string;
+              label: string;
+            }>;
+          };
+        }>;
+      };
+    };
+  };
+};
+
+export type SaveBookingChecklistDraftRequest = {
+  bookingId: string;
+  section: string;
+  responses: Array<{
+    itemId: string;
+    knowledgeLevel: string;
+    experienceLevel: string;
+  }>;
+};
+
+export type SaveBookingChecklistDraftResponse = GetBookingFlowChecklistFullResponse;
+
 export type CreateBookingPaymentIntentResponse = {
   success: boolean;
   message: string;
@@ -595,6 +695,41 @@ export const bookingApi = baseApi.injectEndpoints({
       },
       invalidatesTags: ["Booking"],
     }),
+    getBookingFlowChecklistSummary: builder.query<
+      GetBookingFlowChecklistSummaryResponse,
+      string
+    >({
+      query: (bookingId) => ({
+        url: `/bookings/${bookingId}/flow/checklist`,
+        method: "GET",
+      }),
+      providesTags: ["Booking"],
+    }),
+    getBookingFlowChecklistFull: builder.query<
+      GetBookingFlowChecklistFullResponse,
+      { bookingId: string; section?: string }
+    >({
+      query: ({ bookingId, section }) => ({
+        url: `/bookings/${bookingId}/flow/checklist/full`,
+        method: "GET",
+        params: section ? { section } : undefined,
+      }),
+      providesTags: ["Booking"],
+    }),
+    saveBookingChecklistDraft: builder.mutation<
+      SaveBookingChecklistDraftResponse,
+      SaveBookingChecklistDraftRequest
+    >({
+      query: ({ bookingId, section, responses }) => ({
+        url: `/bookings/${bookingId}/flow/checklist`,
+        method: "PATCH",
+        body: {
+          section,
+          responses,
+        },
+      }),
+      invalidatesTags: ["Booking"],
+    }),
     getBookingCheckoutDetails: builder.query<GetBookingCheckoutDetailsResponse, string>({
       query: (bookingId) => ({
         url: `/bookings/${bookingId}/checkout/details`,
@@ -722,6 +857,9 @@ export const {
   useGetBookingsQuery,
   useGetBookingByIdQuery,
   useGetBookingFlowDocumentsQuery,
+  useGetBookingFlowChecklistSummaryQuery,
+  useGetBookingFlowChecklistFullQuery,
+  useSaveBookingChecklistDraftMutation,
   useUploadBookingDocumentMutation,
   useGetBookingCheckoutDetailsQuery,
   useGetBookingCheckoutPaymentQuery,
