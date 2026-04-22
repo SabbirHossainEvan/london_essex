@@ -80,7 +80,7 @@ type PaymentFormState = {
 type SignatureTab = "draw" | "upload";
 type SignatureSubmissionPayload = Pick<
   SubmitCandidateSignatureRequest,
-  "signatureType" | "signatureData" | "fileName"
+  "signatureType" | "signature" | "fileName"
 >;
 type ProviderSignatureRequestState = Omit<
   RequestTrainingProviderSignatureRequest,
@@ -386,24 +386,20 @@ function normalizeAssessmentValue(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, "");
 }
 
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
+function convertCanvasToFile(canvas: HTMLCanvasElement, fileName: string) {
+  return new Promise<File>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          reject(new Error("We could not prepare the drawn signature."));
+          return;
+        }
 
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        resolve(reader.result);
-        return;
-      }
-
-      reject(new Error("We could not read the selected signature file."));
-    };
-
-    reader.onerror = () => {
-      reject(new Error("We could not read the selected signature file."));
-    };
-
-    reader.readAsDataURL(file);
+        resolve(new File([blob], fileName, { type: "image/png" }));
+      },
+      "image/png",
+      1
+    );
   });
 }
 
@@ -938,6 +934,7 @@ function SignatureUploadModal({
   const [uploadedFileName, setUploadedFileName] = React.useState("");
   const [uploadedPreview, setUploadedPreview] = React.useState("");
   const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
+  const [uploadValidationError, setUploadValidationError] = React.useState("");
 
   React.useEffect(() => {
     if (!open) {
@@ -967,6 +964,7 @@ function SignatureUploadModal({
     setUploadedFileName("");
     setUploadedPreview("");
     setUploadedFile(null);
+    setUploadValidationError("");
   }, [open]);
 
   React.useEffect(() => {
@@ -1049,10 +1047,35 @@ function SignatureUploadModal({
       return;
     }
 
+    const acceptedTypes = new Set([
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ]);
+
+    if (!acceptedTypes.has(file.type)) {
+      setUploadedFile(null);
+      setUploadedFileName("");
+      setUploadValidationError(
+        "Only JPG, JPEG, PNG, and WEBP files are accepted."
+      );
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadedFile(null);
+      setUploadedFileName("");
+      setUploadValidationError("Signature image must be 5MB or smaller.");
+      event.target.value = "";
+      return;
+    }
+
     if (uploadedPreview) {
       URL.revokeObjectURL(uploadedPreview);
     }
 
+    setUploadValidationError("");
     setUploadedFile(file);
     setUploadedFileName(file.name);
     setUploadedPreview(URL.createObjectURL(file));
@@ -1068,7 +1091,7 @@ function SignatureUploadModal({
 
       await onSubmit({
         signatureType: "draw",
-        signatureData: canvas.toDataURL("image/png"),
+        signature: await convertCanvasToFile(canvas, "candidate-signature.png"),
         fileName: "candidate-signature.png",
       });
       return;
@@ -1078,16 +1101,17 @@ function SignatureUploadModal({
       return;
     }
 
-    const signatureData = await readFileAsDataUrl(uploadedFile);
     await onSubmit({
       signatureType: "upload",
-      signatureData,
+      signature: uploadedFile,
       fileName: uploadedFile.name,
     });
   };
 
   const canSubmit =
-    activeTab === "draw" ? hasDrawn : uploadedFileName.trim().length > 0;
+    activeTab === "draw"
+      ? hasDrawn
+      : uploadedFileName.trim().length > 0 && !uploadValidationError;
 
   return (
     <>
@@ -1181,9 +1205,9 @@ function SignatureUploadModal({
                       )}
                     </div>
                     <div className="flex-1">
-                      <p className="text-[1.1rem] font-medium text-[#32439b]">
-                        Please upload square image, size less than 100KB
-                      </p>
+                       <p className="text-[1.1rem] font-medium text-[#32439b]">
+                         Only JPG, JPEG, PNG, and WEBP are accepted, up to 5MB
+                       </p>
                       <div className="mt-4 flex flex-wrap items-center gap-5">
                         <label className="inline-flex cursor-pointer items-center rounded-xl border border-[#d8e5f4] bg-white px-6 py-3 text-base font-medium text-[#4451ac]">
                           Re upload
@@ -1199,6 +1223,11 @@ function SignatureUploadModal({
                           {uploadedFileName || "file...name.jpg"}
                         </span>
                       </div>
+                      {uploadValidationError ? (
+                        <p className="mt-3 text-sm text-[#dc2626]">
+                          {uploadValidationError}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 </div>

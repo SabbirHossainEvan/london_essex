@@ -614,8 +614,10 @@ export type GetBookingFlowSignaturesResponse = {
 export type SubmitCandidateSignatureRequest = {
   bookingId: string;
   signatureType: "draw" | "upload";
-  signatureData: string;
+  signature: File;
   fileName?: string;
+  signerName?: string;
+  signerEmail?: string;
 };
 
 export type SubmitCandidateSignatureResponse = GetBookingFlowSignaturesResponse;
@@ -824,15 +826,36 @@ export const bookingApi = baseApi.injectEndpoints({
       SubmitCandidateSignatureResponse,
       SubmitCandidateSignatureRequest
     >({
-      query: ({ bookingId, signatureType, signatureData, fileName }) => ({
-        url: `/bookings/${bookingId}/flow/signatures/candidate`,
-        method: "POST",
-        body: {
-          signatureType,
-          signatureData,
-          fileName,
-        },
-      }),
+      query: ({
+        bookingId,
+        signatureType,
+        signature,
+        fileName,
+        signerName,
+        signerEmail,
+      }) => {
+        const body = new FormData();
+        body.append("signature", signature);
+        body.append("signatureType", signatureType);
+
+        if (fileName) {
+          body.append("fileName", fileName);
+        }
+
+        if (signerName) {
+          body.append("signerName", signerName);
+        }
+
+        if (signerEmail) {
+          body.append("signerEmail", signerEmail);
+        }
+
+        return {
+          url: `/bookings/${bookingId}/flow/signatures/candidate`,
+          method: "POST",
+          body,
+        };
+      },
       invalidatesTags: ["Booking"],
     }),
     requestTrainingProviderSignature: builder.mutation<
