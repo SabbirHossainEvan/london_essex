@@ -793,7 +793,12 @@ function NetSignaturesPanel({
   );
   const candidateSigned = candidateItem?.status === "signed";
   const providerSigned = providerItem?.status === "signed";
-  const allSigned = screen.actions?.continue?.enabled !== false;
+  const providerRequested = providerItem?.status === "requested";
+  // Temporary override so we can continue integration work before the
+  // backend enables the step after provider signature completion.
+  const allSigned =
+    screen.actions?.continue?.enabled !== false ||
+    (candidateSigned && (providerSigned || providerRequested));
 
   return (
     <>
@@ -874,12 +879,18 @@ function NetSignaturesPanel({
                 >
                   {providerSigned ? (
                     <CircleCheckBig className="h-4 w-4" />
+                  ) : providerRequested ? (
+                    <Clock3 className="h-4 w-4" />
                   ) : (
                     <span className="grid h-4 w-4 place-items-center rounded-full bg-[#ffe8ea] text-[10px] text-[#d55465]">
                       x
                     </span>
                   )}
-                  {providerSigned ? "Signed" : "not Signed"}
+                  {providerSigned
+                    ? "Signed"
+                    : providerRequested
+                      ? "Request sent"
+                      : "not Signed"}
                 </p>
               </div>
 
