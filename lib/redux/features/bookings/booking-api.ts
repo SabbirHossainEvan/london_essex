@@ -560,6 +560,86 @@ export type SaveBookingChecklistDraftRequest = {
 
 export type SaveBookingChecklistDraftResponse = GetBookingFlowChecklistFullResponse;
 
+export type GetBookingFlowSignaturesResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    screen: {
+      steps: BookingFlowStep[];
+      card: {
+        title: string;
+        subtitle?: string;
+      };
+      importantInformation?: string;
+      progressLabel?: string;
+      items: Array<{
+        id: string;
+        label: string;
+        status: "signed" | "not_signed" | string;
+        action?: {
+          label?: string;
+          method?: string;
+          apiUrl?: string;
+        } | null;
+        modal?: {
+          title?: string;
+          fields?: Array<{
+            id: string;
+            label: string;
+            type: string;
+            required?: boolean;
+            options?: string[];
+          }>;
+        } | null;
+        request?: {
+          email?: string;
+          name?: string;
+          subject?: string;
+          message?: string;
+          link?: string;
+          expiresAt?: string | null;
+        } | null;
+      }>;
+      actions?: {
+        continue?: {
+          label?: string;
+          enabled?: boolean;
+          apiUrl?: string;
+        } | null;
+      };
+    };
+  };
+};
+
+export type SubmitCandidateSignatureRequest = {
+  bookingId: string;
+  signatureType: "draw" | "upload";
+  signatureData: string;
+  fileName?: string;
+};
+
+export type SubmitCandidateSignatureResponse = GetBookingFlowSignaturesResponse;
+
+export type RequestTrainingProviderSignatureRequest = {
+  bookingId: string;
+  trainingProviderEmail: string;
+  trainingProviderName?: string;
+  subject: string;
+  message: string;
+};
+
+export type RequestTrainingProviderSignatureResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    requested: boolean;
+    email: string;
+    link?: string;
+    expiresAt?: string | null;
+    screen: GetBookingFlowSignaturesResponse["data"]["screen"];
+  };
+};
+
 export type CreateBookingPaymentIntentResponse = {
   success: boolean;
   message: string;
@@ -730,6 +810,53 @@ export const bookingApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Booking"],
     }),
+    getBookingFlowSignatures: builder.query<
+      GetBookingFlowSignaturesResponse,
+      string
+    >({
+      query: (bookingId) => ({
+        url: `/bookings/${bookingId}/flow/signatures`,
+        method: "GET",
+      }),
+      providesTags: ["Booking"],
+    }),
+    submitCandidateSignature: builder.mutation<
+      SubmitCandidateSignatureResponse,
+      SubmitCandidateSignatureRequest
+    >({
+      query: ({ bookingId, signatureType, signatureData, fileName }) => ({
+        url: `/bookings/${bookingId}/flow/signatures/candidate`,
+        method: "POST",
+        body: {
+          signatureType,
+          signatureData,
+          fileName,
+        },
+      }),
+      invalidatesTags: ["Booking"],
+    }),
+    requestTrainingProviderSignature: builder.mutation<
+      RequestTrainingProviderSignatureResponse,
+      RequestTrainingProviderSignatureRequest
+    >({
+      query: ({
+        bookingId,
+        trainingProviderEmail,
+        trainingProviderName,
+        subject,
+        message,
+      }) => ({
+        url: `/bookings/${bookingId}/flow/signatures/training-provider/request`,
+        method: "POST",
+        body: {
+          trainingProviderEmail,
+          trainingProviderName,
+          subject,
+          message,
+        },
+      }),
+      invalidatesTags: ["Booking"],
+    }),
     getBookingCheckoutDetails: builder.query<GetBookingCheckoutDetailsResponse, string>({
       query: (bookingId) => ({
         url: `/bookings/${bookingId}/checkout/details`,
@@ -859,6 +986,9 @@ export const {
   useGetBookingFlowDocumentsQuery,
   useGetBookingFlowChecklistSummaryQuery,
   useGetBookingFlowChecklistFullQuery,
+  useGetBookingFlowSignaturesQuery,
+  useRequestTrainingProviderSignatureMutation,
+  useSubmitCandidateSignatureMutation,
   useSaveBookingChecklistDraftMutation,
   useUploadBookingDocumentMutation,
   useGetBookingCheckoutDetailsQuery,

@@ -25,14 +25,19 @@ import {
 import type { CourseSummary } from "@/app/(website)/courses/courses-data";
 import PanelCard from "@/components/dashboard/panel-card";
 import {
+  type RequestTrainingProviderSignatureRequest,
+  type SubmitCandidateSignatureRequest,
   useCreateNormalBookingMutation,
   useGetBookingFlowChecklistSummaryQuery,
   useGetBookingFlowDocumentsQuery,
+  useGetBookingFlowSignaturesQuery,
+  useRequestTrainingProviderSignatureMutation,
   useSaveRegistrationAssessmentMutation,
   useSaveRegistrationEmployerMutation,
   useSaveRegistrationEligibilityMutation,
   useSaveRegistrationPrivacyMutation,
   useSaveRegistrationTrainingMutation,
+  useSubmitCandidateSignatureMutation,
   useUploadBookingDocumentMutation,
 } from "@/lib/redux/features/bookings/booking-api";
 import {
@@ -73,11 +78,16 @@ type PaymentFormState = {
   cvc: string;
 };
 type SignatureTab = "draw" | "upload";
-type ProviderSignatureRequestState = {
+type SignatureSubmissionPayload = Pick<
+  SubmitCandidateSignatureRequest,
+  "signatureType" | "signatureData" | "fileName"
+>;
+type ProviderSignatureRequestState = Omit<
+  RequestTrainingProviderSignatureRequest,
+  "bookingId" | "trainingProviderEmail" | "trainingProviderName"
+> & {
   email: string;
   name: string;
-  subject: string;
-  message: string;
 };
 
 type CandidateFormState = {
@@ -334,6 +344,23 @@ function resolveBookingIdFromChecklistScreen(screen: {
   );
 }
 
+function resolveBookingIdFromSignaturesScreen(screen: {
+  actions?: {
+    continue?: { apiUrl?: string } | null;
+  };
+  items: Array<{
+    action?: { apiUrl?: string } | null;
+  }>;
+}) {
+  return (
+    extractBookingIdFromApiUrl(screen.actions?.continue?.apiUrl) ||
+    screen.items
+      .map((item) => extractBookingIdFromApiUrl(item.action?.apiUrl))
+      .find(Boolean) ||
+    ""
+  );
+}
+
 function resolveBookingIdFromRegistrationScreen(screen?: {
   navigation?: {
     previous?: { apiUrl?: string } | null;
@@ -357,6 +384,27 @@ function resolveBookingIdFromRegistrationScreen(screen?: {
 
 function normalizeAssessmentValue(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, "");
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+
+      reject(new Error("We could not read the selected signature file."));
+    };
+
+    reader.onerror = () => {
+      reject(new Error("We could not read the selected signature file."));
+    };
+
+    reader.readAsDataURL(file);
+  });
 }
 
 function formatDateForApi(value: string) {
@@ -712,42 +760,69 @@ function NetChecklistPanel({
 }
 
 function NetSignaturesPanel({
-  candidateSigned,
-  providerSigned,
+  screen,
   onCandidateSign,
   onProviderRequest,
   onContinue,
 }: {
-  candidateSigned: boolean;
-  providerSigned: boolean;
+  screen: {
+    card: {
+      title: string;
+      subtitle?: string;
+    };
+    importantInformation?: string;
+    progressLabel?: string;
+    items: Array<{
+      id: string;
+      label: string;
+      status: string;
+      action?: {
+        label?: string;
+      } | null;
+    }>;
+    actions?: {
+      continue?: {
+        label?: string;
+        enabled?: boolean;
+      } | null;
+    };
+  };
   onCandidateSign: () => void;
   onProviderRequest: () => void;
   onContinue: () => void;
 }) {
-  const allSigned = candidateSigned && providerSigned;
+  const candidateItem = screen.items.find((item) => item.id === "candidate");
+  const providerItem = screen.items.find(
+    (item) => item.id === "training_provider"
+  );
+  const candidateSigned = candidateItem?.status === "signed";
+  const providerSigned = providerItem?.status === "signed";
+  const allSigned = screen.actions?.continue?.enabled !== false;
 
   return (
     <>
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-[1rem] font-semibold text-[#3849a0]">
-            Michael Johnson
+            {screen.card.title}
           </h2>
-          <p className="mt-1 text-xs text-[#7a88a3]">
-            Readiness for Assessment: Candidate Self-Assessment Checklist
-          </p>
+          {screen.card.subtitle ? (
+            <p className="mt-1 text-xs text-[#7a88a3]">{screen.card.subtitle}</p>
+          ) : null}
         </div>
         <button
           type="button"
           className="text-sm font-semibold text-[#4451ac]"
         >
-          Important Information
+          {screen.importantInformation || "Important Information"}
         </button>
       </div>
 
       <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
         <div className="flex items-center justify-between gap-4 rounded-lg border border-[#d5e6f5] bg-[#f4fbff] px-4 py-3">
-          <span className="text-sm text-[#50637f]">Step 1 of 2</span>
+          <span className="text-sm text-[#50637f]">
+            {screen.progressLabel || "Step 1 of 2"}
+          </span>
           <div className="flex items-center gap-2">
             <span className="h-4 w-4 rounded-full bg-[#1ea6df]" />
             <span className="h-4 w-4 rounded-full bg-[#bfeaff]" />
@@ -760,7 +835,7 @@ function NetSignaturesPanel({
               <div>
                 <p className="flex items-center gap-2 text-sm font-semibold text-[#4451ac]">
                   <Signature className="h-4 w-4" />
-                  Candidates
+                  {candidateItem?.label || "Candidate"}
                 </p>
                 <p
                   className={`mt-3 flex items-center gap-2 text-xs ${
@@ -783,7 +858,8 @@ function NetSignaturesPanel({
                 onClick={onCandidateSign}
                 className="rounded-lg border border-[#d5e2f2] bg-white px-4 py-2 text-xs font-medium text-[#4451ac]"
               >
-                {candidateSigned ? "View" : "Submit Signature"}
+                {candidateItem?.action?.label ||
+                  (candidateSigned ? "View" : "Submit Signature")}
               </button>
             </div>
           </div>
@@ -793,7 +869,7 @@ function NetSignaturesPanel({
               <div>
                 <p className="flex items-center gap-2 text-sm font-semibold text-[#4451ac]">
                   <PenTool className="h-4 w-4" />
-                  Training Provider
+                  {providerItem?.label || "Training Provider"}
                 </p>
                 <p
                   className={`mt-3 flex items-center gap-2 text-xs ${
@@ -816,7 +892,8 @@ function NetSignaturesPanel({
                 onClick={onProviderRequest}
                 className="rounded-lg border border-[#d5e2f2] bg-white px-4 py-2 text-xs font-medium text-[#4451ac]"
               >
-                {providerSigned ? "View" : "Ask for signed"}
+                {providerItem?.action?.label ||
+                  (providerSigned ? "View" : "Ask for signed")}
               </button>
             </div>
           </div>
@@ -833,7 +910,7 @@ function NetSignaturesPanel({
                 : "cursor-not-allowed bg-[#dce4ec] text-[#9eacba]"
             }`}
           >
-            Continue
+            {screen.actions?.continue?.label || "Continue"}
           </button>
         </div>
       </div>
@@ -843,12 +920,16 @@ function NetSignaturesPanel({
 
 function SignatureUploadModal({
   open,
+  title,
   onClose,
   onSubmit,
+  isSubmitting = false,
 }: {
   open: boolean;
+  title?: string;
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit: (payload: SignatureSubmissionPayload) => Promise<void> | void;
+  isSubmitting?: boolean;
 }) {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const isDrawingRef = React.useRef(false);
@@ -856,6 +937,7 @@ function SignatureUploadModal({
   const [hasDrawn, setHasDrawn] = React.useState(false);
   const [uploadedFileName, setUploadedFileName] = React.useState("");
   const [uploadedPreview, setUploadedPreview] = React.useState("");
+  const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
 
   React.useEffect(() => {
     if (!open) {
@@ -880,7 +962,11 @@ function SignatureUploadModal({
     context.lineWidth = 2;
     context.lineCap = "round";
     context.lineJoin = "round";
+    setActiveTab("draw");
     setHasDrawn(false);
+    setUploadedFileName("");
+    setUploadedPreview("");
+    setUploadedFile(null);
   }, [open]);
 
   React.useEffect(() => {
@@ -967,8 +1053,37 @@ function SignatureUploadModal({
       URL.revokeObjectURL(uploadedPreview);
     }
 
+    setUploadedFile(file);
     setUploadedFileName(file.name);
     setUploadedPreview(URL.createObjectURL(file));
+  };
+
+  const handleSubmit = async () => {
+    if (activeTab === "draw") {
+      const canvas = canvasRef.current;
+
+      if (!canvas) {
+        return;
+      }
+
+      await onSubmit({
+        signatureType: "draw",
+        signatureData: canvas.toDataURL("image/png"),
+        fileName: "candidate-signature.png",
+      });
+      return;
+    }
+
+    if (!uploadedFile) {
+      return;
+    }
+
+    const signatureData = await readFileAsDataUrl(uploadedFile);
+    await onSubmit({
+      signatureType: "upload",
+      signatureData,
+      fileName: uploadedFile.name,
+    });
   };
 
   const canSubmit =
@@ -982,14 +1097,15 @@ function SignatureUploadModal({
           <div className="flex items-center justify-between gap-4 px-2 pb-3">
             <div className="flex items-center gap-2 text-lg font-medium text-[#3849a0]">
               <Signature className="h-4.5 w-4.5" />
-              <span>Upload your signature</span>
+              <span>{title || "Upload your signature"}</span>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full p-2 text-[#4451ac] transition hover:bg-[#eef5ff]"
-            >
-              <X className="h-5 w-5" />
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="rounded-full p-2 text-[#4451ac] transition hover:bg-[#eef5ff]"
+              >
+                <X className="h-5 w-5" />
             </button>
           </div>
 
@@ -1075,6 +1191,7 @@ function SignatureUploadModal({
                             type="file"
                             accept="image/png,image/jpeg,image/webp"
                             className="hidden"
+                            disabled={isSubmitting}
                             onChange={handleUploadChange}
                           />
                         </label>
@@ -1088,21 +1205,21 @@ function SignatureUploadModal({
               </div>
             )}
 
-            <button
-              type="button"
-              disabled={!canSubmit}
-              onClick={onSubmit}
-              className={`mt-4 w-full rounded-lg px-4 py-3 text-base font-semibold ${
-                canSubmit
-                  ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] text-white"
-                  : "cursor-not-allowed bg-[#dce4ec] text-[#9eacba]"
-              }`}
-            >
-              Submit Signature
-            </button>
+              <button
+                type="button"
+                disabled={!canSubmit || isSubmitting}
+                onClick={() => void handleSubmit()}
+                className={`mt-4 w-full rounded-lg px-4 py-3 text-base font-semibold ${
+                  canSubmit && !isSubmitting
+                    ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] text-white"
+                    : "cursor-not-allowed bg-[#dce4ec] text-[#9eacba]"
+                }`}
+              >
+                {isSubmitting ? "Submitting..." : "Submit Signature"}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
     </>
   );
 }
@@ -1113,12 +1230,14 @@ function AskForSignedModal({
   onChange,
   onClose,
   onSubmit,
+  isSubmitting = false,
 }: {
   open: boolean;
   value: ProviderSignatureRequestState;
   onChange: (field: keyof ProviderSignatureRequestState, value: string) => void;
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit: () => Promise<void> | void;
+  isSubmitting?: boolean;
 }) {
   if (!open) {
     return null;
@@ -1148,6 +1267,7 @@ function AskForSignedModal({
                 value={value.email}
                 onChange={(event) => onChange("email", event.target.value)}
                 placeholder="Enter last name"
+                disabled={isSubmitting}
                 className="h-12 w-full rounded-xl border border-[#d7e5f7] bg-[#eef7ff] px-4 text-base text-[#32439b] outline-none focus:border-[#1ea6df] focus:bg-white"
               />
             </div>
@@ -1161,6 +1281,7 @@ function AskForSignedModal({
                 value={value.name}
                 onChange={(event) => onChange("name", event.target.value)}
                 placeholder="Enter last name"
+                disabled={isSubmitting}
                 className="h-12 w-full rounded-xl border border-[#d7e5f7] bg-[#eef7ff] px-4 text-base text-[#32439b] outline-none focus:border-[#1ea6df] focus:bg-white"
               />
             </div>
@@ -1174,6 +1295,7 @@ function AskForSignedModal({
                 value={value.subject}
                 onChange={(event) => onChange("subject", event.target.value)}
                 placeholder="Enter last name"
+                disabled={isSubmitting}
                 className="h-12 w-full rounded-xl border border-[#d7e5f7] bg-[#eef7ff] px-4 text-base text-[#32439b] outline-none focus:border-[#1ea6df] focus:bg-white"
               />
             </div>
@@ -1186,6 +1308,7 @@ function AskForSignedModal({
                 value={value.message}
                 onChange={(event) => onChange("message", event.target.value)}
                 rows={9}
+                disabled={isSubmitting}
                 className="w-full rounded-xl border border-[#d7e5f7] bg-[#eef7ff] px-4 py-4 text-base leading-8 text-[#32439b] outline-none focus:border-[#1ea6df] focus:bg-white"
               />
             </div>
@@ -1194,21 +1317,22 @@ function AskForSignedModal({
               <button
                 type="button"
                 onClick={onClose}
+                disabled={isSubmitting}
                 className="rounded-xl border border-[#d8e5f4] bg-white px-6 py-3 text-base font-semibold text-[#384a77]"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={!isValid}
-                onClick={onSubmit}
+                disabled={!isValid || isSubmitting}
+                onClick={() => void onSubmit()}
                 className={`rounded-xl px-6 py-3 text-base font-semibold ${
-                  isValid
+                  isValid && !isSubmitting
                     ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] text-white"
                     : "cursor-not-allowed bg-[#dce4ec] text-[#9eacba]"
                 }`}
               >
-                Send Request
+                {isSubmitting ? "Sending..." : "Send Request"}
               </button>
             </div>
           </div>
@@ -1802,6 +1926,12 @@ export default function Am2RegistrationFlow({
   const [saveRegistrationPrivacy, { isLoading: isSavingPrivacy }] =
     useSaveRegistrationPrivacyMutation();
   const [uploadBookingDocument] = useUploadBookingDocumentMutation();
+  const [submitCandidateSignature, { isLoading: isSubmittingCandidateSignature }] =
+    useSubmitCandidateSignatureMutation();
+  const [
+    requestTrainingProviderSignature,
+    { isLoading: isRequestingTrainingProviderSignature },
+  ] = useRequestTrainingProviderSignatureMutation();
   const {
     data: registrationFormData,
     isLoading: isRegistrationFormLoading,
@@ -1896,8 +2026,6 @@ export default function Am2RegistrationFlow({
   const [nvqModalOpen, setNvqModalOpen] = React.useState(false);
   const [nvqTiming, setNvqTiming] =
     React.useState<NvqTiming>("before-3rd-september-2023");
-  const [candidateSigned, setCandidateSigned] = React.useState(false);
-  const [providerSigned, setProviderSigned] = React.useState(false);
   const [signatureModalOpen, setSignatureModalOpen] = React.useState(false);
   const [providerRequestModalOpen, setProviderRequestModalOpen] =
     React.useState(false);
@@ -1906,6 +2034,12 @@ export default function Am2RegistrationFlow({
   );
   const [uploadingDocumentId, setUploadingDocumentId] = React.useState<string | null>(null);
   const [documentUploadError, setDocumentUploadError] = React.useState("");
+  const [candidateSignatureError, setCandidateSignatureError] = React.useState("");
+  const [candidateSignatureMessage, setCandidateSignatureMessage] = React.useState("");
+  const [providerSignatureRequestError, setProviderSignatureRequestError] =
+    React.useState("");
+  const [providerSignatureRequestMessage, setProviderSignatureRequestMessage] =
+    React.useState("");
   const [providerSignatureRequest, setProviderSignatureRequest] =
     React.useState<ProviderSignatureRequestState>({
       email: "",
@@ -2018,6 +2152,14 @@ Thank you,`,
   } = useGetBookingFlowChecklistSummaryQuery(resolvedBookingId, {
     skip: !resolvedBookingId || phase !== "net" || currentNetStep !== "checklist",
   });
+  const {
+    data: signaturesScreenData,
+    isLoading: isSignaturesScreenLoading,
+    isError: isSignaturesScreenError,
+    error: signaturesScreenError,
+  } = useGetBookingFlowSignaturesQuery(resolvedBookingId, {
+    skip: !resolvedBookingId || phase !== "net" || currentNetStep !== "signatures",
+  });
 
   const resolveQualificationId = React.useCallback(() => {
     if (selectedQualificationIdParam) {
@@ -2090,6 +2232,37 @@ Thank you,`,
       setActiveBookingId(serverBookingId);
     }
   }, [activeBookingId, checklistScreenData]);
+
+  React.useEffect(() => {
+    const screen = signaturesScreenData?.data.screen;
+
+    if (!screen) {
+      return;
+    }
+
+    const serverBookingId = resolveBookingIdFromSignaturesScreen(screen);
+
+    if (serverBookingId && serverBookingId !== activeBookingId) {
+      setActiveBookingId(serverBookingId);
+    }
+  }, [activeBookingId, signaturesScreenData]);
+
+  React.useEffect(() => {
+    const providerRequest = signaturesScreenData?.data.screen.items.find(
+      (item) => item.id === "training_provider"
+    )?.request;
+
+    if (!providerRequest) {
+      return;
+    }
+
+    setProviderSignatureRequest((current) => ({
+      email: current.email || providerRequest.email || "",
+      name: current.name || providerRequest.name || "",
+      subject: current.subject || providerRequest.subject || "",
+      message: current.message || providerRequest.message || "",
+    }));
+  }, [signaturesScreenData]);
 
   React.useEffect(() => {
     const serverBookingId =
@@ -2692,6 +2865,86 @@ Thank you,`,
         return params.toString();
       })()}`
     );
+  };
+
+  const handleCandidateSignatureSubmit = async (
+    payload: SignatureSubmissionPayload
+  ) => {
+    if (!resolvedBookingId) {
+      setCandidateSignatureError(
+        "We could not determine the booking reference for this signature yet."
+      );
+      return;
+    }
+
+    try {
+      setCandidateSignatureError("");
+      setCandidateSignatureMessage("");
+      const response = await submitCandidateSignature({
+        bookingId: resolvedBookingId,
+        ...payload,
+      }).unwrap();
+      const nextBookingId = resolveBookingIdFromSignaturesScreen(
+        response.data.screen
+      );
+
+      if (nextBookingId && nextBookingId !== resolvedBookingId) {
+        setActiveBookingId(nextBookingId);
+      }
+
+      setCandidateSignatureMessage(
+        response.message || "Candidate signature submitted successfully."
+      );
+      setSignatureModalOpen(false);
+    } catch (submitError) {
+      setCandidateSignatureError(
+        resolveApiErrorMessage(
+          submitError,
+          "We could not submit the candidate signature right now."
+        )
+      );
+    }
+  };
+
+  const handleTrainingProviderSignatureRequest = async () => {
+    if (!resolvedBookingId) {
+      setProviderSignatureRequestError(
+        "We could not determine the booking reference for this signature request yet."
+      );
+      return;
+    }
+
+    try {
+      setProviderSignatureRequestError("");
+      setProviderSignatureRequestMessage("");
+      const response = await requestTrainingProviderSignature({
+        bookingId: resolvedBookingId,
+        trainingProviderEmail: providerSignatureRequest.email,
+        trainingProviderName: providerSignatureRequest.name,
+        subject: providerSignatureRequest.subject,
+        message: providerSignatureRequest.message,
+      }).unwrap();
+      const nextBookingId = resolveBookingIdFromSignaturesScreen(
+        response.data.screen
+      );
+
+      if (nextBookingId && nextBookingId !== resolvedBookingId) {
+        setActiveBookingId(nextBookingId);
+      }
+
+      setProviderSignatureRequestMessage(
+        response.message ||
+          "Training provider signature request sent successfully."
+      );
+      setProviderRequestModalOpen(false);
+    } catch (requestError) {
+      setProviderSignatureRequestError(
+        resolveApiErrorMessage(
+          requestError,
+          "We could not send the training provider signature request right now."
+        )
+      );
+    }
   };
 
   const syncNetRoute = React.useCallback(
@@ -3483,13 +3736,69 @@ Thank you,`,
           ) : null}
 
           {phase === "net" && currentNetStep === "signatures" ? (
-            <NetSignaturesPanel
-              candidateSigned={candidateSigned}
-              providerSigned={providerSigned}
-              onCandidateSign={() => setSignatureModalOpen(true)}
-              onProviderRequest={() => setProviderRequestModalOpen(true)}
-              onContinue={handleSignaturesContinue}
-            />
+            <>
+              {isSignaturesScreenLoading ? (
+                <div className="space-y-4 animate-pulse">
+                  <div className="h-8 w-60 rounded bg-[#e4edf8]" />
+                  <div className="h-16 rounded bg-[#edf3fb]" />
+                  <div className="h-36 rounded bg-[#edf3fb]" />
+                </div>
+              ) : null}
+
+              {!isSignaturesScreenLoading && isSignaturesScreenError ? (
+                <div className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+                  {resolveApiErrorMessage(
+                    signaturesScreenError,
+                    "We could not load the booking signatures screen right now."
+                  )}
+                </div>
+              ) : null}
+
+              {!isSignaturesScreenLoading &&
+              !isSignaturesScreenError &&
+              signaturesScreenData?.data.screen ? (
+                <>
+                  {candidateSignatureMessage ? (
+                    <div className="mb-4 rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] px-4 py-3 text-sm text-[#15803d]">
+                      {candidateSignatureMessage}
+                    </div>
+                  ) : null}
+
+                  {candidateSignatureError ? (
+                    <div className="mb-4 rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+                      {candidateSignatureError}
+                    </div>
+                  ) : null}
+
+                  {providerSignatureRequestMessage ? (
+                    <div className="mb-4 rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] px-4 py-3 text-sm text-[#15803d]">
+                      {providerSignatureRequestMessage}
+                    </div>
+                  ) : null}
+
+                  {providerSignatureRequestError ? (
+                    <div className="mb-4 rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+                      {providerSignatureRequestError}
+                    </div>
+                  ) : null}
+
+                  <NetSignaturesPanel
+                    screen={signaturesScreenData.data.screen}
+                    onCandidateSign={() => {
+                      setCandidateSignatureError("");
+                      setCandidateSignatureMessage("");
+                      setSignatureModalOpen(true);
+                    }}
+                    onProviderRequest={() => {
+                      setProviderSignatureRequestError("");
+                      setProviderSignatureRequestMessage("");
+                      setProviderRequestModalOpen(true);
+                    }}
+                    onContinue={handleSignaturesContinue}
+                  />
+                </>
+              ) : null}
+            </>
           ) : null}
 
           {phase === "net" && currentNetStep === "submit" ? (
@@ -3726,11 +4035,13 @@ Thank you,`,
 
       <SignatureUploadModal
         open={signatureModalOpen}
+        title={
+          signaturesScreenData?.data.screen.items.find((item) => item.id === "candidate")
+            ?.modal?.title
+        }
         onClose={() => setSignatureModalOpen(false)}
-        onSubmit={() => {
-          setCandidateSigned(true);
-          setSignatureModalOpen(false);
-        }}
+        onSubmit={handleCandidateSignatureSubmit}
+        isSubmitting={isSubmittingCandidateSignature}
       />
 
       <AskForSignedModal
@@ -3738,10 +4049,8 @@ Thank you,`,
         value={providerSignatureRequest}
         onChange={updateProviderSignatureRequest}
         onClose={() => setProviderRequestModalOpen(false)}
-        onSubmit={() => {
-          setProviderSigned(true);
-          setProviderRequestModalOpen(false);
-        }}
+        onSubmit={handleTrainingProviderSignatureRequest}
+        isSubmitting={isRequestingTrainingProviderSignature}
       />
 
       <NvqRegistrationDateModal
