@@ -399,6 +399,67 @@ export type SaveRegistrationPrivacyResponse = {
   };
 };
 
+export type BookingFlowStep = {
+  id: "documents" | "checklist" | "signatures" | "submit" | "review" | "payment" | "confirmed" | string;
+  label: string;
+  status: "completed" | "current" | "upcoming" | string;
+};
+
+export type GetBookingFlowDocumentsResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    screen: {
+      steps: BookingFlowStep[];
+      title: string;
+      subtitle?: string;
+      importantInformation?: string;
+      course: {
+        id: string;
+        title: string;
+        slug: string;
+      };
+      requirements: Array<{
+        id: string;
+        title: string;
+        description: string;
+        uploaded: boolean;
+        document: {
+          fileName?: string;
+          fileUrl?: string;
+          uploadedAt?: string;
+        } | null;
+        action?: {
+          label?: string;
+          method?: string;
+          apiUrl?: string;
+        } | null;
+      }>;
+      completion: {
+        uploadedCount: number;
+        totalRequired: number;
+        percentage: number;
+      };
+      actions?: {
+        continue?: {
+          label?: string;
+          enabled?: boolean;
+          apiUrl?: string;
+        } | null;
+      };
+    };
+  };
+};
+
+export type UploadBookingDocumentRequest = {
+  bookingId: string;
+  documentType: string;
+  documentLabel: string;
+  file: File;
+};
+
+export type UploadBookingDocumentResponse = GetBookingFlowDocumentsResponse;
+
 export type CreateBookingPaymentIntentResponse = {
   success: boolean;
   message: string;
@@ -508,6 +569,31 @@ export const bookingApi = baseApi.injectEndpoints({
         method: "GET",
       }),
       providesTags: ["Booking"],
+    }),
+    getBookingFlowDocuments: builder.query<GetBookingFlowDocumentsResponse, string>({
+      query: (bookingId) => ({
+        url: `/bookings/${bookingId}/flow/documents`,
+        method: "GET",
+      }),
+      providesTags: ["Booking"],
+    }),
+    uploadBookingDocument: builder.mutation<
+      UploadBookingDocumentResponse,
+      UploadBookingDocumentRequest
+    >({
+      query: ({ bookingId, documentType, documentLabel, file }) => {
+        const body = new FormData();
+        body.append("documentType", documentType);
+        body.append("documentLabel", documentLabel);
+        body.append("file", file);
+
+        return {
+          url: `/bookings/${bookingId}/flow/documents/upload`,
+          method: "POST",
+          body,
+        };
+      },
+      invalidatesTags: ["Booking"],
     }),
     getBookingCheckoutDetails: builder.query<GetBookingCheckoutDetailsResponse, string>({
       query: (bookingId) => ({
@@ -635,6 +721,8 @@ export const {
   useCreateNormalBookingMutation,
   useGetBookingsQuery,
   useGetBookingByIdQuery,
+  useGetBookingFlowDocumentsQuery,
+  useUploadBookingDocumentMutation,
   useGetBookingCheckoutDetailsQuery,
   useGetBookingCheckoutPaymentQuery,
   useGetBookingCheckoutConfirmationQuery,

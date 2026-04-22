@@ -25,11 +25,13 @@ import {
 import type { CourseSummary } from "@/app/(website)/courses/courses-data";
 import PanelCard from "@/components/dashboard/panel-card";
 import {
+  useGetBookingFlowDocumentsQuery,
   useSaveRegistrationAssessmentMutation,
   useSaveRegistrationEmployerMutation,
   useSaveRegistrationEligibilityMutation,
   useSaveRegistrationPrivacyMutation,
   useSaveRegistrationTrainingMutation,
+  useUploadBookingDocumentMutation,
 } from "@/lib/redux/features/bookings/booking-api";
 import {
   useGetCourseAssessmentRegistrationFormQuery,
@@ -123,10 +125,6 @@ type DocumentRequirement = {
   description: string;
   initiallyUploaded?: boolean;
 };
-type UploadedDocumentState = {
-  fileName: string;
-};
-
 type CandidateFieldKey = keyof CandidateFormState;
 type AssessmentFieldKey = keyof AssessmentFormState;
 type EmployerFieldKey = keyof EmployerFormState;
@@ -368,6 +366,55 @@ function resolveApiErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function extractBookingIdFromApiUrl(value?: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  const match = value.match(/\/bookings\/([^/]+)/);
+  return match?.[1] ?? "";
+}
+
+function resolveBookingIdFromBookingPayload(booking: {
+  id?: string;
+  registration?: {
+    endpoints?: {
+      eligibility?: { apiUrl?: string };
+      privacy?: { apiUrl?: string };
+      assessment?: { apiUrl?: string };
+      employer?: { apiUrl?: string };
+      training?: { apiUrl?: string };
+    };
+  };
+}) {
+  return (
+    extractBookingIdFromApiUrl(booking.registration?.endpoints?.eligibility?.apiUrl) ||
+    extractBookingIdFromApiUrl(booking.registration?.endpoints?.privacy?.apiUrl) ||
+    extractBookingIdFromApiUrl(booking.registration?.endpoints?.assessment?.apiUrl) ||
+    extractBookingIdFromApiUrl(booking.registration?.endpoints?.employer?.apiUrl) ||
+    extractBookingIdFromApiUrl(booking.registration?.endpoints?.training?.apiUrl) ||
+    booking.id ||
+    ""
+  );
+}
+
+function resolveBookingIdFromDocumentsScreen(screen: {
+  actions?: {
+    continue?: { apiUrl?: string } | null;
+  };
+  requirements: Array<{
+    action?: { apiUrl?: string } | null;
+  }>;
+}) {
+  return (
+    extractBookingIdFromApiUrl(screen.actions?.continue?.apiUrl) ||
+    screen.requirements
+      .map((item) => extractBookingIdFromApiUrl(item.action?.apiUrl))
+      .find(Boolean) ||
+    ""
+  );
+}
+
 function normalizeAssessmentValue(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, "");
 }
@@ -455,30 +502,51 @@ function RadioRow({
 }
 
 function NetDocumentsPanel({
-  flow,
-  uploadedDocuments,
+  screen,
   onUpload,
   onContinue,
+  uploadingDocumentId,
+  uploadError,
 }: {
-  flow: NetFlowType;
-  uploadedDocuments: Map<string, UploadedDocumentState>;
-  onUpload: (id: string, file: File) => void;
+  screen: {
+    title: string;
+    subtitle?: string;
+    importantInformation?: string;
+    requirements: Array<{
+      id: string;
+      title: string;
+      description: string;
+      uploaded: boolean;
+      document: {
+        fileName?: string;
+      } | null;
+      action?: {
+        label?: string;
+      } | null;
+    }>;
+    completion: {
+      percentage: number;
+    };
+    actions?: {
+      continue?: {
+        label?: string;
+        enabled?: boolean;
+      } | null;
+    };
+  };
+  onUpload: (id: string, title: string, file: File) => void;
   onContinue: () => void;
+  uploadingDocumentId: string | null;
+  uploadError: string;
 }) {
-  const content = netFlowContent[flow];
-  const allRequiredUploaded = content.requirements.every((item) => {
-    if (item.initiallyUploaded) {
-      return true;
-    }
-
-    return uploadedDocuments.has(item.id);
-  });
+  const allRequiredUploaded = screen.requirements.every((item) => item.uploaded);
 
   const acceptedDocumentTypes =
     ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.rtf,.odt,.ods,.zip,.jpg,.jpeg,.png,.webp";
 
   const handleFileChange = (
     id: string,
+    title: string,
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
@@ -487,7 +555,7 @@ function NetDocumentsPanel({
       return;
     }
 
-    onUpload(id, file);
+    onUpload(id, title, file);
     event.target.value = "";
   };
 
@@ -501,18 +569,32 @@ function NetDocumentsPanel({
 
       <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
         <h3 className="text-sm font-semibold text-[#3850a2]">
-          {content.documentsTitle}
+          {screen.title}
         </h3>
-        <p className="mt-1 text-xs text-[#6c7f9d]">{content.documentsSubtitle}</p>
+        {screen.subtitle ? (
+          <p className="mt-1 text-xs text-[#6c7f9d]">{screen.subtitle}</p>
+        ) : null}
+
+        <div className="mt-4 flex items-center justify-between text-xs text-[#6c7f9d]">
+          <span>Overall Completion</span>
+          <span>{screen.completion.percentage}%</span>
+        </div>
+        <div className="mt-2 h-2 rounded-full bg-white">
+          <div
+            className="h-2 rounded-full bg-[#1ea6df] transition-all"
+            style={{ width: `${screen.completion.percentage}%` }}
+          />
+        </div>
 
         <div className="mt-5 rounded-lg border border-[#f2c463] bg-[#fffaf1] px-4 py-3 text-sm text-[#8f6413]">
-          You must upload all required documents before proceeding.
+          {screen.importantInformation ||
+            "You must upload all required documents before proceeding."}
         </div>
 
         <div className="mt-4 space-y-3">
-          {content.requirements.map((item) => {
-            const uploadedDocument = uploadedDocuments.get(item.id);
-            const isUploaded = item.initiallyUploaded || Boolean(uploadedDocument);
+          {screen.requirements.map((item) => {
+            const isUploaded = item.uploaded;
+            const isUploading = uploadingDocumentId === item.id;
 
             return (
               <div
@@ -527,9 +609,9 @@ function NetDocumentsPanel({
                     <p className="mt-1 text-xs text-[#7d8da7]">
                       {item.description}
                     </p>
-                    {uploadedDocument ? (
+                    {item.document?.fileName ? (
                       <p className="mt-2 text-xs font-medium text-[#1f8f54]">
-                        Selected file: {uploadedDocument.fileName}
+                        Selected file: {item.document.fileName}
                       </p>
                     ) : null}
                   </div>
@@ -545,29 +627,40 @@ function NetDocumentsPanel({
                       type="file"
                       accept={acceptedDocumentTypes}
                       className="hidden"
-                      onChange={(event) => handleFileChange(item.id, event)}
+                      disabled={isUploading}
+                      onChange={(event) => handleFileChange(item.id, item.title, event)}
                     />
-                    {isUploaded ? "Re-uploaded" : "Upload"}
+                    {isUploading
+                      ? "Uploading..."
+                      : isUploaded
+                        ? item.action?.label || "Replace"
+                        : item.action?.label || "Upload"}
                   </label>
                 </div>
               </div>
             );
           })}
         </div>
+
+        {uploadError ? (
+          <div className="mt-4 rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+            {uploadError}
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-6 flex items-center justify-end gap-3 border-t border-[#dbe7f4] pt-5">
         <button
           type="button"
-          disabled={!allRequiredUploaded}
+          disabled={!allRequiredUploaded || screen.actions?.continue?.enabled === false}
           onClick={onContinue}
           className={`rounded-lg px-5 py-2.5 text-sm font-medium text-white ${
-            allRequiredUploaded
+            allRequiredUploaded && screen.actions?.continue?.enabled !== false
               ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
               : "cursor-not-allowed bg-[#dce6ef]"
           }`}
         >
-          Continue
+          {screen.actions?.continue?.label || "Continue"}
         </button>
       </div>
     </>
@@ -1715,6 +1808,7 @@ export default function Am2RegistrationFlow({
     useSaveRegistrationTrainingMutation();
   const [saveRegistrationPrivacy, { isLoading: isSavingPrivacy }] =
     useSaveRegistrationPrivacyMutation();
+  const [uploadBookingDocument] = useUploadBookingDocumentMutation();
   const {
     data: registrationFormData,
     isLoading: isRegistrationFormLoading,
@@ -1806,11 +1900,6 @@ export default function Am2RegistrationFlow({
     postcode: "",
   });
   const [privacyConfirmed, setPrivacyConfirmed] = React.useState(false);
-  const [uploadedDocuments, setUploadedDocuments] = React.useState<
-    Map<string, UploadedDocumentState>
-  >(
-    new Map()
-  );
   const [nvqModalOpen, setNvqModalOpen] = React.useState(false);
   const [nvqTiming, setNvqTiming] =
     React.useState<NvqTiming>("before-3rd-september-2023");
@@ -1819,6 +1908,11 @@ export default function Am2RegistrationFlow({
   const [signatureModalOpen, setSignatureModalOpen] = React.useState(false);
   const [providerRequestModalOpen, setProviderRequestModalOpen] =
     React.useState(false);
+  const [activeBookingId, setActiveBookingId] = React.useState(
+    () => searchParams.get("bookingId") ?? bookingId ?? ""
+  );
+  const [uploadingDocumentId, setUploadingDocumentId] = React.useState<string | null>(null);
+  const [documentUploadError, setDocumentUploadError] = React.useState("");
   const [providerSignatureRequest, setProviderSignatureRequest] =
     React.useState<ProviderSignatureRequestState>({
       email: "",
@@ -1914,7 +2008,15 @@ Thank you,`,
     activeRegistrationScreen?.navigation?.next?.label ??
     "Continue";
 
-  const resolvedBookingId = bookingId ?? searchParams.get("bookingId") ?? "";
+  const resolvedBookingId = activeBookingId;
+  const {
+    data: documentsScreenData,
+    isLoading: isDocumentsScreenLoading,
+    isError: isDocumentsScreenError,
+    error: documentsScreenError,
+  } = useGetBookingFlowDocumentsQuery(resolvedBookingId, {
+    skip: !resolvedBookingId || phase !== "net" || currentNetStep !== "documents",
+  });
 
   const resolveQualificationId = React.useCallback(() => {
     if (selectedQualificationIdParam) {
@@ -1930,21 +2032,12 @@ Thank you,`,
   }, [selectedQualification, selectedQualificationIdParam]);
 
   React.useEffect(() => {
-    const initialUploads = netFlowContent[netFlowType].requirements
-      .filter((item) => item.initiallyUploaded)
-      .map((item) => item.id);
+    const requestedBookingId = searchParams.get("bookingId");
 
-    setUploadedDocuments(
-      new Map(
-        initialUploads.map((id) => [
-          id,
-          {
-            fileName: "Previously uploaded document",
-          },
-        ])
-      )
-    );
-  }, [netFlowType]);
+    if (requestedBookingId && requestedBookingId !== activeBookingId) {
+      setActiveBookingId(requestedBookingId);
+    }
+  }, [activeBookingId, searchParams]);
 
   React.useEffect(() => {
     const resolvedFlow =
@@ -1968,6 +2061,20 @@ Thank you,`,
       requestedReviewStatus === "approved" ? "approved" : "pending"
     );
   }, [requestedFlow, requestedNetStep, requestedReviewStatus]);
+
+  React.useEffect(() => {
+    const screen = documentsScreenData?.data.screen;
+
+    if (!screen) {
+      return;
+    }
+
+    const serverBookingId = resolveBookingIdFromDocumentsScreen(screen);
+
+    if (serverBookingId && serverBookingId !== activeBookingId) {
+      setActiveBookingId(serverBookingId);
+    }
+  }, [activeBookingId, documentsScreenData]);
 
   const currentIndex = currentRegistrationSteps.findIndex(
     (step) => step.key === currentStep
@@ -2307,19 +2414,22 @@ Thank you,`,
     }
   };
 
-  const startNetFlow = (flowType: NetFlowType) => {
+  const startNetFlow = (flowType: NetFlowType, nextBookingId?: string) => {
     setNetFlowType(flowType);
     setPhase("net");
     setCurrentNetStep("documents");
+    syncNetRoute("documents", undefined, flowType, nextBookingId);
   };
 
   const submitEligibility = React.useCallback(
-    async (registrationDate?: string) => {
-      if (!resolvedBookingId) {
+    async (registrationDate?: string, bookingIdOverride?: string) => {
+      const bookingReference = bookingIdOverride ?? resolvedBookingId;
+
+      if (!bookingReference) {
         setEligibilityStepError(
           "We could not determine the booking reference for this registration yet."
         );
-        return false;
+        return null;
       }
 
       const qualificationId = resolveQualificationId();
@@ -2328,18 +2438,30 @@ Thank you,`,
         setEligibilityStepError(
           "Please start from Book Now and select a qualification before continuing."
         );
-        return false;
+        return null;
       }
 
       try {
         setEligibilityStepError("");
-        await saveRegistrationEligibility({
-          bookingId: resolvedBookingId,
+        const response = await saveRegistrationEligibility({
+          bookingId: bookingReference,
           qualificationId,
           qualificationLabel: selectedQualification,
           nvqRegistrationDate: registrationDate ?? "",
         }).unwrap();
-        return true;
+        const nextBookingId = resolveBookingIdFromBookingPayload(
+          response.data.booking
+        );
+
+        if (!nextBookingId) {
+          setEligibilityStepError(
+            "We could not determine the booking reference returned from the eligibility response."
+          );
+          return null;
+        }
+
+        setActiveBookingId(nextBookingId);
+        return nextBookingId;
       } catch (saveEligibilityError) {
         setEligibilityStepError(
           resolveApiErrorMessage(
@@ -2347,13 +2469,14 @@ Thank you,`,
             "We could not save your eligibility details right now."
           )
         );
-        return false;
+        return null;
       }
     },
     [
       resolveQualificationId,
       resolvedBookingId,
       saveRegistrationEligibility,
+      setActiveBookingId,
       selectedQualification,
     ]
   );
@@ -2368,10 +2491,44 @@ Thank you,`,
 
     try {
       setEligibilityStepError("");
-      await saveRegistrationPrivacy({
+      const response = await saveRegistrationPrivacy({
         bookingId: resolvedBookingId,
         privacyConfirmation: true,
       }).unwrap();
+      const nextBookingId = resolveBookingIdFromBookingPayload(
+        response.data.booking
+      );
+
+      if (!nextBookingId) {
+        setEligibilityStepError(
+          "We could not determine the booking reference returned from the privacy response."
+        );
+        return;
+      }
+
+      setActiveBookingId(nextBookingId);
+
+      if (am2eEligibleQualifications.has(selectedQualification)) {
+        setEligibilityStepError("");
+        router.replace(
+          `/dashboard/courses/${course.slug}/book?${(() => {
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("bookingId", nextBookingId);
+            return params.toString();
+          })()}`
+        );
+        setNvqModalOpen(true);
+        return;
+      }
+
+      const eligibilityBookingId = await submitEligibility(undefined, nextBookingId);
+
+      if (!eligibilityBookingId) {
+        return;
+      }
+
+      startNetFlow("am2", eligibilityBookingId);
+      return;
     } catch (savePrivacyError) {
       setEligibilityStepError(
         resolveApiErrorMessage(
@@ -2381,63 +2538,103 @@ Thank you,`,
       );
       return;
     }
-
-    if (am2eEligibleQualifications.has(selectedQualification)) {
-      setEligibilityStepError("");
-      setNvqModalOpen(true);
-      return;
-    }
-
-    const saved = await submitEligibility();
-
-    if (!saved) {
-      return;
-    }
-
-    startNetFlow("am2");
   };
 
   const handleNqvContinue = async () => {
-    const saved = await submitEligibility(nvqTiming);
+    const eligibilityBookingId = await submitEligibility(nvqTiming, resolvedBookingId);
 
-    if (!saved) {
+    if (!eligibilityBookingId) {
       return;
     }
 
     setNvqModalOpen(false);
     startNetFlow(
-      nvqTiming === "before-3rd-september-2023" ? "am2e" : "am2e-v1"
+      nvqTiming === "before-3rd-september-2023" ? "am2e" : "am2e-v1",
+      eligibilityBookingId
     );
   };
 
-  const handleUploadDocument = (id: string, file: File) => {
-    setUploadedDocuments((current) => {
-      const next = new Map(current);
-      next.set(id, { fileName: file.name });
-      return next;
-    });
+  const handleUploadDocument = async (
+    id: string,
+    title: string,
+    file: File
+  ) => {
+    if (!resolvedBookingId) {
+      setDocumentUploadError(
+        "We could not determine the booking reference for this document upload yet."
+      );
+      return;
+    }
+
+    try {
+      setDocumentUploadError("");
+      setUploadingDocumentId(id);
+      const response = await uploadBookingDocument({
+        bookingId: resolvedBookingId,
+        documentType: id,
+        documentLabel: title,
+        file,
+      }).unwrap();
+      const nextBookingId = resolveBookingIdFromDocumentsScreen(
+        response.data.screen
+      );
+
+      if (nextBookingId && nextBookingId !== resolvedBookingId) {
+        setActiveBookingId(nextBookingId);
+      }
+    } catch (uploadError) {
+      setDocumentUploadError(
+        resolveApiErrorMessage(
+          uploadError,
+          "We could not upload your booking document right now."
+        )
+      );
+    } finally {
+      setUploadingDocumentId(null);
+    }
   };
 
   const handleSignaturesContinue = () => {
     setCurrentNetStep("submit");
     router.replace(
-      `/dashboard/courses/${course.slug}/book?flow=${netFlowType}&netStep=submit`
+      `/dashboard/courses/${course.slug}/book?${(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("flow", netFlowType);
+        params.set("netStep", "submit");
+        if (resolvedBookingId) {
+          params.set("bookingId", resolvedBookingId);
+        }
+        return params.toString();
+      })()}`
     );
   };
 
   const syncNetRoute = React.useCallback(
-    (step: NetStepKey, nextReviewStatus?: ReviewStatus) => {
-      const params = new URLSearchParams();
-      params.set("flow", netFlowType);
+    (
+      step: NetStepKey,
+      nextReviewStatus?: ReviewStatus,
+      nextFlowType?: NetFlowType,
+      nextBookingId?: string
+    ) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("flow", nextFlowType ?? netFlowType);
       params.set("netStep", step);
+
+      const bookingReference = nextBookingId ?? resolvedBookingId;
+
+      if (bookingReference) {
+        params.set("bookingId", bookingReference);
+      }
 
       if (nextReviewStatus) {
         params.set("reviewStatus", nextReviewStatus);
+      } else {
+        params.delete("reviewStatus");
       }
 
       router.replace(`/dashboard/courses/${course.slug}/book?${params.toString()}`);
     },
-    [course.slug, netFlowType, router]
+    [course.slug, netFlowType, resolvedBookingId, router, searchParams]
   );
 
   const moveToNetStep = React.useCallback(
@@ -3128,12 +3325,37 @@ Thank you,`,
           ) : null}
 
           {phase === "net" && currentNetStep === "documents" ? (
-            <NetDocumentsPanel
-              flow={netFlowType}
-              uploadedDocuments={uploadedDocuments}
-              onUpload={handleUploadDocument}
-              onContinue={() => setCurrentNetStep("checklist")}
-            />
+            <>
+              {isDocumentsScreenLoading ? (
+                <div className="space-y-4 animate-pulse">
+                  <div className="h-8 w-60 rounded bg-[#e4edf8]" />
+                  <div className="h-5 w-72 rounded bg-[#edf3fb]" />
+                  <div className="h-16 rounded bg-[#edf3fb]" />
+                  <div className="h-20 rounded bg-[#edf3fb]" />
+                </div>
+              ) : null}
+
+              {!isDocumentsScreenLoading && isDocumentsScreenError ? (
+                <div className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+                  {resolveApiErrorMessage(
+                    documentsScreenError,
+                    "We could not load the booking documents screen right now."
+                  )}
+                </div>
+              ) : null}
+
+              {!isDocumentsScreenLoading &&
+              !isDocumentsScreenError &&
+              documentsScreenData?.data.screen ? (
+                <NetDocumentsPanel
+                  screen={documentsScreenData.data.screen}
+                  onUpload={handleUploadDocument}
+                  onContinue={() => moveToNetStep("checklist")}
+                  uploadingDocumentId={uploadingDocumentId}
+                  uploadError={documentUploadError}
+                />
+              ) : null}
+            </>
           ) : null}
 
           {phase === "net" && currentNetStep === "checklist" ? (
