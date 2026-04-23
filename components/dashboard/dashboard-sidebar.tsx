@@ -1,8 +1,10 @@
 "use client";
 
+import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
+  AlertTriangle,
   BookOpen,
   Gauge,
   Headset,
@@ -36,6 +38,7 @@ export function DashboardSidebar({
   open,
   onClose,
 }: DashboardSidebarProps) {
+  const [logoutModalOpen, setLogoutModalOpen] = React.useState(false);
   const dispatch = useAppDispatch();
   const router = useRouter();
   const pathname = usePathname();
@@ -53,11 +56,18 @@ export function DashboardSidebar({
     <>
       <div
         className={`fixed inset-0 z-30 bg-[#12214d]/25 backdrop-blur-sm transition lg:hidden ${
-          open
+          open || logoutModalOpen
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none opacity-0"
         }`}
-        onClick={onClose}
+        onClick={() => {
+          if (logoutModalOpen) {
+            setLogoutModalOpen(false);
+            return;
+          }
+
+          onClose();
+        }}
       />
 
       <aside
@@ -141,7 +151,11 @@ export function DashboardSidebar({
 
           <div className="border-t border-[#edf3fb] px-4 py-5">
             <p className="mb-3 text-xs font-medium text-[#9da8b8]">Profile</p>
-            <div className="flex items-center gap-3">
+            <Link
+              href="/dashboard/settings"
+              onClick={onClose}
+              className="flex items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-[#f2f7fd]"
+            >
               <Image
                 src={avatarSrc}
                 alt={displayName || "User avatar"}
@@ -157,14 +171,11 @@ export function DashboardSidebar({
                   {displayEmail}
                 </p>
               </div>
-            </div>
+            </Link>
 
             <button
               type="button"
-              onClick={() => {
-                dispatch(clearCredentials());
-                router.push("/login");
-              }}
+              onClick={() => setLogoutModalOpen(true)}
               className="mt-5 flex w-full items-center justify-center gap-2 rounded-full border border-[#9ddafd] bg-[#eef8ff] px-4 py-3 text-lg font-medium text-[#2f3fa0] shadow-[0_10px_22px_rgba(37,167,230,0.12)]"
             >
               <LogOut className="h-5 w-5" />
@@ -173,6 +184,48 @@ export function DashboardSidebar({
           </div>
         </div>
       </aside>
+
+      {logoutModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="w-full max-w-md rounded-[20px] border border-[#dce8f7] bg-white p-6 shadow-[0_24px_60px_rgba(18,33,77,0.18)]">
+            <div className="flex items-start gap-4">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#fff4e5] text-[#f59e0b]">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-[#2f3fa0]">
+                  Log Out?
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-[#6e7f9d]">
+                  Are you sure you want to log out of your account?
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setLogoutModalOpen(false)}
+                className="rounded-[10px] border border-[#d8e4f6] bg-white px-5 py-2.5 text-sm font-medium text-[#33469c]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLogoutModalOpen(false);
+                  onClose();
+                  dispatch(clearCredentials());
+                  router.push("/login");
+                }}
+                className="rounded-[10px] bg-[#ff6b6b] px-5 py-2.5 text-sm font-medium text-white shadow-[0_10px_24px_rgba(255,107,107,0.22)]"
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
