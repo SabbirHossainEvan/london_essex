@@ -26,11 +26,14 @@ import type { CourseSummary } from "@/app/(website)/courses/courses-data";
 import PanelCard from "@/components/dashboard/panel-card";
 import {
   type GetBookingFlowSubmitResponse,
+  type GetBookingFlowReviewResponse,
+  type SubmitBookingForReviewResponse,
   type RequestTrainingProviderSignatureRequest,
   type SubmitCandidateSignatureRequest,
   useCreateNormalBookingMutation,
   useGetBookingFlowChecklistSummaryQuery,
   useGetBookingFlowDocumentsQuery,
+  useGetBookingFlowReviewQuery,
   useGetBookingFlowSignaturesQuery,
   useGetBookingFlowSubmitQuery,
   useRequestTrainingProviderSignatureMutation,
@@ -39,6 +42,7 @@ import {
   useSaveRegistrationEligibilityMutation,
   useSaveRegistrationPrivacyMutation,
   useSaveRegistrationTrainingMutation,
+  useSubmitBookingForReviewMutation,
   useSubmitCandidateSignatureMutation,
   useUploadBookingDocumentMutation,
 } from "@/lib/redux/features/bookings/booking-api";
@@ -1459,19 +1463,33 @@ function NetSubmitPanelContent({
 
 function NetReviewPanel({
   reviewStatus,
+  reviewScreen,
 }: {
   reviewStatus: ReviewStatus;
+  reviewScreen?: SubmitBookingForReviewResponse["data"]["screen"] | null;
 }) {
-  const isApproved = reviewStatus === "approved";
+  const backendApproved = reviewScreen?.status?.key === "approved";
+  const isApproved = backendApproved || reviewStatus === "approved";
+  const badgeLabel =
+    reviewScreen?.stateCard?.badge ||
+    reviewScreen?.status?.label ||
+    (isApproved ? "Approved" : "Under Review");
+  const title =
+    reviewScreen?.stateCard?.title || (isApproved ? "Application Approved!" : "Under Review");
+  const description =
+    reviewScreen?.stateCard?.description ||
+    (isApproved
+      ? "The admin has reviewed and approved your documents, checklist, and signatures. You can now proceed to payment."
+      : "Admin is currently reviewing your application. You'll be notified once it has been approved.");
 
   return (
     <>
       <div>
         <h2 className="text-[1rem] font-semibold text-[#3849a0]">
-          Admin Review
+          {reviewScreen?.title || "Admin Review"}
         </h2>
         <p className="mt-1 text-xs text-[#7a88a3]">
-          Your application is being reviewed by the admin team.
+          {reviewScreen?.subtitle || "Your application is being reviewed by the admin team."}
         </p>
       </div>
 
@@ -1480,9 +1498,8 @@ function NetReviewPanel({
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#f59e0b]" />
             <p>
-              Once submitted, the admin will review your documents, checklist,
-              and signatures. You&apos;ll be notified when your application is
-              approved and you can proceed to payment.
+              {reviewScreen?.notice ||
+                "Once submitted, the admin will review your documents, checklist, and signatures. You'll be notified when your application is approved and you can proceed to payment."}
             </p>
           </div>
         </div>
@@ -1508,12 +1525,10 @@ function NetReviewPanel({
                 isApproved ? "text-[#16a34a]" : "text-[#32439b]"
               }`}
             >
-              {isApproved ? "Application Approved!" : "Under Review"}
+              {title}
             </p>
             <p className="mt-3 max-w-[540px] text-sm leading-6 text-[#7a88a3]">
-              {isApproved
-                ? "The admin has reviewed and approved your documents, checklist, and signatures. You can now proceed to payment."
-                : "Admin is currently reviewing your application. You&apos;ll be notified once it has been approved."}
+              {description}
             </p>
             <span
               className={`mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${
@@ -1523,8 +1538,13 @@ function NetReviewPanel({
               }`}
             >
               <span className="h-1.5 w-1.5 rounded-full bg-current" />
-              {isApproved ? "Approved" : "Under Review"}
+              {badgeLabel}
             </span>
+            {reviewScreen?.notes ? (
+              <p className="mt-4 max-w-[540px] text-xs leading-5 text-[#8a97b2]">
+                {reviewScreen.notes}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -1964,6 +1984,8 @@ export default function Am2RegistrationFlow({
   const searchParams = useSearchParams();
   const [createNormalBooking, { isLoading: isCreatingBooking }] =
     useCreateNormalBookingMutation();
+  const [submitBookingForReview, { isLoading: isSubmittingBookingForReview }] =
+    useSubmitBookingForReviewMutation();
   const [saveRegistrationEligibility, { isLoading: isSavingEligibility }] =
     useSaveRegistrationEligibilityMutation();
   const [saveRegistrationAssessment, { isLoading: isSavingAssessment }] =
@@ -2104,6 +2126,9 @@ Thank you,`,
     });
   const [reviewStatus, setReviewStatus] =
     React.useState<ReviewStatus>("pending");
+  const [reviewScreen, setReviewScreen] = React.useState<
+    SubmitBookingForReviewResponse["data"]["screen"] | null
+  >(null);
   const [payment, setPayment] = React.useState<PaymentFormState>({
     acceptedTerms: false,
     cardNumber: "",
@@ -2216,6 +2241,14 @@ Thank you,`,
     error: submitScreenError,
   } = useGetBookingFlowSubmitQuery(resolvedBookingId, {
     skip: !resolvedBookingId || phase !== "net" || currentNetStep !== "submit",
+  });
+  const {
+    data: reviewScreenData,
+    isLoading: isReviewScreenLoading,
+    isError: isReviewScreenError,
+    error: reviewScreenError,
+  } = useGetBookingFlowReviewQuery(resolvedBookingId, {
+    skip: !resolvedBookingId || phase !== "net" || currentNetStep !== "review",
   });
 
   const resolveQualificationId = React.useCallback(() => {
@@ -2939,6 +2972,32 @@ Thank you,`,
       })()}`
     );
   };
+
+  const handleSubmitForReview = async () => {
+    if (!resolvedBookingId) {
+      return;
+    }
+
+    try {
+      const response = await submitBookingForReview({
+        bookingId: resolvedBookingId,
+      }).unwrap();
+
+      setReviewScreen(response.data.screen);
+      setReviewStatus("pending");
+      moveToNetStep("review", "pending");
+    } catch (submitError) {
+      setCandidateSignatureError(
+        resolveApiErrorMessage(
+          submitError,
+          "We could not submit your booking for review right now."
+        )
+      );
+    }
+  };
+
+  const effectiveReviewScreen: GetBookingFlowReviewResponse["data"]["screen"] | SubmitBookingForReviewResponse["data"]["screen"] | null =
+    reviewScreenData?.data.screen ?? reviewScreen;
 
   const handleCandidateSignatureSubmit = async (
     payload: SignatureSubmissionPayload
@@ -3903,7 +3962,31 @@ Thank you,`,
           ) : null}
 
           {phase === "net" && currentNetStep === "review" ? (
-            <NetReviewPanel reviewStatus={reviewStatus} />
+            <>
+              {isReviewScreenLoading ? (
+                <div className="space-y-4 animate-pulse">
+                  <div className="h-8 w-60 rounded bg-[#e4edf8]" />
+                  <div className="h-16 rounded bg-[#edf3fb]" />
+                  <div className="h-48 rounded bg-[#edf3fb]" />
+                </div>
+              ) : null}
+
+              {!isReviewScreenLoading && isReviewScreenError ? (
+                <div className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+                  {resolveApiErrorMessage(
+                    reviewScreenError,
+                    "We could not load the booking review screen right now."
+                  )}
+                </div>
+              ) : null}
+
+              {!isReviewScreenLoading && !isReviewScreenError ? (
+                <NetReviewPanel
+                  reviewStatus={reviewStatus}
+                  reviewScreen={effectiveReviewScreen}
+                />
+              ) : null}
+            </>
           ) : null}
 
           {phase === "net" && currentNetStep === "payment" ? (
@@ -4067,22 +4150,24 @@ Thank you,`,
                 {currentNetStep === "submit" ? (
                   <button
                     type="button"
-                    disabled={submitScreenData?.data.screen.actions?.submit?.enabled === false}
-                    onClick={() => moveToNetStep("review", "pending")}
+                    disabled={isSubmittingBookingForReview}
+                    onClick={() => void handleSubmitForReview()}
                     className={`rounded-lg px-5 py-2.5 text-sm font-medium ${
-                      submitScreenData?.data.screen.actions?.submit?.enabled === false
+                      isSubmittingBookingForReview
                         ? "cursor-not-allowed bg-[#dce4ec] text-[#9eacba]"
                         : "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
                     }`}
                   >
-                    {submitScreenData?.data.screen.actions?.submit?.label ||
-                      "Submit Application"}
+                    {isSubmittingBookingForReview
+                      ? "Submitting..."
+                      : submitScreenData?.data.screen.actions?.submit?.label ||
+                        "Submit Application"}
                   </button>
                 ) : null}
 
                 {currentNetStep === "review" ? (
                   <>
-                    {reviewStatus === "pending" ? (
+                    {!effectiveReviewScreen?.actions?.continue && reviewStatus === "pending" ? (
                       <button
                         type="button"
                         onClick={() => moveToNetStep("review", "approved")}
@@ -4092,17 +4177,23 @@ Thank you,`,
                       </button>
                     ) : null}
 
-                    <button
-                      type="button"
-                      disabled={reviewStatus !== "approved"}
+                      <button
+                        type="button"
+                      disabled={
+                        effectiveReviewScreen
+                          ? effectiveReviewScreen.actions?.continue?.enabled === false
+                          : reviewStatus !== "approved"
+                      }
                       onClick={() => moveToNetStep("payment")}
                       className={`rounded-lg px-5 py-2.5 text-sm font-medium ${
-                        reviewStatus === "approved"
+                        (effectiveReviewScreen
+                          ? effectiveReviewScreen.actions?.continue?.enabled !== false
+                          : reviewStatus === "approved")
                           ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
                           : "cursor-not-allowed bg-[#dce4ec] text-[#9eacba]"
                       }`}
                     >
-                      Proceed to Payment
+                      {effectiveReviewScreen?.actions?.continue?.label || "Proceed to Payment"}
                     </button>
                   </>
                 ) : null}

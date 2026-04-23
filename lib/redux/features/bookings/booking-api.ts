@@ -672,6 +672,51 @@ export type GetBookingFlowSubmitResponse = {
   };
 };
 
+export type SubmitBookingForReviewResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    screen: {
+      steps: BookingFlowStep[];
+      title: string;
+      subtitle?: string;
+      notice?: string;
+      status?: {
+        key: string;
+        label: string;
+      };
+      submittedAt?: string | null;
+      reviewedAt?: string | null;
+      notes?: string;
+      stateCard?: {
+        title?: string;
+        description?: string;
+        badge?: string;
+      };
+      actions?: {
+        back?: {
+          label?: string;
+          apiUrl?: string;
+        } | null;
+        continue?: {
+          label?: string;
+          enabled?: boolean;
+          apiUrl?: string;
+        } | null;
+      };
+    };
+    booking: GetBookingByIdResponse["data"]["booking"];
+  };
+};
+
+export type GetBookingFlowReviewResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    screen: SubmitBookingForReviewResponse["data"]["screen"];
+  };
+};
+
 export type CreateBookingPaymentIntentResponse = {
   success: boolean;
   message: string;
@@ -917,6 +962,23 @@ export const bookingApi = baseApi.injectEndpoints({
       }),
       providesTags: ["Booking"],
     }),
+    submitBookingForReview: builder.mutation<
+      SubmitBookingForReviewResponse,
+      { bookingId: string }
+    >({
+      query: ({ bookingId }) => ({
+        url: `/bookings/${bookingId}/flow/submit`,
+        method: "POST",
+      }),
+      invalidatesTags: ["Booking"],
+    }),
+    getBookingFlowReview: builder.query<GetBookingFlowReviewResponse, string>({
+      query: (bookingId) => ({
+        url: `/bookings/${bookingId}/flow/review`,
+        method: "GET",
+      }),
+      providesTags: ["Booking"],
+    }),
     getBookingCheckoutDetails: builder.query<GetBookingCheckoutDetailsResponse, string>({
       query: (bookingId) => ({
         url: `/bookings/${bookingId}/checkout/details`,
@@ -1048,6 +1110,8 @@ export const {
   useGetBookingFlowChecklistFullQuery,
   useGetBookingFlowSignaturesQuery,
   useGetBookingFlowSubmitQuery,
+  useGetBookingFlowReviewQuery,
+  useSubmitBookingForReviewMutation,
   useRequestTrainingProviderSignatureMutation,
   useSubmitCandidateSignatureMutation,
   useSaveBookingChecklistDraftMutation,
