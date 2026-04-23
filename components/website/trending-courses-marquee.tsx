@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Flame } from "lucide-react";
+import { ArrowLeft, ArrowRight, Flame } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 
 type TrendingCourse = {
@@ -43,6 +43,14 @@ const defaultCourses: TrendingCourse[] = [
       "Great if you are looking to become a Gas Safe registered Engineer and have no previous experience",
     ctaLabel: "View Details",
   },
+  {
+    category: "Gas ",
+    title: "How To Become A Gas Engineer (New Entrants)",
+    schedule: "Weekdays or Weekends",
+    description:
+      "Great if you are looking to become a Gas Safe registered Engineer and have no previous experience",
+    ctaLabel: "View Details",
+  },
 ];
 
 function CourseCard({
@@ -56,7 +64,7 @@ function CourseCard({
     <motion.article
       whileHover={{ y: -10, scale: 1.01 }}
       transition={{ type: "spring", stiffness: 220, damping: 20 }}
-      className="group flex min-h-[360px] w-[300px] flex-none flex-col overflow-hidden rounded-[22px] border border-[#d9e7f5] bg-white shadow-[0_10px_25px_rgba(32,89,153,0.08)] sm:w-[360px] lg:w-[392px]"
+      className="group flex min-h-[360px] flex-col overflow-hidden rounded-[22px] border border-[#d9e7f5] bg-white shadow-[0_10px_25px_rgba(32,89,153,0.08)]"
     >
       <div className="bg-[#edf6fd] p-4 sm:p-5">
         <motion.div
@@ -121,7 +129,44 @@ export default function TrendingCoursesMarquee({
   courses = defaultCourses,
 }: TrendingCoursesMarqueeProps) {
   const reduceMotion = useReducedMotion();
-  const duplicatedCourses = [...courses, ...courses];
+  const resolvedCourses = courses.length > 0 ? courses : defaultCourses;
+  const [cardsPerView, setCardsPerView] = React.useState(3);
+  const [currentIndex, setCurrentIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    const updateCardsPerView = () => {
+      if (window.innerWidth < 640) {
+        setCardsPerView(1);
+        return;
+      }
+
+      if (window.innerWidth < 1024) {
+        setCardsPerView(2);
+        return;
+      }
+
+      setCardsPerView(3);
+    };
+
+    updateCardsPerView();
+    window.addEventListener("resize", updateCardsPerView);
+
+    return () => window.removeEventListener("resize", updateCardsPerView);
+  }, []);
+
+  const totalPositions = Math.max(1, resolvedCourses.length);
+  const safeIndex = currentIndex % totalPositions;
+  const visibleCount = Math.min(cardsPerView, resolvedCourses.length);
+  const visibleCourses = Array.from({ length: visibleCount }, (_, offset) => {
+    const courseIndex = (safeIndex + offset) % resolvedCourses.length;
+    return resolvedCourses[courseIndex];
+  });
+
+  React.useEffect(() => {
+    if (currentIndex > totalPositions - 1) {
+      setCurrentIndex(Math.max(0, totalPositions - 1));
+    }
+  }, [currentIndex, totalPositions]);
 
   return (
     <motion.section
@@ -168,21 +213,16 @@ export default function TrendingCoursesMarquee({
           </motion.h2>
         </motion.div>
 
-        <div className="relative mt-10 overflow-hidden">
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-[#edf7ff] via-[#edf7ff]/85 to-transparent sm:w-20" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-[#edf7ff] via-[#edf7ff]/85 to-transparent sm:w-20" />
-
+        <div className="mt-10">
           <motion.div
-            initial={reduceMotion ? false : { opacity: 0 }}
-            whileInView={reduceMotion ? undefined : { opacity: 1 }}
-            viewport={{ once: true, amount: 0.15 }}
-            transition={{ delay: 0.25, duration: 0.7 }}
-            className="course-marquee-track flex w-max items-stretch gap-6 pb-4"
+            key={`${safeIndex}-${cardsPerView}`}
+            initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+            animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: "easeOut" }}
+            className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
           >
-            {duplicatedCourses.map((course, index) => (
-              <div key={`${course.title}-${index}`} className="flex-none">
-                <CourseCard {...course} />
-              </div>
+            {visibleCourses.map((course, index) => (
+              <CourseCard key={`${course.title}-${safeIndex}-${index}`} {...course} />
             ))}
           </motion.div>
         </div>
@@ -192,18 +232,50 @@ export default function TrendingCoursesMarquee({
           whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.5 }}
           transition={{ delay: 0.35, duration: 0.6 }}
-          className="mt-8 flex items-center gap-4"
+          className="relative z-[60] mt-8 flex items-center justify-between gap-4"
         >
-          <motion.span
-            animate={reduceMotion ? undefined : { scaleX: [1, 1.15, 1] }}
-            transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
-            className="h-4 w-11 rounded-full bg-[#1ca5dc]"
-          />
-          <motion.span
-            animate={reduceMotion ? undefined : { opacity: [0.55, 1, 0.55] }}
-            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-            className="h-4 w-4 rounded-full bg-[#a8daf5]"
-          />
+          <div className="flex items-center gap-3">
+            {Array.from({ length: totalPositions }).map((_, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => setCurrentIndex(index)}
+                className={`transition ${
+                  index === safeIndex
+                    ? "h-4 w-11 rounded-full bg-[#1ca5dc]"
+                    : "h-4 w-4 rounded-full bg-[#a8daf5]"
+                } relative z-[60]`}
+                aria-label={`Go to course slide ${index + 1}`}
+              />
+            ))}
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() =>
+                setCurrentIndex((current) =>
+                  current === 0 ? totalPositions - 1 : current - 1
+                )
+              }
+              className="relative z-[60] grid h-11 w-11 place-items-center rounded-full border border-[#9ed8f5] bg-[#eef8ff] text-[#2d3f8f] shadow-[0_6px_18px_rgba(30,166,223,0.12)] transition hover:bg-white"
+              aria-label="Previous courses"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setCurrentIndex((current) =>
+                  current === totalPositions - 1 ? 0 : current + 1
+                )
+              }
+              className="relative z-[60] grid h-11 w-11 place-items-center rounded-full border border-[#9ed8f5] bg-[#eef8ff] text-[#2d3f8f] shadow-[0_6px_18px_rgba(30,166,223,0.12)] transition hover:bg-white"
+              aria-label="Next courses"
+            >
+              <ArrowRight className="h-5 w-5" />
+            </button>
+          </div>
         </motion.div>
       </div>
     </motion.section>
