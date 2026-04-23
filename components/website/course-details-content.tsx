@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
 import type { CourseSummary } from "@/app/(website)/courses/courses-data";
 import CourseCard from "@/components/website/course-card";
+import { useAppSelector } from "@/lib/redux/hooks";
 import type {
   CourseDetailBookingModalStep,
   CourseDetailBreadcrumb,
@@ -47,6 +48,7 @@ export default function CourseDetailsContent({
   bookingModal,
 }: CourseDetailsContentProps) {
   const router = useRouter();
+  const accessToken = useAppSelector((state) => state.auth.accessToken);
   const [fetchBookNowModal, bookNowModalQuery] = useLazyGetCourseBookNowQuery();
   const shouldUseDashboardBookingModal =
     dashboardMode && course.bookingFlow === "am2";
@@ -121,6 +123,11 @@ export default function CourseDetailsContent({
     selectedQualification?: string,
     selectedQualificationId?: string,
   ) => {
+    if (!accessToken) {
+      router.push("/login");
+      return;
+    }
+
     const bookingBasePath = bookingHrefBasePath ?? coursesHrefBasePath;
 
     if (!bookingBasePath) {
@@ -146,6 +153,11 @@ export default function CourseDetailsContent({
   };
 
   const openBookingModal = async () => {
+    if (!accessToken) {
+      router.push("/login");
+      return;
+    }
+
     if (!shouldUseDashboardBookingModal) {
       goToBookingPage();
       return;
@@ -294,13 +306,10 @@ export default function CourseDetailsContent({
                 Book Now
               </button>
             ) : (
-              <Link
-                href={
-                  bookingHrefBasePath
-                    ? `${bookingHrefBasePath}/${course.slug}/book`
-                    : "#"
-                }
-                aria-disabled={!bookingHrefBasePath}
+              <button
+                type="button"
+                onClick={() => goToBookingPage()}
+                disabled={!bookingHrefBasePath}
                 className={`mt-5 block w-full rounded-[8px] px-6 py-4 text-center text-base font-semibold text-white shadow-[0_4px_0_#315063] ${
                   bookingHrefBasePath
                     ? "bg-[#1ea9de]"
@@ -308,7 +317,7 @@ export default function CourseDetailsContent({
                 }`}
               >
                 Book Now
-              </Link>
+              </button>
             )}
           </div>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import CourseDetailsContent from "@/components/website/course-details-content";
+import { useAppSelector } from "@/lib/redux/hooks";
 import {
   useGetCourseDetailScreenQuery,
 } from "@/lib/redux/features/courses/course-api";
@@ -38,14 +39,18 @@ export default function CourseDetailScreen({
   bookingHrefBasePath,
   dashboardMode = false,
 }: CourseDetailScreenProps) {
-  const { data, isLoading, isError, error } = useGetCourseDetailScreenQuery(slug);
+  const hydrated = useAppSelector((state) => state.auth.hydrated);
+  const { data, isLoading, isError, error } = useGetCourseDetailScreenQuery(slug, {
+    skip: !hydrated,
+    refetchOnMountOrArgChange: true,
+  });
 
   const screen = data?.data.screen;
   const course = screen?.course ? mapDetailCourseToSummary(screen.course) : null;
   const relatedCourses =
     screen?.relatedCourses?.map(mapRelatedCourseToSummary) ?? [];
 
-  if (isLoading) {
+  if (!hydrated || isLoading) {
     return (
       <section className="bg-[#f6f8ff] px-4 py-10 sm:px-6 lg:px-10 xl:px-16">
         <div className="mx-auto max-w-[1480px] animate-pulse space-y-6">

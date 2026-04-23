@@ -1,15 +1,17 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { ArrowLeft, ArrowRight, Flame } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 
-type TrendingCourse = {
+export type TrendingCourse = {
   category: string;
   title: string;
   schedule: string;
   description: string;
   ctaLabel?: string;
+  href?: string;
 };
 
 type TrendingCoursesMarqueeProps = {
@@ -59,6 +61,7 @@ function CourseCard({
   schedule,
   description,
   ctaLabel = "View Details",
+  href,
 }: TrendingCourse) {
   return (
     <motion.article
@@ -90,13 +93,18 @@ function CourseCard({
         </p>
 
         <div className="mt-6 flex items-end justify-between gap-4">
-          <motion.button
+          <motion.div
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.98 }}
-            className="rounded-xl bg-[#1ca5dc] px-6 py-3 text-base font-bold text-white shadow-[0_4px_0_#2f4152] transition-transform"
+            className="transition-transform"
           >
-            {ctaLabel}
-          </motion.button>
+            <Link
+              href={href || "#"}
+              className="inline-flex rounded-xl bg-[#1ca5dc] px-6 py-3 text-base font-bold text-white shadow-[0_4px_0_#2f4152]"
+            >
+              {ctaLabel}
+            </Link>
+          </motion.div>
 
           <motion.div
             animate={{ y: [0, -5, 0], rotate: [0, 6, 0] }}
