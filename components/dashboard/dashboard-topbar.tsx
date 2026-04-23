@@ -5,6 +5,9 @@ import Link from "next/link";
 import { Bell, Menu } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useAppSelector } from "@/lib/redux/hooks";
+import { useGetMeQuery } from "@/lib/redux/features/auth/auth-api";
+import { useDashboardAvatar } from "@/lib/dashboard-avatar";
+import { useDashboardProfile } from "@/lib/dashboard-profile";
 
 type DashboardTopbarProps = {
   onMenuClick: () => void;
@@ -21,6 +24,14 @@ const breadcrumbMap: Record<string, string[]> = {
 export function DashboardTopbar({ onMenuClick }: DashboardTopbarProps) {
   const pathname = usePathname();
   const user = useAppSelector((state) => state.auth.user);
+  const { data: meData } = useGetMeQuery();
+  const avatarSrc = useDashboardAvatar();
+  const profile = useDashboardProfile({
+    name: meData?.data.user.name || user?.fullName || "Learner",
+    email: meData?.data.user.email || user?.email || "No email available",
+  });
+  const displayName = profile.name;
+  const displayEmail = profile.email;
   const crumbs =
     pathname.startsWith("/dashboard/courses/")
       ? pathname.endsWith("/book")
@@ -71,18 +82,18 @@ export function DashboardTopbar({ onMenuClick }: DashboardTopbarProps) {
             className="hidden items-center gap-3 rounded-full border border-[#bde3fd] bg-[#fbfdff]/95 px-2 py-1.5 pr-5 text-left shadow-[0_8px_18px_rgba(58,165,228,0.08)] sm:flex"
           >
             <Image
-              src="/hero-1.png"
-              alt={user?.fullName || "User avatar"}
+              src={avatarSrc}
+              alt={displayName || "User avatar"}
               width={42}
               height={42}
               className="h-10 w-10 rounded-full object-cover"
             />
             <div>
               <p className="text-[16px] font-medium leading-none text-[#3646a5]">
-                {user?.fullName || "Learner"}
+                {displayName}
               </p>
               <p className="mt-1 text-xs text-[#93a2ba]">
-                {user?.email || "No email available"}
+                {displayEmail}
               </p>
             </div>
           </Link>

@@ -51,6 +51,14 @@ export type AuthMessageResponse = {
   message: string;
 };
 
+export type GetMeResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    user: AuthUserResponse;
+  };
+};
+
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     login: builder.mutation<AuthSuccessResponse, LoginRequest>({
@@ -92,6 +100,13 @@ export const authApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Auth"],
     }),
+    getMe: builder.query<GetMeResponse, void>({
+      query: () => ({
+        url: "/auth/me",
+        method: "GET",
+      }),
+      providesTags: ["Auth", "Profile"],
+    }),
   }),
 });
 
@@ -101,4 +116,5 @@ export const {
   useForgotPasswordMutation,
   useVerifyOtpMutation,
   useResetPasswordMutation,
+  useGetMeQuery,
 } = authApi;
