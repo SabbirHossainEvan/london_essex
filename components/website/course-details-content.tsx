@@ -36,6 +36,45 @@ type CourseDetailsContentProps = {
 
 type AccordionKey = "learning" | "delivery" | "additional";
 
+const am2eEligibleQualificationTokens = [
+  "ewa-city-and-guilds-2346",
+  "city-and-guilds-2346",
+  "2346",
+  "eal-603-5982-1",
+  "603-5982-1",
+];
+
+function normalizeQualificationValue(value?: string) {
+  return (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function isAm2eEligibleQualification({
+  label,
+  id,
+}: {
+  label?: string;
+  id?: string;
+}) {
+  const normalizedValues = [
+    normalizeQualificationValue(label),
+    normalizeQualificationValue(id),
+  ].filter(Boolean);
+
+  return normalizedValues.some((value) =>
+    am2eEligibleQualificationTokens.some(
+      (token) =>
+        value === token ||
+        value.includes(token) ||
+        token.includes(value)
+    )
+  );
+}
+
 export default function CourseDetailsContent({
   course,
   relatedCourses,
@@ -208,7 +247,14 @@ export default function CourseDetailsContent({
       (option) => option.id === selectedModalOptionId
     );
 
-    if (selectedOption?.nextStepId) {
+    const shouldBypassIntermediateModal =
+      course.slug === "am2-assessment-preparation" &&
+      isAm2eEligibleQualification({
+        label: selectedOption?.label ?? selectedModalOptionId,
+        id: selectedOption?.id,
+      });
+
+    if (selectedOption?.nextStepId && !shouldBypassIntermediateModal) {
       setActiveModalStepId(selectedOption.nextStepId);
       setSelectedModalOptionId("");
       return;

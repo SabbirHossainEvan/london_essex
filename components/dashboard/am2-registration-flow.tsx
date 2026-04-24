@@ -210,10 +210,44 @@ const netSteps: Array<{ key: NetStepKey; label: string }> = [
   { key: "confirmed", label: "Confirmed" },
 ];
 
-const am2eEligibleQualifications = new Set([
-  "(EWA) City & Guilds 2346",
-  "EAL 603/5982/1",
-]);
+const am2eEligibleQualificationTokens = [
+  "ewa-city-and-guilds-2346",
+  "city-and-guilds-2346",
+  "2346",
+  "eal-603-5982-1",
+  "603-5982-1",
+];
+
+function normalizeQualificationValue(value?: string) {
+  return (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function isAm2eEligibleQualification({
+  label,
+  id,
+}: {
+  label?: string;
+  id?: string;
+}) {
+  const normalizedValues = [
+    normalizeQualificationValue(label),
+    normalizeQualificationValue(id),
+  ].filter(Boolean);
+
+  return normalizedValues.some((value) =>
+    am2eEligibleQualificationTokens.some(
+      (token) =>
+        value === token ||
+        value.includes(token) ||
+        token.includes(value)
+    )
+  );
+}
 
 function Stepper<T extends string>({
   steps,
@@ -2141,9 +2175,11 @@ Thank you,`,
   const requestedFlow = searchParams.get("flow");
   const requestedNetStep = searchParams.get("netStep");
   const requestedReviewStatus = searchParams.get("reviewStatus");
-  const lockedAssessmentType = am2eEligibleQualifications.has(selectedQualification)
-    ? "AM2E"
-    : "AM2";
+  const isAm2eQualification = isAm2eEligibleQualification({
+    label: selectedQualification,
+    id: selectedQualificationIdParam,
+  });
+  const lockedAssessmentType = isAm2eQualification ? "AM2E" : "";
   const registrationScreen = registrationFormData?.data.screen;
   const assessmentRegistrationScreen = assessmentFormData?.data.screen;
   const employerRegistrationScreen = employerFormData?.data.screen;
@@ -2532,7 +2568,11 @@ Thank you,`,
     payment.cvc.length >= 3;
 
   const selectAssessmentType = (value: string) => {
-    if (normalizeAssessmentValue(value) !== normalizeAssessmentValue(lockedAssessmentType)) {
+    if (
+      lockedAssessmentType &&
+      normalizeAssessmentValue(value) !==
+        normalizeAssessmentValue(lockedAssessmentType)
+    ) {
       return;
     }
 
@@ -2872,7 +2912,7 @@ Thank you,`,
 
       setActiveBookingId(nextBookingId);
 
-      if (am2eEligibleQualifications.has(selectedQualification)) {
+      if (isAm2eQualification) {
         setEligibilityStepError("");
         router.replace(
           `/dashboard/courses/${course.slug}/book?${(() => {
@@ -3429,8 +3469,9 @@ Thank you,`,
                           {field.options?.map((option) => {
                             const checked = assessment[stateKey] === option.label;
                             const disabled =
+                              Boolean(lockedAssessmentType) &&
                               normalizeAssessmentValue(option.label) !==
-                              normalizeAssessmentValue(lockedAssessmentType);
+                                normalizeAssessmentValue(lockedAssessmentType);
 
                             return (
                               <label
