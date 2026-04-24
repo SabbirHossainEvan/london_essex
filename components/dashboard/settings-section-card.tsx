@@ -4,6 +4,8 @@ type SettingsSectionCardProps = {
   title: string;
   description: string;
   actionLabel?: string;
+  onAction?: () => void;
+  actionDisabled?: boolean;
   children: React.ReactNode;
 };
 
@@ -11,6 +13,8 @@ export default function SettingsSectionCard({
   title,
   description,
   actionLabel = "Save Changes",
+  onAction,
+  actionDisabled = false,
   children,
 }: SettingsSectionCardProps) {
   return (
@@ -23,6 +27,8 @@ export default function SettingsSectionCard({
 
         <button
           type="button"
+          onClick={onAction}
+          disabled={actionDisabled}
           className="rounded-[10px] bg-[#1ea6df] px-6 py-3 text-sm font-medium text-white shadow-[0_8px_18px_rgba(30,166,223,0.2)]"
         >
           {actionLabel}

@@ -7,10 +7,10 @@ export default async function DashboardCourseFullChecklistPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ flow?: string }>;
+  searchParams: Promise<{ bookingId?: string; flow?: string; section?: string }>;
 }) {
   const { slug } = await params;
-  const { flow } = await searchParams;
+  const { bookingId, flow, section } = await searchParams;
   const course = getCourseBySlug(slug);
 
   if (!course || course.slug !== "am2-assessment-preparation") {
@@ -20,5 +20,12 @@ export default async function DashboardCourseFullChecklistPage({
   const resolvedFlow =
     flow === "am2e" || flow === "am2e-v1" ? flow : "am2";
 
-  return <Am2FullChecklistPage course={course} flow={resolvedFlow} />;
+  return (
+    <Am2FullChecklistPage
+      course={course}
+      flow={resolvedFlow}
+      bookingId={bookingId}
+      section={section}
+    />
+  );
 }

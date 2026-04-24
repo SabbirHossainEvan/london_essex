@@ -3,9 +3,16 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
 import type { CourseSummary } from "@/app/(website)/courses/courses-data";
 import CourseCard from "@/components/website/course-card";
+import { useAppSelector } from "@/lib/redux/hooks";
+import type {
+  CourseDetailBookingModalStep,
+  CourseDetailBreadcrumb,
+} from "@/lib/redux/features/courses/course-api";
+import { useLazyGetCourseBookNowQuery } from "@/lib/redux/features/courses/course-api";
 
 type CourseDetailsContentProps = {
   course: CourseSummary;
@@ -14,9 +21,59 @@ type CourseDetailsContentProps = {
   bookingHrefBasePath?: string;
   defaultSelectedImageIndex?: number;
   onBookNow?: () => void;
+  dashboardMode?: boolean;
+  breadcrumbs?: CourseDetailBreadcrumb[];
+  bookingModal?: {
+    title: string;
+    cancelLabel?: string;
+    confirmLabel?: string;
+    initialStepId?: string;
+    steps?: CourseDetailBookingModalStep[];
+    options?: Array<{ id: string; label: string; nextStepId?: string }>;
+    question?: string;
+  };
 };
 
 type AccordionKey = "learning" | "delivery" | "additional";
+
+const am2eEligibleQualificationTokens = [
+  "ewa-city-and-guilds-2346",
+  "city-and-guilds-2346",
+  "2346",
+  "eal-603-5982-1",
+  "603-5982-1",
+];
+
+function normalizeQualificationValue(value?: string) {
+  return (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function isAm2eEligibleQualification({
+  label,
+  id,
+}: {
+  label?: string;
+  id?: string;
+}) {
+  const normalizedValues = [
+    normalizeQualificationValue(label),
+    normalizeQualificationValue(id),
+  ].filter(Boolean);
+
+  return normalizedValues.some((value) =>
+    am2eEligibleQualificationTokens.some(
+      (token) =>
+        value === token ||
+        value.includes(token) ||
+        token.includes(value)
+    )
+  );
+}
 
 export default function CourseDetailsContent({
   course,
@@ -25,12 +82,29 @@ export default function CourseDetailsContent({
   bookingHrefBasePath,
   defaultSelectedImageIndex = 0,
   onBookNow,
+  dashboardMode = false,
+  breadcrumbs,
+  bookingModal,
 }: CourseDetailsContentProps) {
+  const router = useRouter();
+  const accessToken = useAppSelector((state) => state.auth.accessToken);
+  const [fetchBookNowModal, bookNowModalQuery] = useLazyGetCourseBookNowQuery();
+  const shouldUseDashboardBookingModal =
+    dashboardMode && course.bookingFlow === "am2";
   const [selectedImage, setSelectedImage] = React.useState(
     course.gallery[defaultSelectedImageIndex] ?? course.gallery[0] ?? course.heroImage
   );
   const [openSection, setOpenSection] = React.useState<AccordionKey>("learning");
   const [relatedIndex, setRelatedIndex] = React.useState(0);
+  const [bookingOpen, setBookingOpen] = React.useState(false);
+  const effectiveBookingModal = bookNowModalQuery.data?.data.modal ?? bookingModal;
+  const modalSteps = effectiveBookingModal?.steps ?? [];
+  const initialModalStepId =
+    effectiveBookingModal?.initialStepId ?? modalSteps[0]?.id ?? "";
+  const [activeModalStepId, setActiveModalStepId] = React.useState(initialModalStepId);
+  const [selectedModalOptionId, setSelectedModalOptionId] = React.useState("");
+  const activeModalStep =
+    modalSteps.find((step) => step.id === activeModalStepId) ?? modalSteps[0];
 
   const accordionItems: Array<{ key: AccordionKey; title: string; content: string }> = [
     { key: "learning", title: "What you'll learn", content: course.learning },
@@ -66,9 +140,152 @@ export default function CourseDetailsContent({
     );
   };
 
+  React.useEffect(() => {
+    if (!bookingOpen) {
+      return;
+    }
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [bookingOpen]);
+
+  React.useEffect(() => {
+    setActiveModalStepId(initialModalStepId);
+    setSelectedModalOptionId("");
+  }, [initialModalStepId, effectiveBookingModal?.title]);
+
+  const goToBookingPage = (
+    selectedQualification?: string,
+    selectedQualificationId?: string,
+  ) => {
+    if (!accessToken) {
+      router.push("/login");
+      return;
+    }
+
+    const bookingBasePath = bookingHrefBasePath ?? coursesHrefBasePath;
+
+    if (!bookingBasePath) {
+      onBookNow?.();
+      return;
+    }
+
+    const params = new URLSearchParams();
+
+    if (selectedQualification) {
+      params.set("qualification", selectedQualification);
+    }
+
+    if (selectedQualificationId) {
+      params.set("qualificationId", selectedQualificationId);
+    }
+
+    const qualificationQuery = params.toString();
+
+    router.push(
+      `${bookingBasePath}/${course.slug}/book${qualificationQuery ? `?${qualificationQuery}` : ""}`,
+    );
+  };
+
+  const openBookingModal = async () => {
+    if (!accessToken) {
+      router.push("/login");
+      return;
+    }
+
+    if (!shouldUseDashboardBookingModal) {
+      goToBookingPage();
+      return;
+    }
+
+    if (!dashboardMode) {
+      onBookNow?.();
+      return;
+    }
+
+    setBookingOpen(true);
+    setSelectedModalOptionId("");
+
+    if (effectiveBookingModal?.steps?.length) {
+      setActiveModalStepId(initialModalStepId);
+      return;
+    }
+
+    try {
+      const response = await fetchBookNowModal(course.slug).unwrap();
+      const nextInitialStepId =
+        response.data.modal.initialStepId ?? response.data.modal.steps?.[0]?.id ?? "";
+
+      if (!response.data.modal.steps?.length) {
+        closeBookingModal();
+        goToBookingPage();
+        return;
+      }
+
+      setActiveModalStepId(nextInitialStepId);
+    } catch {
+      setActiveModalStepId("");
+    }
+  };
+
+  const closeBookingModal = () => {
+    setBookingOpen(false);
+    setActiveModalStepId(initialModalStepId);
+    setSelectedModalOptionId("");
+  };
+
+  const handleBookingContinue = () => {
+    if (!activeModalStep || !selectedModalOptionId) {
+      return;
+    }
+
+    const selectedOption = activeModalStep.options.find(
+      (option) => option.id === selectedModalOptionId
+    );
+
+    const shouldBypassIntermediateModal =
+      course.slug === "am2-assessment-preparation" &&
+      isAm2eEligibleQualification({
+        label: selectedOption?.label ?? selectedModalOptionId,
+        id: selectedOption?.id,
+      });
+
+    if (selectedOption?.nextStepId && !shouldBypassIntermediateModal) {
+      setActiveModalStepId(selectedOption.nextStepId);
+      setSelectedModalOptionId("");
+      return;
+    }
+
+    closeBookingModal();
+
+    const selectedQualification = selectedOption?.label ?? selectedModalOptionId;
+    goToBookingPage(selectedQualification, selectedOption?.id);
+  };
+
   return (
     <section className="bg-[#f6f8ff] px-4 py-10 sm:px-6 lg:px-10 xl:px-16">
       <div className="mx-auto max-w-[1480px]">
+        {breadcrumbs?.length ? (
+          <div className="mb-6 flex flex-wrap items-center gap-2 text-xs text-[#9ba6b9]">
+            {breadcrumbs.map((crumb, index) => (
+              <React.Fragment key={`${crumb.label}-${index}`}>
+                {index > 0 ? <ChevronRight className="h-3.5 w-3.5" /> : null}
+                {index === breadcrumbs.length - 1 ? (
+                  <span className="font-medium text-[#4451ac]">{crumb.label}</span>
+                ) : (
+                  <Link href={crumb.url} className="transition hover:text-[#4451ac]">
+                    {crumb.label}
+                  </Link>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        ) : null}
+
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)] lg:items-start">
           <div>
             <div className="overflow-hidden rounded-[16px] bg-white shadow-[0_8px_24px_rgba(60,101,154,0.08)]">
@@ -124,14 +341,21 @@ export default function CourseDetailsContent({
               >
                 Book Now
               </button>
+            ) : shouldUseDashboardBookingModal ? (
+              <button
+                type="button"
+                onClick={() => {
+                  void openBookingModal();
+                }}
+                className="mt-5 block w-full rounded-[8px] bg-[#1ea9de] px-6 py-4 text-center text-base font-semibold text-white shadow-[0_4px_0_#315063]"
+              >
+                Book Now
+              </button>
             ) : (
-              <Link
-                href={
-                  bookingHrefBasePath
-                    ? `${bookingHrefBasePath}/${course.slug}/book`
-                    : "#"
-                }
-                aria-disabled={!bookingHrefBasePath}
+              <button
+                type="button"
+                onClick={() => goToBookingPage()}
+                disabled={!bookingHrefBasePath}
                 className={`mt-5 block w-full rounded-[8px] px-6 py-4 text-center text-base font-semibold text-white shadow-[0_4px_0_#315063] ${
                   bookingHrefBasePath
                     ? "bg-[#1ea9de]"
@@ -139,7 +363,7 @@ export default function CourseDetailsContent({
                 }`}
               >
                 Book Now
-              </Link>
+              </button>
             )}
           </div>
         </div>
@@ -220,6 +444,138 @@ export default function CourseDetailsContent({
           </Link>
         </div>
       </div>
+
+      {shouldUseDashboardBookingModal && bookingOpen ? (
+        <>
+          <div
+            className={`fixed inset-0 z-40 bg-[#12214d]/42 backdrop-blur-[2px] transition ${
+              bookingOpen
+                ? "pointer-events-auto opacity-100"
+                : "pointer-events-none opacity-0"
+            }`}
+            onClick={closeBookingModal}
+          />
+
+          <aside
+            className={`fixed right-0 top-0 z-50 h-screen w-full max-w-[420px] border-l border-[#d8e7f8] bg-[#f5f9ff] shadow-[-24px_0_60px_rgba(18,33,77,0.18)] transition-transform duration-300 ${
+              bookingOpen ? "translate-x-0" : "translate-x-full"
+            }`}
+            aria-hidden={!bookingOpen}
+          >
+            <div className="flex h-full flex-col px-3 py-3">
+              <div className="rounded-[18px] border border-[#d6e6fb] bg-white shadow-[0_16px_38px_rgba(102,138,193,0.12)]">
+                <div className="flex items-center justify-between gap-3 border-b border-[#e7eef8] px-4 py-3">
+                  <div className="text-[#3346a5]">
+                    <h2 className="text-base font-semibold">
+                      {activeModalStep?.title ?? effectiveBookingModal?.title ?? "Book Now"}
+                    </h2>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={closeBookingModal}
+                    className="rounded-full border border-[#d7e5f5] bg-[#f8fbff] p-1.5 text-[#4f63b7] transition hover:bg-white"
+                    aria-label="Close booking panel"
+                  >
+                    <ChevronRight className="h-4 w-4 rotate-180" />
+                  </button>
+                </div>
+
+                <div className="p-3">
+                  {bookNowModalQuery.isFetching ? (
+                    <div className="rounded-[14px] border border-[#d9e7f5] bg-[linear-gradient(180deg,#f9fbff_0%,#f4f7fc_100%)] p-5 text-sm text-[#5a6d96]">
+                      Loading booking options...
+                    </div>
+                  ) : bookNowModalQuery.isError ? (
+                    <div className="rounded-[14px] border border-[#fecaca] bg-[#fff3f3] p-4">
+                      <p className="text-sm font-medium text-[#dc2626]">
+                        {"error" in bookNowModalQuery &&
+                        typeof bookNowModalQuery.error === "object" &&
+                        bookNowModalQuery.error !== null &&
+                        "data" in bookNowModalQuery.error &&
+                        typeof bookNowModalQuery.error.data === "object" &&
+                        bookNowModalQuery.error.data !== null &&
+                        "message" in bookNowModalQuery.error.data &&
+                        typeof bookNowModalQuery.error.data.message === "string"
+                          ? bookNowModalQuery.error.data.message
+                          : "We could not load the booking options right now."}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void fetchBookNowModal(course.slug);
+                        }}
+                        className="mt-3 rounded-md bg-[#1ea9de] px-4 py-2 text-sm font-medium text-white"
+                      >
+                        Try again
+                      </button>
+                    </div>
+                  ) : activeModalStep ? (
+                    <div className="rounded-[14px] border border-[#51c4ff] bg-[linear-gradient(180deg,#f9fbff_0%,#f4f7fc_100%)] p-3">
+                      <p className="text-[0.95rem] font-medium leading-6 text-[#3546a5]">
+                        {activeModalStep.question ?? effectiveBookingModal?.question}
+                      </p>
+                      <p className="mt-2 text-xs font-medium text-[#7a88a7]">Ans:</p>
+
+                      <div className="mt-2 max-h-[560px] space-y-2 overflow-y-auto pr-1">
+                        {activeModalStep.options.map((option) => {
+                          const isSelected = selectedModalOptionId === option.id;
+
+                          return (
+                            <label
+                              key={option.id}
+                              className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5 text-[0.8rem] leading-5 transition ${
+                                isSelected
+                                  ? "border-[#b9e7ff] bg-[#fcfeff] text-[#3346a5]"
+                                  : "border-[#d9e7f5] bg-white text-[#44577e]"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name={`booking-step-${activeModalStep.id}`}
+                                checked={isSelected}
+                                onChange={() => setSelectedModalOptionId(option.id)}
+                                className="mt-0.5 h-4 w-4 accent-[#1ea6df]"
+                              />
+                              <span>{option.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-[14px] border border-[#d9e7f5] bg-[linear-gradient(180deg,#f9fbff_0%,#f4f7fc_100%)] p-5 text-sm text-[#5a6d96]">
+                      No booking steps are available for this course yet.
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end gap-2 border-t border-[#e7eef8] px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={closeBookingModal}
+                    className="rounded-md border border-[#d8e5f4] bg-white px-4 py-2 text-sm font-medium text-[#384a77]"
+                  >
+                    {effectiveBookingModal?.cancelLabel ?? "Cancel"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedModalOptionId || bookNowModalQuery.isFetching || bookNowModalQuery.isError}
+                    onClick={handleBookingContinue}
+                    className={`rounded-md px-4 py-2 text-sm font-medium ${
+                      selectedModalOptionId && !bookNowModalQuery.isFetching && !bookNowModalQuery.isError
+                        ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] text-white shadow-[0_12px_24px_rgba(30,166,223,0.26)]"
+                        : "cursor-not-allowed bg-[#dce4ec] text-[#9eacba]"
+                    }`}
+                  >
+                    {activeModalStep?.confirmLabel ?? effectiveBookingModal?.confirmLabel ?? "Continue"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </>
+      ) : null}
     </section>
   );
 }

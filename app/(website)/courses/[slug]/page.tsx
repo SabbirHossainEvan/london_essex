@@ -1,6 +1,4 @@
-import { notFound } from "next/navigation";
-import CourseDetailsContent from "@/components/website/course-details-content";
-import { coursesData, getCourseBySlug } from "../courses-data";
+import CourseDetailScreen from "@/components/courses/course-detail-screen";
 
 
 export default async function CourseDetailsPage({
@@ -9,18 +7,12 @@ export default async function CourseDetailsPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const course = getCourseBySlug(slug);
-
-  if (!course) {
-    notFound();
-  }
-
-  const relatedCourses = coursesData.filter((item) => item.slug !== course.slug);
 
   return (
-    <>
-      <CourseDetailsContent course={course} relatedCourses={relatedCourses} />
-
-    </>
+    <CourseDetailScreen
+      slug={slug}
+      coursesHrefBasePath="/courses"
+      bookingHrefBasePath="/courses"
+    />
   );
 }

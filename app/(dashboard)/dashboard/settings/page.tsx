@@ -6,6 +6,8 @@ import ProfileSettingsForm from "@/components/dashboard/profile-settings-form";
 import SecuritySettingsForm from "@/components/dashboard/security-settings-form";
 import SettingsNav from "@/components/dashboard/settings-nav";
 import SettingsSectionCard from "@/components/dashboard/settings-section-card";
+import { useGetMeQuery } from "@/lib/redux/features/auth/auth-api";
+import { useDashboardProfile } from "@/lib/dashboard-profile";
 import {
   notificationSettings,
   settingsTabs,
@@ -14,6 +16,13 @@ import {
 
 export default function DashboardSettingsPage() {
   const [activeTab, setActiveTab] = React.useState<SettingsTabKey>("profile");
+  const [isProfileDirty, setIsProfileDirty] = React.useState(false);
+  const profileSubmitRef = React.useRef<(() => void) | null>(null);
+  const { data: meData } = useGetMeQuery();
+  const profileInitialValues = useDashboardProfile({
+    name: meData?.data.user.name || "Jenny Wilson",
+    email: meData?.data.user.email || "admin@londonessex.co.uk",
+  });
 
   return (
     <div className="grid gap-6 xl:grid-cols-[220px_minmax(0,1fr)]">
@@ -27,8 +36,16 @@ export default function DashboardSettingsPage() {
         <SettingsSectionCard
           title="Profile Information"
           description="Update your personal details."
+          onAction={() => profileSubmitRef.current?.()}
+          actionDisabled={!isProfileDirty}
         >
-          <ProfileSettingsForm />
+          <ProfileSettingsForm
+            initialValues={profileInitialValues}
+            onDirtyChange={setIsProfileDirty}
+            onSubmitReady={(submit) => {
+              profileSubmitRef.current = submit;
+            }}
+          />
         </SettingsSectionCard>
       ) : null}
 
