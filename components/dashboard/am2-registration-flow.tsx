@@ -27,10 +27,14 @@ import PanelCard from "@/components/dashboard/panel-card";
 import {
   type GetBookingFlowSubmitResponse,
   type GetBookingFlowReviewResponse,
+  type GetBookingCheckoutPaymentResponse,
   type SubmitBookingForReviewResponse,
   type RequestTrainingProviderSignatureRequest,
   type SubmitCandidateSignatureRequest,
+  useCompleteBookingPaymentMutation,
+  useCreateBookingPaymentIntentMutation,
   useCreateNormalBookingMutation,
+  useGetBookingCheckoutPaymentQuery,
   useGetBookingFlowChecklistSummaryQuery,
   useGetBookingFlowDocumentsQuery,
   useGetBookingFlowReviewQuery,
@@ -1726,16 +1730,60 @@ function normalizeCurrency(value: string) {
   return value.replace(/Â£/g, "£");
 }
 
+function getPaymentMethodIdFromCardNumber(cardNumber: string) {
+  const digits = cardNumber.replace(/\D/g, "");
+
+  if (digits === "4242424242424242") {
+    return "pm_card_visa";
+  }
+
+  if (digits === "4000000000000002") {
+    return "pm_card_visa_chargeDeclined";
+  }
+
+  return null;
+}
+
+function shouldBypassApprovalErrorInDev(error: unknown) {
+  if (process.env.NODE_ENV !== "development") {
+    return false;
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "data" in error &&
+    typeof error.data === "object" &&
+    error.data !== null &&
+    "message" in error.data &&
+    typeof error.data.message === "string"
+  ) {
+    return error.data.message
+      .toLowerCase()
+      .includes("must be approved before payment can begin");
+  }
+
+  return false;
+}
+
 function NetPaymentPanel({
+  screen,
   payment,
   onUpdatePayment,
+  submitError,
+  isSubmitting,
 }: {
+  screen: GetBookingCheckoutPaymentResponse["data"]["screen"];
   payment: PaymentFormState;
   onUpdatePayment: (
     field: keyof PaymentFormState,
     value: string | boolean
   ) => void;
+  submitError?: string;
+  isSubmitting?: boolean;
 }) {
+  const isStripeTestMode = screen.stripe?.enabled === false;
+
   return (
     <>
       <div>
@@ -1743,7 +1791,7 @@ function NetPaymentPanel({
           Complete Payment
         </h2>
         <p className="mt-1 text-xs text-[#7a88a3]">
-          Your application is approved. Complete payment to secure your place.
+          {screen.description || "Your application is approved. Complete payment to secure your place."}
         </p>
       </div>
 
@@ -1762,31 +1810,31 @@ function NetPaymentPanel({
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-[1.8rem] font-semibold text-[#32439b]">
-                Normal Courses
+                {screen.summary.title}
               </p>
-              <p className="mt-1 text-sm text-[#5d6f92]">Billed monthly</p>
+              <p className="mt-1 text-sm text-[#5d6f92]">{screen.summary.subtitle}</p>
             </div>
-            <p className="text-[1.9rem] font-semibold text-[#32439b]">£44/mo</p>
+            <p className="text-[1.9rem] font-semibold text-[#32439b]">
+              {screen.summary.displayAmount}
+            </p>
           </div>
         </div>
 
-        <div className="mt-4 rounded-xl bg-[linear-gradient(180deg,#bfe8fb_0%,#b5e0f6_100%)] px-5 py-4">
-          <label className="flex items-start gap-3 text-sm leading-6 text-[#32439b]">
-            <input
-              type="checkbox"
-              className="mt-1 h-5 w-5 rounded border-[#9bb8d1] accent-[#1ea6df]"
-              checked={payment.acceptedTerms}
-              onChange={(event) =>
-                onUpdatePayment("acceptedTerms", event.target.checked)
-              }
-            />
-            <span>
-              I agree to the <span className="font-medium text-[#0f76c5]">Terms and Conditions</span> and{" "}
-              <span className="font-medium text-[#0f76c5]">Privacy Policy</span>, and
-              consent to share my information with the training provider.
-            </span>
-          </label>
-        </div>
+        {screen.terms ? (
+          <div className="mt-4 rounded-xl bg-[linear-gradient(180deg,#bfe8fb_0%,#b5e0f6_100%)] px-5 py-4">
+            <label className="flex items-start gap-3 text-sm leading-6 text-[#32439b]">
+              <input
+                type="checkbox"
+                className="mt-1 h-5 w-5 rounded border-[#9bb8d1] accent-[#1ea6df]"
+                checked={payment.acceptedTerms}
+                onChange={(event) =>
+                  onUpdatePayment("acceptedTerms", event.target.checked)
+                }
+              />
+              <span>{screen.terms.checkboxLabel}</span>
+            </label>
+          </div>
+        ) : null}
 
         <div className="mt-6 rounded-[18px] border border-[#dbe7f4] bg-white px-5 py-5">
           <div className="rounded-lg border border-[#b7efc9] bg-[#e9fbe9] px-4 py-3 text-sm text-[#16803c]">
@@ -1797,6 +1845,15 @@ function NetPaymentPanel({
           </div>
 
           <p className="mt-4 text-lg font-semibold text-[#1f2f67]">Pay by card</p>
+
+          {isStripeTestMode ? (
+            <div className="mt-4 rounded-lg border border-[#fde68a] bg-[#fff8db] px-4 py-3 text-sm text-[#9a6700]">
+              Test mode is active right now. Use
+              <span className="font-semibold"> 4242 4242 4242 4242</span> for success or
+              <span className="font-semibold"> 4000 0000 0000 0002</span> to simulate a failed
+              payment.
+            </div>
+          ) : null}
 
           <div className="mt-4 space-y-4">
             <div className="relative">
@@ -1838,6 +1895,16 @@ function NetPaymentPanel({
               />
             </div>
           </div>
+
+          {submitError ? (
+            <div className="mt-4 rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+              {submitError}
+            </div>
+          ) : null}
+
+          {isSubmitting ? (
+            <p className="mt-4 text-sm text-[#5f6f90]">Preparing payment...</p>
+          ) : null}
         </div>
       </div>
     </>
@@ -2020,6 +2087,10 @@ export default function Am2RegistrationFlow({
     useCreateNormalBookingMutation();
   const [submitBookingForReview, { isLoading: isSubmittingBookingForReview }] =
     useSubmitBookingForReviewMutation();
+  const [createPaymentIntent, { isLoading: isCreatingPaymentIntent }] =
+    useCreateBookingPaymentIntentMutation();
+  const [completePayment, { isLoading: isCompletingPayment }] =
+    useCompleteBookingPaymentMutation();
   const [saveRegistrationEligibility, { isLoading: isSavingEligibility }] =
     useSaveRegistrationEligibilityMutation();
   const [saveRegistrationAssessment, { isLoading: isSavingAssessment }] =
@@ -2160,6 +2231,7 @@ Thank you,`,
     });
   const [reviewStatus, setReviewStatus] =
     React.useState<ReviewStatus>("pending");
+  const [paymentStepError, setPaymentStepError] = React.useState("");
   const [reviewScreen, setReviewScreen] = React.useState<
     SubmitBookingForReviewResponse["data"]["screen"] | null
   >(null);
@@ -2285,6 +2357,14 @@ Thank you,`,
     error: reviewScreenError,
   } = useGetBookingFlowReviewQuery(resolvedBookingId, {
     skip: !resolvedBookingId || phase !== "net" || currentNetStep !== "review",
+  });
+  const {
+    data: paymentScreenData,
+    isLoading: isPaymentScreenLoading,
+    isError: isPaymentScreenError,
+    error: paymentScreenError,
+  } = useGetBookingCheckoutPaymentQuery(resolvedBookingId, {
+    skip: !resolvedBookingId || phase !== "net" || currentNetStep !== "payment",
   });
 
   const resolveQualificationId = React.useCallback(() => {
@@ -2429,6 +2509,7 @@ Thank you,`,
   const currentIndex = currentRegistrationSteps.findIndex(
     (step) => step.key === currentStep
   );
+  const paymentScreen = paymentScreenData?.data.screen;
 
   React.useEffect(() => {
     if (!registrationScreen?.submission?.payloadTemplate?.personalDetails) {
@@ -2524,6 +2605,17 @@ Thank you,`,
     }));
   }, [trainingRegistrationScreen]);
 
+  React.useEffect(() => {
+    if (!paymentScreen?.terms) {
+      return;
+    }
+
+    setPayment((current) => ({
+      ...current,
+      acceptedTerms: paymentScreen.terms?.accepted ?? false,
+    }));
+  }, [paymentScreen]);
+
   const updateCandidate = (field: keyof CandidateFormState, value: string) => {
     setCandidateStepError("");
     setCandidate((current) => ({ ...current, [field]: value }));
@@ -2561,11 +2653,21 @@ Thank you,`,
     setProviderSignatureRequest((current) => ({ ...current, [field]: value }));
   };
 
-  const isPaymentComplete =
-    payment.acceptedTerms &&
+  const selectedPaymentMethodId = getPaymentMethodIdFromCardNumber(payment.cardNumber);
+  const isStripeTestMode = paymentScreen?.stripe?.enabled === false;
+  const allowPaymentProgressInDev = process.env.NODE_ENV === "development";
+  const paymentEnabled =
+    (paymentScreen?.actions?.pay?.enabled !== false && Boolean(paymentScreen)) ||
+    allowPaymentProgressInDev;
+  const canSubmitNetPayment =
+    Boolean(paymentScreen) &&
+    paymentEnabled &&
+    (!paymentScreen?.terms?.required || payment.acceptedTerms) &&
     payment.cardNumber.replace(/\s/g, "").length === 16 &&
     payment.expiry.replace(/\D/g, "").length === 4 &&
-    payment.cvc.length >= 3;
+    payment.cvc.length >= 3 &&
+    (!isStripeTestMode || selectedPaymentMethodId !== null);
+  const isSubmittingPayment = isCreatingPaymentIntent || isCompletingPayment;
 
   const selectAssessmentType = (value: string) => {
     if (
@@ -3159,6 +3261,59 @@ Thank you,`,
     },
     [syncNetRoute]
   );
+
+  const handleNetPayment = async () => {
+    if (!resolvedBookingId || !paymentScreen || !canSubmitNetPayment || isSubmittingPayment) {
+      return;
+    }
+
+    try {
+      setPaymentStepError("");
+      const intentResponse = await createPaymentIntent({
+        bookingId: resolvedBookingId,
+        agreedToTerms: payment.acceptedTerms,
+      }).unwrap();
+
+      const paymentIntentId = intentResponse.data.paymentIntent.id;
+
+      if (isStripeTestMode && !selectedPaymentMethodId) {
+        setPaymentStepError(
+          "Only supported Stripe test cards can be used right now. Use 4242 4242 4242 4242 for success or 4000 0000 0000 0002 to simulate a failed payment."
+        );
+        return;
+      }
+
+      const paymentResponse = await completePayment({
+        bookingId: resolvedBookingId,
+        agreedToTerms: payment.acceptedTerms,
+        paymentIntentId,
+        paymentMethodId: selectedPaymentMethodId || undefined,
+      }).unwrap();
+
+      if (!paymentResponse.success) {
+        setPaymentStepError(
+          paymentResponse.data.booking.payment?.failureReason ||
+            paymentResponse.message ||
+            "Payment failed. Please check your card details and try again."
+        );
+        return;
+      }
+
+      moveToNetStep("confirmed");
+    } catch (submitPaymentError) {
+      if (shouldBypassApprovalErrorInDev(submitPaymentError)) {
+        moveToNetStep("confirmed");
+        return;
+      }
+
+      setPaymentStepError(
+        resolveApiErrorMessage(
+          submitPaymentError,
+          "We could not prepare your payment right now."
+        )
+      );
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -4031,7 +4186,35 @@ Thank you,`,
           ) : null}
 
           {phase === "net" && currentNetStep === "payment" ? (
-            <NetPaymentPanel payment={payment} onUpdatePayment={updatePayment} />
+            <>
+              {isPaymentScreenLoading ? (
+                <div className="space-y-4 animate-pulse">
+                  <div className="h-8 w-60 rounded bg-[#e4edf8]" />
+                  <div className="h-16 rounded bg-[#edf3fb]" />
+                  <div className="h-12 rounded bg-[#edf3fb]" />
+                  <div className="h-36 rounded bg-[#edf3fb]" />
+                </div>
+              ) : null}
+
+              {!isPaymentScreenLoading && isPaymentScreenError ? (
+                <div className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+                  {resolveApiErrorMessage(
+                    paymentScreenError,
+                    "We could not load the payment screen right now."
+                  )}
+                </div>
+              ) : null}
+
+              {!isPaymentScreenLoading && !isPaymentScreenError && paymentScreen ? (
+                <NetPaymentPanel
+                  screen={paymentScreen}
+                  payment={payment}
+                  onUpdatePayment={updatePayment}
+                  submitError={paymentStepError}
+                  isSubmitting={isSubmittingPayment}
+                />
+              ) : null}
+            </>
           ) : null}
 
           {phase === "net" && currentNetStep === "confirmed" ? (
@@ -4242,15 +4425,26 @@ Thank you,`,
                 {currentNetStep === "payment" ? (
                   <button
                     type="button"
-                    disabled={!isPaymentComplete}
-                    onClick={() => moveToNetStep("confirmed")}
+                    disabled={
+                      isPaymentScreenLoading ||
+                      isPaymentScreenError ||
+                      isSubmittingPayment ||
+                      !canSubmitNetPayment
+                    }
+                    onClick={() => void handleNetPayment()}
                     className={`rounded-lg px-5 py-2.5 text-sm font-medium ${
-                      isPaymentComplete
+                      !isPaymentScreenLoading &&
+                      !isPaymentScreenError &&
+                      !isSubmittingPayment &&
+                      canSubmitNetPayment
                         ? "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] text-white shadow-[0_12px_24px_rgba(30,166,223,0.2)]"
                         : "cursor-not-allowed bg-[#dce4ec] text-[#9eacba]"
                     }`}
                   >
-                    Pay {normalizeCurrency(course.price)}
+                    {isSubmittingPayment
+                      ? "Preparing payment..."
+                      : paymentScreen?.actions?.pay?.label ||
+                        `Pay ${paymentScreen?.summary.displayAmount ?? normalizeCurrency(course.price)}`}
                   </button>
                 ) : null}
 
