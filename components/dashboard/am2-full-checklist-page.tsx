@@ -46,6 +46,243 @@ const checklistMeta = {
   },
 } as const;
 
+const am2eChecklistSections = [
+  {
+    id: "section-a1",
+    key: "A1",
+    label: "Section A1",
+    title: "Section A1: Safe Isolation and Risk Assessment (45 mins)",
+    duration: "45 mins",
+    summary: "To demonstrate occupational competence candidates will be expected to:",
+    items: [
+      "Carry out and document an assessment of risk",
+      "Carry out safe isolation in the correct sequence",
+    ],
+  },
+  {
+    id: "section-a2-a6",
+    key: "A2-A6",
+    label: "Sections A2-A6",
+    title: "Sections A2-A6: Composite Installation (10 hours)",
+    duration: "10 hours",
+    summary:
+      "This section has areas where candidates will need to demonstrate occupational competence in accordance with statutory and non-statutory regulations and approved industry working practices.",
+    items: [
+      "Interpretation of specifications and technical data",
+      "Selection of protective devices",
+      "Install protective equipotential bonding",
+      "Install and terminate PVC singles cable",
+      "Install and terminate PVC/PVC multi-core & cpc cable",
+      "Install and terminate SY multi-flex cable",
+      "Install and terminate heat-resistant flex",
+      "Install and terminate XLPE SWA",
+      "Install and terminate data-cable",
+      "Install and terminate FP200 type cable",
+      "Forming and install 20mm metal conduit",
+      "Forming and installing 20mm PVC conduit",
+      "Install protective devices in a TP&N distribution board",
+      "Install a two-way and intermediate lighting circuit in PVC/PVC multi-core cable",
+      "Install a BS 1363 13A socket outlet ring circuit in PVC singles cable",
+      "Install a carbon monoxide detector safety service circuit in FP200 type cable",
+      "Install data outlets circuit in Cat. 5 cable",
+      "Install a BS EN 60309 16A T P & N socket outlet in XLPE SWA cable",
+      "Install protective equipotential bonding to gas and water services",
+      "Connect a 3-phase direct on line motor circuit in SY cable",
+      "Install an S Plan central heating and hot water system with a solar thermal sustainable energy element utilising heat resistant flexible cable and PVC singles cable",
+    ],
+  },
+  {
+    id: "section-b",
+    key: "B",
+    label: "Section B",
+    title: "Section B: Inspection, Testing and Certification (3.5 hours)",
+    duration: "3.5 hours",
+    summary:
+      "In this area candidates will be expected to follow practices and procedures that take into account electrically sensitive equipment. To demonstrate occupational competence, candidates will be expected to:",
+    items: [
+      "Work according to best practice as required by Health and Safety legislation",
+      "Ensure the installation is correctly isolated before commencing the inspection and test activity",
+      "Carry out a visual inspection of the installation in accordance with BS 7671 and IET Guidance Note 3",
+      "Complete the following tests on the installation in accordance with BS 7671 and IET Guidance Note 3:",
+      "Continuity of protective conductors",
+      "Continuity of ring final circuit conductors",
+      "Insulation resistance",
+      "Polarity",
+      "Earth fault-loop impedance (EFLI)",
+      "Prospective fault current (PFC)",
+      "Check for phase sequence and phase rotation",
+      "Functional testing",
+      "Verify that the test results obtained conform to the values required by BS 7671 and IET Guidance Note 3",
+      "Complete an electrical installation certificate, schedule of inspections and schedule of test results using the model forms as illustrated in Appendix 6 of BS 7671",
+    ],
+  },
+  {
+    id: "section-c",
+    key: "C",
+    label: "Section C",
+    title: "Section C: Safe Isolation of Circuits (30 mins)",
+    duration: "30 mins",
+    summary: "To demonstrate occupational competence candidates will be expected to:",
+    items: [
+      "Carry out safe isolation in the correct sequence on a single-phase circuit",
+      "Carry out safe isolation in the correct sequence on a three-phase circuit",
+      "Carry out safe isolation in the correct sequence on a three-phase installation",
+    ],
+  },
+  {
+    id: "section-d",
+    key: "D",
+    label: "Section D",
+    title: "Section D: Fault Diagnosis and Rectification (2 hours)",
+    duration: "2 hours",
+    summary: "To demonstrate occupational competence candidates will be expected to:",
+    items: [
+      "Work according to best practice as required by Health and Safety legislation",
+      "Correctly identify and use tools, equipment and test instruments that are fit for purpose",
+      "Carry out checks and preparations that must be completed prior to undertaking fault diagnosis",
+      "Identify faults from 'fault symptom' information given by the assessor",
+      "State and record how the identified faults can be rectified",
+    ],
+  },
+  {
+    id: "section-e",
+    key: "E",
+    label: "Section E",
+    title: "Section E: Assessment of Applied Knowledge (1 hour)",
+    duration: "1 hour",
+    summary:
+      "This assessment will last for one hour and be in the form of a computerised multiple-choice test. Candidates will be expected to answer 30 questions and will be assessed on their application of knowledge associated with:",
+    items: [
+      "Health and Safety",
+      "BS 7671: Requirements for Electrical Installations",
+      "Building Regulations",
+      "Inspection, Testing and Fault Finding",
+    ],
+  },
+] as const;
+
+const am2eV1ChecklistSections = [
+  {
+    id: "section-a1",
+    key: "A1",
+    label: "Section A1",
+    title: "Section A1: Safe Isolation and Risk Assessment (45 mins)",
+    duration: "45 mins",
+    summary: "To demonstrate occupational competence candidates will be expected to:",
+    items: [
+      "Carry out and document an assessment of risk",
+      "Carry out safe isolation in the correct sequence considering any separate energy systems",
+    ],
+  },
+  {
+    id: "section-a2-a6",
+    key: "A2-A6",
+    label: "Sections A2-A6",
+    title: "Sections A2-A6: Composite Installation (10.5 hours)",
+    duration: "10.5 hours",
+    summary:
+      "This section has areas where candidates will need to demonstrate occupational competence in accordance with statutory and non-statutory regulations and approved industry working practices.",
+    items: [
+      "Interpretation of specifications and technical data",
+      "Selection of protective devices, single pole and triple pole",
+      "Install protective equipotential bonding",
+      "Install and terminate PVC singles cable",
+      "Install and terminate PVC/PVC multi-core & cpc cable",
+      "Install and terminate SY multi-flex cable",
+      "Install and terminate heat-resistant flex",
+      "Install and terminate XLPE SWA",
+      "Install and terminate data-cable",
+      "Install and terminate FP200 type cable",
+      "Form and install metal conduit systems",
+      "Form and install PVC conduit systems",
+      "Install protective devices in a TP&N distribution board",
+      "Install a two-way, intermediate and key switch for various lighting circuits in PVC/PVC multi-core cable",
+      "Install a BS 1363 13A socket outlet ring circuit using PVC single cables",
+      "Install a carbon monoxide detector safety service circuit in FP200 type cable",
+      "Install data outlets circuit in Cat. 5 cable",
+      "Install a BS EN 60309 20A T P & N supply in XLPE SWA cable for electric vehicle pillar",
+      "Install protective equipotential bonding to gas and water services",
+      "Connect a 3-phase direct online motor circuit in SY cable with remote start stop function using PVC singles",
+      "Install an S Plan central heating and hot water system with a solar thermal sustainable energy element utilising heat resistant flexible cable and PVC singles cable",
+    ],
+  },
+  {
+    id: "section-b",
+    key: "B",
+    label: "Section B",
+    title: "Section B: Inspection, Testing and Certification (3.5 hours)",
+    duration: "3.5 hours",
+    summary:
+      "In this area candidates will be expected to follow practices and procedures that take into account electrically sensitive equipment. To demonstrate occupational competence, candidates will be expected to:",
+    items: [
+      "Work according to best practice as required by Health and Safety legislation",
+      "Ensure the installation is correctly isolated before commencing the inspection and test activity taking into account any renewable sources",
+      "Carry out a visual inspection of the installation in accordance with BS 7671 and IET Guidance Note 3",
+      "Complete the following tests on the installation in accordance with BS 7671 and IET Guidance Note 3:",
+      "Continuity of protective conductors",
+      "Continuity of ring final circuit conductors",
+      "Insulation resistance",
+      "Polarity",
+      "Earth fault-loop impedance (EFLI)",
+      "Prospective fault current (PFC)",
+      "Check for phase sequence and phase rotation",
+      "Functional testing",
+      "Verify that the test results obtained conform to the values required by BS 7671 and IET Guidance Note 3",
+      "Complete an electrical installation certificate, schedule of inspections and schedule of test results using the model forms as illustrated in Appendix 6 of BS 7671",
+    ],
+  },
+  {
+    id: "section-c",
+    key: "C",
+    label: "Section C",
+    title: "Section C: Safe Isolation of Circuits (30 mins)",
+    duration: "30 mins",
+    summary: "To demonstrate occupational competence candidates will be expected to:",
+    items: [
+      "Carry out safe isolation in the correct sequence on a single-phase circuit",
+      "Carry out safe isolation in the correct sequence on a three-phase circuit",
+      "Carry out safe isolation in the correct sequence on a three-phase installation",
+    ],
+  },
+  {
+    id: "section-d",
+    key: "D",
+    label: "Section D",
+    title: "Section D: Fault Diagnosis and Rectification (2 hours)",
+    duration: "2 hours",
+    summary: "To demonstrate occupational competence candidates will be expected to:",
+    items: [
+      "Work according to best practice as required by Health and Safety legislation",
+      "Correctly select and use tools, equipment and test instruments.",
+      "Carry out checks and preparations that must be completed prior to undertaking fault diagnosis",
+      "Identify faults from 'fault symptom' information.",
+      "State and record how the identified faults can be rectified",
+    ],
+  },
+  {
+    id: "section-e",
+    key: "E",
+    label: "Section E",
+    title: "Section E: Assessment of Applied Knowledge (1.5 hours)",
+    duration: "1.5 hours",
+    summary:
+      "This assessment will last for 1.5 hours and be in the form of a computerised multiple-choice test. Candidates will be expected to answer 40 questions and will be assessed on their application of knowledge associated with:",
+    items: [
+      "Health and Safety",
+      "BS 7671: Requirements for Electrical Installations including any current amendments",
+      "Building Regulations",
+      "Inspection, Testing and Fault Finding",
+    ],
+  },
+] as const;
+
+const defaultChecklistOptions = [
+  { id: "limited", label: "Limited" },
+  { id: "adequate", label: "Adequate" },
+  { id: "extensive", label: "Extensive" },
+  { id: "unsure", label: "Unsure" },
+];
+
 function resolveApiErrorMessage(error: unknown, fallback: string) {
   if (
     typeof error === "object" &&
@@ -250,7 +487,22 @@ function mapAm2eFlowToFullChecklistScreen({
   requestedSection: string;
 }): ChecklistScreen {
   const meta = checklistMeta[flow];
-  const sections = flowData.flow.checklistSections ?? [];
+  const sections =
+    flow === "am2e"
+      ? am2eChecklistSections.map((section) => ({
+          ...section,
+          totalItems: section.items.length,
+          items: section.items.map((criterion, index) => ({
+            id: `${section.id}-item-${index + 1}`,
+            no: index + 1,
+            criterion,
+            options: {
+              knowledge: defaultChecklistOptions,
+              experience: defaultChecklistOptions,
+            },
+          })),
+        }))
+      : flowData.flow.checklistSections ?? [];
   const activeSource =
     sections.find(
       (entry) =>
