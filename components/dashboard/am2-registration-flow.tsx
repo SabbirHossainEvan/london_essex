@@ -2229,6 +2229,7 @@ export default function Am2RegistrationFlow({
     () => searchParams.get("bookingId") ?? bookingId ?? ""
   );
   const [uploadingDocumentId, setUploadingDocumentId] = React.useState<string | null>(null);
+  const [sessionUploadedDocIds, setSessionUploadedDocIds] = React.useState<string[]>([]);
   const [documentUploadError, setDocumentUploadError] = React.useState("");
   const [candidateSignatureError, setCandidateSignatureError] = React.useState("");
   const [candidateSignatureMessage, setCandidateSignatureMessage] = React.useState("");
@@ -3127,10 +3128,13 @@ Thank you,`,
       setUploadingDocumentId(id);
       const response = await uploadBookingDocument({
         bookingId: resolvedBookingId,
+        flow: netFlowType,
         documentType: id,
         documentLabel: title,
         file,
       }).unwrap();
+
+      setSessionUploadedDocIds((prev) => [...prev, id]);
       const nextBookingId = resolveBookingIdFromDocumentsScreen(
         response.data.screen
       );
@@ -3397,7 +3401,11 @@ Thank you,`,
         ) : (
           <>
             <h1 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-[#2d3f8f]">
-              {course.title}
+              {netFlowType === "am2e"
+                ? "AM2E Assessment Preparation"
+                : netFlowType === "am2e-v1"
+                  ? "AM2E V1 Assessment Preparation"
+                  : course.title}
             </h1>
             <p className="mt-3 max-w-[920px] text-sm leading-6 text-[#667795]">
               Complete the next AM2 preparation steps before continuing your
@@ -4078,13 +4086,71 @@ Thank you,`,
               {!isDocumentsScreenLoading &&
               !isDocumentsScreenError &&
               documentsScreenData?.data.screen ? (
-                <NetDocumentsPanel
-                  screen={documentsScreenData.data.screen}
-                  onUpload={handleUploadDocument}
-                  onContinue={() => moveToNetStep("checklist")}
-                  uploadingDocumentId={uploadingDocumentId}
-                  uploadError={documentUploadError}
-                />
+                (() => {
+                  const screen = documentsScreenData.data.screen;
+                  const isAm2e = netFlowType === "am2e";
+                  const isAm2eV1 = netFlowType === "am2e-v1";
+                  
+                  const extraDocs = isAm2e ? [
+                    {
+                      id: "am2e_checklist_document",
+                      title: "AM2E Checklist Document",
+                      description: "Please upload your completed AM2E Checklist.",
+                      uploaded: false,
+                      document: null,
+                    },
+                    {
+                      id: "am2e_employer_endorsement",
+                      title: "Employer Endorsement",
+                      description: "Please upload your employer endorsement document.",
+                      uploaded: false,
+                      document: null,
+                    }
+                  ] : isAm2eV1 ? [
+                    {
+                      id: "am2e_v1_worker_cert",
+                      title: "The Experienced Worker Qualification Certificate",
+                      description: "Certificate from either City & Guilds (2346) or EAL (603/5982/1)",
+                      uploaded: false,
+                      document: null,
+                    },
+                    {
+                      id: "am2e_v1_walled_garden",
+                      title: "City & Guilds Walled Garden Report or EAL Learner History Report",
+                      description: "You will need to request this from your NVQ provider",
+                      uploaded: false,
+                      document: null,
+                    },
+                    {
+                      id: "am2e_v1_technical_cert",
+                      title: "Level 2 or Level 3 Technical Certificate",
+                      description: "For overseas candidates an Electrotechnical Statement from Ecctis (formerly UK NARIC) is required to show UK equivalence if you do not hold a UK Level 2 or 3 technical certificate.",
+                      uploaded: false,
+                      document: null,
+                    }
+                  ] : [];
+                  
+                  const requirements = [...screen.requirements];
+                  extraDocs.forEach((doc) => {
+                    const existing = requirements.find((r) => r.id === doc.id);
+                    if (!existing) {
+                      requirements.push({
+                        ...doc,
+                        uploaded: doc.uploaded || sessionUploadedDocIds.includes(doc.id),
+                      });
+                    }
+                  });
+
+                  return (
+                    <NetDocumentsPanel
+                      screen={{ ...screen, requirements }}
+                      onUpload={handleUploadDocument}
+                      onContinue={() => moveToNetStep("checklist")}
+                      uploadingDocumentId={uploadingDocumentId}
+                      uploadError={documentUploadError}
+                    />
+                  );
+                })()
               ) : null}
             </>
           ) : null}

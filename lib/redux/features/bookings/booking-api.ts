@@ -520,6 +520,7 @@ export type GetBookingFlowDocumentsResponse = {
 
 export type UploadBookingDocumentRequest = {
   bookingId: string;
+  flow?: string;
   documentType: string;
   documentLabel: string;
   file: File;
@@ -905,14 +906,16 @@ export const bookingApi = baseApi.injectEndpoints({
       UploadBookingDocumentResponse,
       UploadBookingDocumentRequest
     >({
-      query: ({ bookingId, documentType, documentLabel, file }) => {
+      query: ({ bookingId, flow, documentType, documentLabel, file }) => {
         const body = new FormData();
         body.append("documentType", documentType);
         body.append("documentLabel", documentLabel);
         body.append("file", file);
 
+        const params = flow ? { flow } : undefined;
         return {
           url: `/bookings/${bookingId}/flow/documents/upload`,
+          params,
           method: "POST",
           body,
         };
