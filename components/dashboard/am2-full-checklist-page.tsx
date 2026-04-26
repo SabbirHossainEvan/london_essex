@@ -487,9 +487,15 @@ function mapAm2eFlowToFullChecklistScreen({
   requestedSection: string;
 }): ChecklistScreen {
   const meta = checklistMeta[flow];
-  const sections =
+  const overrideSections =
     flow === "am2e"
-      ? am2eChecklistSections.map((section) => ({
+      ? am2eChecklistSections
+      : flow === "am2e-v1"
+        ? am2eV1ChecklistSections
+        : null;
+  const sections =
+    overrideSections
+      ? overrideSections.map((section) => ({
           ...section,
           totalItems: section.items.length,
           items: section.items.map((criterion, index) => ({
