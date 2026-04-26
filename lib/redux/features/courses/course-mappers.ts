@@ -61,6 +61,7 @@ export function mapDetailCourseToSummary(course: CourseDetailCourse): CourseSumm
   );
 
   return {
+    id: course.id,
     slug: course.slug,
     bookingFlow:
       course.slug === "am2-assessment-preparation" ? "am2" : "standard",
@@ -104,6 +105,7 @@ export function mapRelatedCourseToSummary(
     );
 
   return {
+    id: course.id,
     slug: course.slug,
     bookingFlow:
       course.slug === "am2-assessment-preparation" ? "am2" : "standard",

@@ -1,4 +1,5 @@
 export type CourseSummary = {
+  id?: string;
   slug: string;
   bookingFlow: "standard" | "am2";
   category: string;

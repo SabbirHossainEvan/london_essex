@@ -34,6 +34,7 @@ import {
   useCompleteBookingPaymentMutation,
   useCreateBookingPaymentIntentMutation,
   useCreateNormalBookingMutation,
+  useLazyGetAm2eChecklistFlowByCourseQuery,
   useGetBookingCheckoutPaymentQuery,
   useGetBookingFlowChecklistSummaryQuery,
   useGetBookingFlowDocumentsQuery,
@@ -461,7 +462,22 @@ function formatDateForApi(value: string) {
   }
 
   const [, day, month, year] = match;
+
   return `${year}-${month}-${day}`;
+}
+
+function formatShortDateInput(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+
+  if (digits.length <= 2) {
+    return digits;
+  }
+
+  if (digits.length <= 4) {
+    return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  }
+
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
 }
 
 function TextField({
@@ -2105,6 +2121,10 @@ export default function Am2RegistrationFlow({
   const [submitCandidateSignature, { isLoading: isSubmittingCandidateSignature }] =
     useSubmitCandidateSignatureMutation();
   const [
+    getAm2eChecklistFlowByCourse,
+    { isFetching: isFetchingAm2eChecklistFlow },
+  ] = useLazyGetAm2eChecklistFlowByCourseQuery();
+  const [
     requestTrainingProviderSignature,
     { isLoading: isRequestingTrainingProviderSignature },
   ] = useRequestTrainingProviderSignatureMutation();
@@ -3047,6 +3067,39 @@ Thank you,`,
   };
 
   const handleNqvContinue = async () => {
+    const nextFlowType =
+      nvqTiming === "before-3rd-september-2023" ? "am2e" : "am2e-v1";
+    const courseId = course.id;
+
+    if (!courseId) {
+      setEligibilityStepError(
+        "We could not determine the course id needed to load this checklist flow."
+      );
+      return;
+    }
+
+    let resolvedFlowType: NetFlowType = nextFlowType;
+
+    try {
+      setEligibilityStepError("");
+      const checklistFlowResponse = await getAm2eChecklistFlowByCourse({
+        variant: nextFlowType,
+        courseId,
+        questionId: "nvq-registration-date",
+        answerId: nvqTiming,
+      }).unwrap();
+
+      resolvedFlowType = checklistFlowResponse.data.checklistVariant;
+    } catch (checklistFlowError) {
+      setEligibilityStepError(
+        resolveApiErrorMessage(
+          checklistFlowError,
+          "We could not load the selected AM2E checklist flow right now."
+        )
+      );
+      return;
+    }
+
     const eligibilityBookingId = await submitEligibility(nvqTiming, resolvedBookingId);
 
     if (!eligibilityBookingId) {
@@ -3054,10 +3107,7 @@ Thank you,`,
     }
 
     setNvqModalOpen(false);
-    startNetFlow(
-      nvqTiming === "before-3rd-september-2023" ? "am2e" : "am2e-v1",
-      eligibilityBookingId
-    );
+    startNetFlow(resolvedFlowType, eligibilityBookingId);
   };
 
   const handleUploadDocument = async (
@@ -3451,9 +3501,24 @@ Thank you,`,
                           <TextField
                             icon={icon}
                             value={candidate[currentStateKey]}
-                            onChange={(value) => updateCandidate(currentStateKey, value)}
-                            placeholder={currentField.placeholder ?? ""}
-                            type={currentField.type}
+                            onChange={(value) =>
+                              updateCandidate(
+                                currentStateKey,
+                                currentField.id === "dateOfBirth"
+                                  ? formatShortDateInput(value)
+                                  : value
+                              )
+                            }
+                            placeholder={
+                              currentField.id === "dateOfBirth"
+                                ? "dd/mm/yyyy"
+                                : currentField.placeholder ?? ""
+                            }
+                            type={
+                              currentField.id === "dateOfBirth"
+                                ? "text"
+                                : currentField.type
+                            }
                           />
                           {currentField.helperText ? (
                             <p className="mt-2 text-xs text-[#7a88a3]">
@@ -4488,7 +4553,7 @@ Thank you,`,
         onChange={setNvqTiming}
         onClose={() => setNvqModalOpen(false)}
         onContinue={handleNqvContinue}
-        isSubmitting={isSavingEligibility}
+        isSubmitting={isSavingEligibility || isFetchingAm2eChecklistFlow}
       />
     </div>
   );
