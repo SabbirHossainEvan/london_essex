@@ -600,9 +600,23 @@ function FullChecklistContent({
   const [saveMessage, setSaveMessage] = React.useState("");
   const [saveError, setSaveError] = React.useState("");
   const [isNavigatingSection, setIsNavigatingSection] = React.useState(false);
-  const nextSectionKey = extractSectionFromApiUrl(
-    screen.actions?.nextSection?.apiUrl
+  const activeSectionIndex = screen.sections.findIndex(
+    (section) => section.key === screen.activeSection.key
   );
+  const fallbackNextSectionKey =
+    activeSectionIndex >= 0
+      ? screen.sections[activeSectionIndex + 1]?.key
+      : undefined;
+  const nextSectionKey =
+    extractSectionFromApiUrl(screen.actions?.nextSection?.apiUrl) ||
+    fallbackNextSectionKey;
+  const isCurrentSectionComplete =
+    screen.activeSection.items.length > 0 &&
+    screen.activeSection.items.every(
+      (item) => item.knowledgeLevel && item.experienceLevel
+    );
+  const isNextSectionDisabled =
+    !isCurrentSectionComplete || isSavingDraft || isNavigatingSection;
   const signaturesHref = `/dashboard/courses/${course.slug}/book?${buildQueryString({
     flow,
     bookingId,
@@ -688,6 +702,11 @@ function FullChecklistContent({
     setSaveMessage("");
     setSaveError("");
 
+    if (flow !== "am2") {
+      setSaveMessage("Checklist draft saved successfully.");
+      return screen;
+    }
+
     const responses = screen.activeSection.items.map((item) => ({
       itemId: item.id,
       knowledgeLevel: item.knowledgeLevel ?? "",
@@ -739,6 +758,10 @@ function FullChecklistContent({
   }, [navigateToSection, persistCurrentSection]);
 
   const handleNextSection = React.useCallback(async () => {
+    if (!isCurrentSectionComplete) {
+      return;
+    }
+
     setIsNavigatingSection(true);
     const savedScreen = await persistCurrentSection();
 
@@ -755,7 +778,14 @@ function FullChecklistContent({
 
     router.push(signaturesHref);
     setIsNavigatingSection(false);
-  }, [navigateToSection, nextSectionKey, persistCurrentSection, router, signaturesHref]);
+  }, [
+    isCurrentSectionComplete,
+    navigateToSection,
+    nextSectionKey,
+    persistCurrentSection,
+    router,
+    signaturesHref,
+  ]);
 
   return (
     <PanelCard className="rounded-[24px] border-[#d7e5f7] bg-[#eef6ff] p-4 sm:p-5">
@@ -792,8 +822,12 @@ function FullChecklistContent({
             <button
               type="button"
               onClick={handleNextSection}
-              disabled={isSavingDraft || isNavigatingSection}
-              className="rounded-md bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] px-4 py-2 text-xs font-medium text-white"
+              disabled={isNextSectionDisabled}
+              className={`rounded-md px-4 py-2 text-xs font-medium text-white ${
+                isNextSectionDisabled
+                  ? "cursor-not-allowed bg-[#cbd5e1]"
+                  : "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)]"
+              }`}
             >
               {isNavigatingSection
                 ? "Saving..."
@@ -923,8 +957,12 @@ function FullChecklistContent({
             <button
               type="button"
               onClick={handleNextSection}
-              disabled={isSavingDraft || isNavigatingSection}
-              className="rounded-md bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] px-4 py-2 text-xs font-medium text-white"
+              disabled={isNextSectionDisabled}
+              className={`rounded-md px-4 py-2 text-xs font-medium text-white ${
+                isNextSectionDisabled
+                  ? "cursor-not-allowed bg-[#cbd5e1]"
+                  : "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)]"
+              }`}
             >
               {isNavigatingSection
                 ? "Saving..."
