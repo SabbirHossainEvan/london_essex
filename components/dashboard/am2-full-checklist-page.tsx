@@ -7,7 +7,9 @@ import { ChevronRight } from "lucide-react";
 import type { CourseSummary } from "@/app/(website)/courses/courses-data";
 import PanelCard from "@/components/dashboard/panel-card";
 import {
+  type GetAm2eChecklistFlowByCourseResponse,
   type GetBookingFlowChecklistFullResponse,
+  useLazyGetAm2eChecklistFlowByCourseQuery,
   useGetBookingFlowChecklistFullQuery,
   useSaveBookingChecklistDraftMutation,
 } from "@/lib/redux/features/bookings/booking-api";
@@ -16,6 +18,7 @@ type Am2FullChecklistPageProps = {
   course: CourseSummary;
   flow: "am2" | "am2e" | "am2e-v1";
   bookingId?: string;
+  courseId?: string;
   section?: string;
 };
 
@@ -85,10 +88,12 @@ function extractSectionFromApiUrl(value?: string | null) {
 function buildQueryString({
   flow,
   bookingId,
+  courseId,
   section,
 }: {
   flow: Am2FullChecklistPageProps["flow"];
   bookingId?: string;
+  courseId?: string;
   section?: string;
 }) {
   const params = new URLSearchParams();
@@ -96,6 +101,10 @@ function buildQueryString({
 
   if (bookingId) {
     params.set("bookingId", bookingId);
+  }
+
+  if (courseId) {
+    params.set("courseId", courseId);
   }
 
   if (section) {
@@ -218,22 +227,116 @@ function renderOptionGroup({
   );
 }
 
+type Am2eChecklistFlowData =
+  GetAm2eChecklistFlowByCourseResponse["data"];
+
+function getNvqAnswerForChecklistFlow(
+  flow: Am2FullChecklistPageProps["flow"]
+) {
+  return flow === "am2e"
+    ? "before-3rd-september-2023"
+    : flow === "am2e-v1"
+      ? "after-september-2023"
+      : null;
+}
+
+function mapAm2eFlowToFullChecklistScreen({
+  flowData,
+  flow,
+  requestedSection,
+}: {
+  flowData: Am2eChecklistFlowData;
+  flow: Am2FullChecklistPageProps["flow"];
+  requestedSection: string;
+}): ChecklistScreen {
+  const meta = checklistMeta[flow];
+  const sections = flowData.flow.checklistSections ?? [];
+  const activeSource =
+    sections.find(
+      (entry) =>
+        entry.key.trim().toUpperCase() === requestedSection.trim().toUpperCase()
+    ) ||
+    sections[0];
+  const activeSection = activeSource
+    ? {
+        id: activeSource.id,
+        key: activeSource.key,
+        title: activeSource.title,
+        summary: activeSource.summary,
+        duration: activeSource.duration,
+        completedItems: 0,
+        totalItems: activeSource.totalItems,
+        items: activeSource.items.map((item) => ({
+          ...item,
+          completed: false,
+        })),
+      }
+    : {
+        id: "section-a1",
+        key: "A1",
+        title: "Section A1",
+        completedItems: 0,
+        totalItems: 0,
+        items: [],
+      };
+
+  return {
+    steps: flowData.flow.steps.map((step) => ({
+      id: step.id,
+      label: step.label,
+      status:
+        step.id === "documents"
+          ? "completed"
+          : step.id === "checklist"
+            ? "current"
+            : "upcoming",
+    })),
+    title: meta.title,
+    subtitle: `Complete your ${meta.title}.`,
+    overallCompletion: flowData.flow.checklistSummary?.overallCompletion ?? 0,
+    actions: {
+      saveDraft: {
+        label: "Save Draft",
+      },
+      nextSection: {
+        label: "Next Section",
+      },
+    },
+    sections: sections.map((entry) => ({
+      id: entry.id,
+      key: entry.key,
+      label: entry.label,
+      completedItems: 0,
+      totalItems: entry.totalItems,
+      active: entry.key === activeSection.key,
+    })),
+    activeSection,
+  };
+}
+
 function FullChecklistContent({
   course,
   flow,
   bookingId,
+  courseId,
   screen,
   onScreenChange,
 }: {
   course: CourseSummary;
   flow: Am2FullChecklistPageProps["flow"];
   bookingId: string;
+  courseId?: string;
   screen: ChecklistScreen;
   onScreenChange: React.Dispatch<React.SetStateAction<ChecklistScreen | null>>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const meta = checklistMeta[flow];
+  const displayTitle = flow === "am2" ? screen.title || meta.title : meta.title;
+  const displaySubtitle =
+    flow === "am2"
+      ? screen.subtitle || `Complete your ${meta.title.toLowerCase()}.`
+      : `Complete your ${meta.title}.`;
   const [saveDraft, { isLoading: isSavingDraft }] =
     useSaveBookingChecklistDraftMutation();
   const [saveMessage, setSaveMessage] = React.useState("");
@@ -245,6 +348,7 @@ function FullChecklistContent({
   const signaturesHref = `/dashboard/courses/${course.slug}/book?${buildQueryString({
     flow,
     bookingId,
+    courseId,
   })}&netStep=signatures`;
 
   const navigateToSection = React.useCallback(
@@ -253,11 +357,12 @@ function FullChecklistContent({
         `${pathname}?${buildQueryString({
           flow,
           bookingId,
+          courseId,
           section: targetSection,
         })}`
       );
     },
-    [bookingId, flow, pathname, router]
+    [bookingId, courseId, flow, pathname, router]
   );
 
   const updateItemSelection = React.useCallback(
@@ -338,9 +443,11 @@ function FullChecklistContent({
         responses,
       }).unwrap();
 
-      onScreenChange(response.data.screen);
+      if (flow === "am2") {
+        onScreenChange(response.data.screen);
+      }
       setSaveMessage(response.message || "Checklist draft saved successfully.");
-      return response.data.screen;
+      return flow === "am2" ? response.data.screen : screen;
     } catch (saveDraftError) {
       setSaveError(
         resolveApiErrorMessage(
@@ -352,10 +459,10 @@ function FullChecklistContent({
     }
   }, [
     bookingId,
+    flow,
     onScreenChange,
     saveDraft,
-    screen.activeSection.items,
-    screen.activeSection.key,
+    screen,
   ]);
 
   const handleSaveDraft = React.useCallback(async () => {
@@ -400,11 +507,11 @@ function FullChecklistContent({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-[1.4rem] font-semibold text-[#3849a0]">
-              {screen.title || meta.title}
+              {displayTitle}
             </h1>
-            {screen.subtitle || meta.title ? (
+            {displaySubtitle ? (
               <p className="mt-2 text-sm text-[#7a88a3]">
-                {screen.subtitle || `Complete your ${meta.title.toLowerCase()}.`}
+                {displaySubtitle}
               </p>
             ) : null}
           </div>
@@ -576,10 +683,16 @@ export default function Am2FullChecklistPage({
   course,
   flow,
   bookingId = "",
+  courseId = "",
   section = "A1",
 }: Am2FullChecklistPageProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const [getAm2eChecklistFlowByCourse] = useLazyGetAm2eChecklistFlowByCourseQuery();
+  const [am2eFlowData, setAm2eFlowData] =
+    React.useState<Am2eChecklistFlowData | null>(null);
+  const [am2eFlowError, setAm2eFlowError] = React.useState<unknown>(null);
+  const [isAm2eFlowLoading, setIsAm2eFlowLoading] = React.useState(false);
   const {
     data,
     isLoading,
@@ -588,9 +701,22 @@ export default function Am2FullChecklistPage({
     error,
   } = useGetBookingFlowChecklistFullQuery(
     { bookingId, section },
-    { skip: !bookingId }
+    { skip: !bookingId || flow !== "am2" }
   );
-  const screen = data?.data.screen;
+  const previewCourseId = courseId || course.id || "";
+  const screen = React.useMemo(
+    () =>
+      flow === "am2"
+        ? data?.data.screen
+        : am2eFlowData
+          ? mapAm2eFlowToFullChecklistScreen({
+              flowData: am2eFlowData,
+              flow,
+              requestedSection: section,
+            })
+          : null,
+    [am2eFlowData, data?.data, flow, section]
+  );
   const [editableScreen, setEditableScreen] = React.useState<ChecklistScreen | null>(
     null
   );
@@ -598,11 +724,47 @@ export default function Am2FullChecklistPage({
   const isShowingRequestedSection =
     editableScreen?.activeSection.key?.trim().toUpperCase() === normalizedSection;
   const isSectionTransitioning =
-    Boolean(bookingId) && (isLoading || isFetching || !isShowingRequestedSection);
+    Boolean(bookingId) &&
+    ((flow === "am2" && (isLoading || isFetching)) ||
+      (flow !== "am2" && isAm2eFlowLoading) ||
+      !isShowingRequestedSection);
+
+  React.useEffect(() => {
+    if (flow === "am2") {
+      setAm2eFlowData(null);
+      setAm2eFlowError(null);
+      return;
+    }
+
+    const answerId = getNvqAnswerForChecklistFlow(flow);
+
+    if (!answerId || !previewCourseId) {
+      return;
+    }
+
+    setIsAm2eFlowLoading(true);
+    setAm2eFlowError(null);
+    getAm2eChecklistFlowByCourse({
+      variant: flow,
+      courseId: previewCourseId,
+      questionId: "nvq-registration-date",
+      answerId,
+    })
+      .unwrap()
+      .then((response) => {
+        setAm2eFlowData(response.data);
+      })
+      .catch((errorResponse) => {
+        setAm2eFlowError(errorResponse);
+      })
+      .finally(() => {
+        setIsAm2eFlowLoading(false);
+      });
+  }, [flow, getAm2eChecklistFlowByCourse, previewCourseId]);
 
   React.useEffect(() => {
     setEditableScreen(null);
-  }, [bookingId, normalizedSection]);
+  }, [bookingId, flow, normalizedSection]);
 
   React.useEffect(() => {
     if (screen) {
@@ -631,10 +793,11 @@ export default function Am2FullChecklistPage({
       `${pathname}?${buildQueryString({
         flow,
         bookingId: nextBookingId,
+        courseId: previewCourseId,
         section,
       })}`
     );
-  }, [bookingId, editableScreen, flow, pathname, router, section]);
+  }, [bookingId, editableScreen, flow, pathname, previewCourseId, router, section]);
 
   return (
     <div className="space-y-6">
@@ -676,11 +839,25 @@ export default function Am2FullChecklistPage({
         </PanelCard>
       ) : null}
 
-      {bookingId && !isSectionTransitioning && !isError && editableScreen ? (
+      {bookingId && !isSectionTransitioning && flow !== "am2" && am2eFlowError ? (
+        <PanelCard className="rounded-[24px] border-[#fecaca] bg-[#fff3f3] p-5 text-sm text-[#dc2626]">
+          {resolveApiErrorMessage(
+            am2eFlowError,
+            "We could not load the AM2E full checklist right now."
+          )}
+        </PanelCard>
+      ) : null}
+
+      {bookingId &&
+      !isSectionTransitioning &&
+      !isError &&
+      !am2eFlowError &&
+      editableScreen ? (
         <FullChecklistContent
           course={course}
           flow={flow}
           bookingId={bookingId}
+          courseId={previewCourseId}
           screen={editableScreen}
           onScreenChange={setEditableScreen}
         />

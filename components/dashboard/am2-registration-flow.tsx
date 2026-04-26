@@ -28,6 +28,7 @@ import {
   type GetBookingFlowSubmitResponse,
   type GetBookingFlowReviewResponse,
   type GetBookingCheckoutPaymentResponse,
+  type GetAm2eChecklistFlowByCourseResponse,
   type SubmitBookingForReviewResponse,
   type RequestTrainingProviderSignatureRequest,
   type SubmitCandidateSignatureRequest,
@@ -222,6 +223,18 @@ const am2eEligibleQualificationTokens = [
   "eal-603-5982-1",
   "603-5982-1",
 ];
+
+function getNvqAnswerForFlow(flowType: NetFlowType): NvqTiming | null {
+  if (flowType === "am2e") {
+    return "before-3rd-september-2023";
+  }
+
+  if (flowType === "am2e-v1") {
+    return "after-september-2023";
+  }
+
+  return null;
+}
 
 function normalizeQualificationValue(value?: string) {
   return (value ?? "")
@@ -478,6 +491,86 @@ function formatShortDateInput(value: string) {
   }
 
   return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+type Am2eChecklistFlowData =
+  GetAm2eChecklistFlowByCourseResponse["data"];
+
+function mapAm2eFlowToDocumentsScreen(
+  flowData: Am2eChecklistFlowData,
+  uploadedDocumentIds: string[]
+) {
+  const documents = flowData.flow.documents;
+  const requirements =
+    documents?.requirements.map((item) => ({
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      uploaded: uploadedDocumentIds.includes(item.id),
+      document: null,
+      action: {
+        label: uploadedDocumentIds.includes(item.id) ? "Re upload" : "Upload",
+      },
+    })) ?? [];
+  const uploadedCount = requirements.filter((item) => item.uploaded).length;
+  const percentage = requirements.length
+    ? Math.round((uploadedCount / requirements.length) * 100)
+    : 0;
+
+  return {
+    title:
+      documents?.title ||
+      (flowData.checklistVariant === "am2e-v1"
+        ? "AM2E V1 Checklist"
+        : "AM2E Checklist"),
+    subtitle:
+      documents?.subtitle || "The required documents to be uploaded are:",
+    importantInformation:
+      documents?.importantInformation ||
+      "Note: For reasonable adjustments to be applied, please contact the center for further information.",
+    requirements,
+    completion: {
+      percentage,
+    },
+    actions: {
+      continue: {
+        label: "Continue",
+        enabled: requirements.length > 0 && requirements.every((item) => item.uploaded),
+      },
+    },
+  };
+}
+
+function mapAm2eFlowToChecklistSummaryScreen(flowData: Am2eChecklistFlowData) {
+  const summary = flowData.flow.checklistSummary;
+  const title =
+    summary?.title ||
+    (flowData.checklistVariant === "am2e-v1"
+      ? "AM2E V1 Checklist"
+      : "AM2E Checklist");
+
+  return {
+    card: {
+      title,
+      subtitle:
+        summary?.subtitle ||
+        "Readiness for Assessment: Candidate Self-Assessment Checklist",
+    },
+    importantInformation: summary?.importantInformation || "Important Information",
+    overallCompletion: summary?.overallCompletion ?? 0,
+    notice:
+      summary?.notice ||
+      "Complete all sections of the checklist. You can use the full checklist page for a detailed view.",
+    actions: {
+      openFullChecklist: {
+        label: "Open Full Checklist",
+      },
+      continue: {
+        label: "Continue",
+        enabled: false,
+      },
+    },
+  };
 }
 
 function TextField({
@@ -2256,6 +2349,8 @@ Thank you,`,
   const [reviewScreen, setReviewScreen] = React.useState<
     SubmitBookingForReviewResponse["data"]["screen"] | null
   >(null);
+  const [am2eChecklistFlowData, setAm2eChecklistFlowData] =
+    React.useState<Am2eChecklistFlowData | null>(null);
   const [payment, setPayment] = React.useState<PaymentFormState>({
     acceptedTerms: false,
     cardNumber: "",
@@ -2387,6 +2482,19 @@ Thank you,`,
   } = useGetBookingCheckoutPaymentQuery(resolvedBookingId, {
     skip: !resolvedBookingId || phase !== "net" || currentNetStep !== "payment",
   });
+  const activeAm2eChecklistFlowData =
+    am2eChecklistFlowData?.checklistVariant === netFlowType
+      ? am2eChecklistFlowData
+      : null;
+  const am2eDocumentsScreen = activeAm2eChecklistFlowData
+    ? mapAm2eFlowToDocumentsScreen(
+        activeAm2eChecklistFlowData,
+        sessionUploadedDocIds
+      )
+    : null;
+  const am2eChecklistSummaryScreen = activeAm2eChecklistFlowData
+    ? mapAm2eFlowToChecklistSummaryScreen(activeAm2eChecklistFlowData)
+    : null;
 
   const resolveQualificationId = React.useCallback(() => {
     if (selectedQualificationIdParam) {
@@ -2408,6 +2516,44 @@ Thank you,`,
       setActiveBookingId(requestedBookingId);
     }
   }, [activeBookingId, searchParams]);
+
+  React.useEffect(() => {
+    const variant =
+      netFlowType === "am2e" || netFlowType === "am2e-v1"
+        ? netFlowType
+        : null;
+    const answerId = getNvqAnswerForFlow(netFlowType);
+
+    if (
+      !variant ||
+      !answerId ||
+      !course.id ||
+      phase !== "net" ||
+      activeAm2eChecklistFlowData
+    ) {
+      return;
+    }
+
+    getAm2eChecklistFlowByCourse({
+      variant,
+      courseId: course.id,
+      questionId: "nvq-registration-date",
+      answerId,
+    })
+      .unwrap()
+      .then((response) => {
+        setAm2eChecklistFlowData(response.data);
+      })
+      .catch(() => {
+        // The booking endpoints still provide a fallback screen.
+      });
+  }, [
+    activeAm2eChecklistFlowData,
+    course.id,
+    getAm2eChecklistFlowByCourse,
+    netFlowType,
+    phase,
+  ]);
 
   React.useEffect(() => {
     const resolvedFlow =
@@ -3090,6 +3236,7 @@ Thank you,`,
         answerId: nvqTiming,
       }).unwrap();
 
+      setAm2eChecklistFlowData(checklistFlowResponse.data);
       resolvedFlowType = checklistFlowResponse.data.checklistVariant;
     } catch (checklistFlowError) {
       setEligibilityStepError(
@@ -4085,72 +4232,14 @@ Thank you,`,
 
               {!isDocumentsScreenLoading &&
               !isDocumentsScreenError &&
-              documentsScreenData?.data.screen ? (
-                (() => {
-                  const screen = documentsScreenData.data.screen;
-                  const isAm2e = netFlowType === "am2e";
-                  const isAm2eV1 = netFlowType === "am2e-v1";
-                  
-                  const extraDocs = isAm2e ? [
-                    {
-                      id: "am2e_checklist_document",
-                      title: "AM2E Checklist Document",
-                      description: "Please upload your completed AM2E Checklist.",
-                      uploaded: false,
-                      document: null,
-                    },
-                    {
-                      id: "am2e_employer_endorsement",
-                      title: "Employer Endorsement",
-                      description: "Please upload your employer endorsement document.",
-                      uploaded: false,
-                      document: null,
-                    }
-                  ] : isAm2eV1 ? [
-                    {
-                      id: "am2e_v1_worker_cert",
-                      title: "The Experienced Worker Qualification Certificate",
-                      description: "Certificate from either City & Guilds (2346) or EAL (603/5982/1)",
-                      uploaded: false,
-                      document: null,
-                    },
-                    {
-                      id: "am2e_v1_walled_garden",
-                      title: "City & Guilds Walled Garden Report or EAL Learner History Report",
-                      description: "You will need to request this from your NVQ provider",
-                      uploaded: false,
-                      document: null,
-                    },
-                    {
-                      id: "am2e_v1_technical_cert",
-                      title: "Level 2 or Level 3 Technical Certificate",
-                      description: "For overseas candidates an Electrotechnical Statement from Ecctis (formerly UK NARIC) is required to show UK equivalence if you do not hold a UK Level 2 or 3 technical certificate.",
-                      uploaded: false,
-                      document: null,
-                    }
-                  ] : [];
-                  
-                  const requirements = [...screen.requirements];
-                  extraDocs.forEach((doc) => {
-                    const existing = requirements.find((r) => r.id === doc.id);
-                    if (!existing) {
-                      requirements.push({
-                        ...doc,
-                        uploaded: doc.uploaded || sessionUploadedDocIds.includes(doc.id),
-                      });
-                    }
-                  });
-
-                  return (
-                    <NetDocumentsPanel
-                      screen={{ ...screen, requirements }}
-                      onUpload={handleUploadDocument}
-                      onContinue={() => moveToNetStep("checklist")}
-                      uploadingDocumentId={uploadingDocumentId}
-                      uploadError={documentUploadError}
-                    />
-                  );
-                })()
+              (am2eDocumentsScreen || documentsScreenData?.data.screen) ? (
+                <NetDocumentsPanel
+                  screen={am2eDocumentsScreen || documentsScreenData!.data.screen}
+                  onUpload={handleUploadDocument}
+                  onContinue={() => moveToNetStep("checklist")}
+                  uploadingDocumentId={uploadingDocumentId}
+                  uploadError={documentUploadError}
+                />
               ) : null}
             </>
           ) : null}
@@ -4177,14 +4266,19 @@ Thank you,`,
 
               {!isChecklistScreenLoading &&
               !isChecklistScreenError &&
-              checklistScreenData?.data.screen ? (
+              (am2eChecklistSummaryScreen || checklistScreenData?.data.screen) ? (
                 <NetChecklistPanel
-                  screen={checklistScreenData.data.screen}
+                  screen={
+                    am2eChecklistSummaryScreen || checklistScreenData!.data.screen
+                  }
                   fullChecklistHref={`/dashboard/courses/${course.slug}/book/full-checklist?${(() => {
                     const params = new URLSearchParams();
                     params.set("flow", netFlowType);
                     if (resolvedBookingId) {
                       params.set("bookingId", resolvedBookingId);
+                    }
+                    if (course.id) {
+                      params.set("courseId", course.id);
                     }
                     return params.toString();
                   })()}`}
