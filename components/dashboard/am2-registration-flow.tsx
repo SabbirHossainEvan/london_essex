@@ -28,12 +28,14 @@ import {
   type GetBookingFlowSubmitResponse,
   type GetBookingFlowReviewResponse,
   type GetBookingCheckoutPaymentResponse,
+  type GetAm2eChecklistFlowByCourseResponse,
   type SubmitBookingForReviewResponse,
   type RequestTrainingProviderSignatureRequest,
   type SubmitCandidateSignatureRequest,
   useCompleteBookingPaymentMutation,
   useCreateBookingPaymentIntentMutation,
   useCreateNormalBookingMutation,
+  useLazyGetAm2eChecklistFlowByCourseQuery,
   useGetBookingCheckoutPaymentQuery,
   useGetBookingFlowChecklistSummaryQuery,
   useGetBookingFlowDocumentsQuery,
@@ -221,6 +223,18 @@ const am2eEligibleQualificationTokens = [
   "eal-603-5982-1",
   "603-5982-1",
 ];
+
+function getNvqAnswerForFlow(flowType: NetFlowType): NvqTiming | null {
+  if (flowType === "am2e") {
+    return "before-3rd-september-2023";
+  }
+
+  if (flowType === "am2e-v1") {
+    return "after-september-2023";
+  }
+
+  return null;
+}
 
 function normalizeQualificationValue(value?: string) {
   return (value ?? "")
@@ -461,7 +475,102 @@ function formatDateForApi(value: string) {
   }
 
   const [, day, month, year] = match;
+
   return `${year}-${month}-${day}`;
+}
+
+function formatShortDateInput(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+
+  if (digits.length <= 2) {
+    return digits;
+  }
+
+  if (digits.length <= 4) {
+    return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  }
+
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+type Am2eChecklistFlowData =
+  GetAm2eChecklistFlowByCourseResponse["data"];
+
+function mapAm2eFlowToDocumentsScreen(
+  flowData: Am2eChecklistFlowData,
+  uploadedDocumentIds: string[]
+) {
+  const documents = flowData.flow.documents;
+  const requirements =
+    documents?.requirements.map((item) => ({
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      uploaded: uploadedDocumentIds.includes(item.id),
+      document: null,
+      action: {
+        label: uploadedDocumentIds.includes(item.id) ? "Re upload" : "Upload",
+      },
+    })) ?? [];
+  const uploadedCount = requirements.filter((item) => item.uploaded).length;
+  const percentage = requirements.length
+    ? Math.round((uploadedCount / requirements.length) * 100)
+    : 0;
+
+  return {
+    title:
+      documents?.title ||
+      (flowData.checklistVariant === "am2e-v1"
+        ? "AM2E V1 Checklist"
+        : "AM2E Checklist"),
+    subtitle:
+      documents?.subtitle || "The required documents to be uploaded are:",
+    importantInformation:
+      documents?.importantInformation ||
+      "Note: For reasonable adjustments to be applied, please contact the center for further information.",
+    requirements,
+    completion: {
+      percentage,
+    },
+    actions: {
+      continue: {
+        label: "Continue",
+        enabled: requirements.length > 0 && requirements.every((item) => item.uploaded),
+      },
+    },
+  };
+}
+
+function mapAm2eFlowToChecklistSummaryScreen(flowData: Am2eChecklistFlowData) {
+  const summary = flowData.flow.checklistSummary;
+  const title =
+    summary?.title ||
+    (flowData.checklistVariant === "am2e-v1"
+      ? "AM2E V1 Checklist"
+      : "AM2E Checklist");
+
+  return {
+    card: {
+      title,
+      subtitle:
+        summary?.subtitle ||
+        "Readiness for Assessment: Candidate Self-Assessment Checklist",
+    },
+    importantInformation: summary?.importantInformation || "Important Information",
+    overallCompletion: summary?.overallCompletion ?? 0,
+    notice:
+      summary?.notice ||
+      "Complete all sections of the checklist. You can use the full checklist page for a detailed view.",
+    actions: {
+      openFullChecklist: {
+        label: "Open Full Checklist",
+      },
+      continue: {
+        label: "Continue",
+        enabled: false,
+      },
+    },
+  };
 }
 
 function TextField({
@@ -2105,6 +2214,10 @@ export default function Am2RegistrationFlow({
   const [submitCandidateSignature, { isLoading: isSubmittingCandidateSignature }] =
     useSubmitCandidateSignatureMutation();
   const [
+    getAm2eChecklistFlowByCourse,
+    { isFetching: isFetchingAm2eChecklistFlow },
+  ] = useLazyGetAm2eChecklistFlowByCourseQuery();
+  const [
     requestTrainingProviderSignature,
     { isLoading: isRequestingTrainingProviderSignature },
   ] = useRequestTrainingProviderSignatureMutation();
@@ -2209,6 +2322,7 @@ export default function Am2RegistrationFlow({
     () => searchParams.get("bookingId") ?? bookingId ?? ""
   );
   const [uploadingDocumentId, setUploadingDocumentId] = React.useState<string | null>(null);
+  const [sessionUploadedDocIds, setSessionUploadedDocIds] = React.useState<string[]>([]);
   const [documentUploadError, setDocumentUploadError] = React.useState("");
   const [candidateSignatureError, setCandidateSignatureError] = React.useState("");
   const [candidateSignatureMessage, setCandidateSignatureMessage] = React.useState("");
@@ -2235,6 +2349,8 @@ Thank you,`,
   const [reviewScreen, setReviewScreen] = React.useState<
     SubmitBookingForReviewResponse["data"]["screen"] | null
   >(null);
+  const [am2eChecklistFlowData, setAm2eChecklistFlowData] =
+    React.useState<Am2eChecklistFlowData | null>(null);
   const [payment, setPayment] = React.useState<PaymentFormState>({
     acceptedTerms: false,
     cardNumber: "",
@@ -2366,6 +2482,19 @@ Thank you,`,
   } = useGetBookingCheckoutPaymentQuery(resolvedBookingId, {
     skip: !resolvedBookingId || phase !== "net" || currentNetStep !== "payment",
   });
+  const activeAm2eChecklistFlowData =
+    am2eChecklistFlowData?.checklistVariant === netFlowType
+      ? am2eChecklistFlowData
+      : null;
+  const am2eDocumentsScreen = activeAm2eChecklistFlowData
+    ? mapAm2eFlowToDocumentsScreen(
+        activeAm2eChecklistFlowData,
+        sessionUploadedDocIds
+      )
+    : null;
+  const am2eChecklistSummaryScreen = activeAm2eChecklistFlowData
+    ? mapAm2eFlowToChecklistSummaryScreen(activeAm2eChecklistFlowData)
+    : null;
 
   const resolveQualificationId = React.useCallback(() => {
     if (selectedQualificationIdParam) {
@@ -2387,6 +2516,44 @@ Thank you,`,
       setActiveBookingId(requestedBookingId);
     }
   }, [activeBookingId, searchParams]);
+
+  React.useEffect(() => {
+    const variant =
+      netFlowType === "am2e" || netFlowType === "am2e-v1"
+        ? netFlowType
+        : null;
+    const answerId = getNvqAnswerForFlow(netFlowType);
+
+    if (
+      !variant ||
+      !answerId ||
+      !course.id ||
+      phase !== "net" ||
+      activeAm2eChecklistFlowData
+    ) {
+      return;
+    }
+
+    getAm2eChecklistFlowByCourse({
+      variant,
+      courseId: course.id,
+      questionId: "nvq-registration-date",
+      answerId,
+    })
+      .unwrap()
+      .then((response) => {
+        setAm2eChecklistFlowData(response.data);
+      })
+      .catch(() => {
+        // The booking endpoints still provide a fallback screen.
+      });
+  }, [
+    activeAm2eChecklistFlowData,
+    course.id,
+    getAm2eChecklistFlowByCourse,
+    netFlowType,
+    phase,
+  ]);
 
   React.useEffect(() => {
     const resolvedFlow =
@@ -3047,6 +3214,40 @@ Thank you,`,
   };
 
   const handleNqvContinue = async () => {
+    const nextFlowType =
+      nvqTiming === "before-3rd-september-2023" ? "am2e" : "am2e-v1";
+    const courseId = course.id;
+
+    if (!courseId) {
+      setEligibilityStepError(
+        "We could not determine the course id needed to load this checklist flow."
+      );
+      return;
+    }
+
+    let resolvedFlowType: NetFlowType = nextFlowType;
+
+    try {
+      setEligibilityStepError("");
+      const checklistFlowResponse = await getAm2eChecklistFlowByCourse({
+        variant: nextFlowType,
+        courseId,
+        questionId: "nvq-registration-date",
+        answerId: nvqTiming,
+      }).unwrap();
+
+      setAm2eChecklistFlowData(checklistFlowResponse.data);
+      resolvedFlowType = checklistFlowResponse.data.checklistVariant;
+    } catch (checklistFlowError) {
+      setEligibilityStepError(
+        resolveApiErrorMessage(
+          checklistFlowError,
+          "We could not load the selected AM2E checklist flow right now."
+        )
+      );
+      return;
+    }
+
     const eligibilityBookingId = await submitEligibility(nvqTiming, resolvedBookingId);
 
     if (!eligibilityBookingId) {
@@ -3054,10 +3255,7 @@ Thank you,`,
     }
 
     setNvqModalOpen(false);
-    startNetFlow(
-      nvqTiming === "before-3rd-september-2023" ? "am2e" : "am2e-v1",
-      eligibilityBookingId
-    );
+    startNetFlow(resolvedFlowType, eligibilityBookingId);
   };
 
   const handleUploadDocument = async (
@@ -3077,10 +3275,13 @@ Thank you,`,
       setUploadingDocumentId(id);
       const response = await uploadBookingDocument({
         bookingId: resolvedBookingId,
+        flow: netFlowType,
         documentType: id,
         documentLabel: title,
         file,
       }).unwrap();
+
+      setSessionUploadedDocIds((prev) => [...prev, id]);
       const nextBookingId = resolveBookingIdFromDocumentsScreen(
         response.data.screen
       );
@@ -3347,7 +3548,11 @@ Thank you,`,
         ) : (
           <>
             <h1 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-[#2d3f8f]">
-              {course.title}
+              {netFlowType === "am2e"
+                ? "AM2E Assessment Preparation"
+                : netFlowType === "am2e-v1"
+                  ? "AM2E V1 Assessment Preparation"
+                  : course.title}
             </h1>
             <p className="mt-3 max-w-[920px] text-sm leading-6 text-[#667795]">
               Complete the next AM2 preparation steps before continuing your
@@ -3451,9 +3656,24 @@ Thank you,`,
                           <TextField
                             icon={icon}
                             value={candidate[currentStateKey]}
-                            onChange={(value) => updateCandidate(currentStateKey, value)}
-                            placeholder={currentField.placeholder ?? ""}
-                            type={currentField.type}
+                            onChange={(value) =>
+                              updateCandidate(
+                                currentStateKey,
+                                currentField.id === "dateOfBirth"
+                                  ? formatShortDateInput(value)
+                                  : value
+                              )
+                            }
+                            placeholder={
+                              currentField.id === "dateOfBirth"
+                                ? "dd/mm/yyyy"
+                                : currentField.placeholder ?? ""
+                            }
+                            type={
+                              currentField.id === "dateOfBirth"
+                                ? "text"
+                                : currentField.type
+                            }
                           />
                           {currentField.helperText ? (
                             <p className="mt-2 text-xs text-[#7a88a3]">
@@ -4012,9 +4232,9 @@ Thank you,`,
 
               {!isDocumentsScreenLoading &&
               !isDocumentsScreenError &&
-              documentsScreenData?.data.screen ? (
+              (am2eDocumentsScreen || documentsScreenData?.data.screen) ? (
                 <NetDocumentsPanel
-                  screen={documentsScreenData.data.screen}
+                  screen={am2eDocumentsScreen || documentsScreenData!.data.screen}
                   onUpload={handleUploadDocument}
                   onContinue={() => moveToNetStep("checklist")}
                   uploadingDocumentId={uploadingDocumentId}
@@ -4046,14 +4266,19 @@ Thank you,`,
 
               {!isChecklistScreenLoading &&
               !isChecklistScreenError &&
-              checklistScreenData?.data.screen ? (
+              (am2eChecklistSummaryScreen || checklistScreenData?.data.screen) ? (
                 <NetChecklistPanel
-                  screen={checklistScreenData.data.screen}
+                  screen={
+                    am2eChecklistSummaryScreen || checklistScreenData!.data.screen
+                  }
                   fullChecklistHref={`/dashboard/courses/${course.slug}/book/full-checklist?${(() => {
                     const params = new URLSearchParams();
                     params.set("flow", netFlowType);
                     if (resolvedBookingId) {
                       params.set("bookingId", resolvedBookingId);
+                    }
+                    if (course.id) {
+                      params.set("courseId", course.id);
                     }
                     return params.toString();
                   })()}`}
@@ -4488,7 +4713,7 @@ Thank you,`,
         onChange={setNvqTiming}
         onClose={() => setNvqModalOpen(false)}
         onContinue={handleNqvContinue}
-        isSubmitting={isSavingEligibility}
+        isSubmitting={isSavingEligibility || isFetchingAm2eChecklistFlow}
       />
     </div>
   );

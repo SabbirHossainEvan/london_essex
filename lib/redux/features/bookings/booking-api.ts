@@ -399,6 +399,73 @@ export type SaveRegistrationPrivacyResponse = {
   };
 };
 
+export type Am2eChecklistFlowVariant = "am2e" | "am2e-v1";
+
+export type GetAm2eChecklistFlowByCourseRequest = {
+  variant: Am2eChecklistFlowVariant;
+  courseId: string;
+  questionId: "nvq-registration-date";
+  answerId: "before-3rd-september-2023" | "after-september-2023";
+};
+
+export type GetAm2eChecklistFlowByCourseResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    checklistVariant: Am2eChecklistFlowVariant;
+    resolvedFrom?: {
+      routeVariant?: string;
+      selectedQuestionId?: string;
+      selectedAnswerId?: string;
+      selectedAnswerLabel?: string;
+      routeSource?: string;
+    };
+    flow: {
+      steps: Array<{
+        id: string;
+        label: string;
+        order: number;
+      }>;
+      documents?: {
+        title: string;
+        subtitle?: string;
+        importantInformation?: string;
+        requirements: Array<{
+          id: string;
+          title: string;
+          description: string;
+          acceptedFileTypes?: string[];
+        }>;
+      };
+      checklistSummary?: {
+        title: string;
+        subtitle?: string;
+        overallCompletion: number;
+        importantInformation?: string;
+        notice?: string;
+      };
+      checklistSections?: Array<{
+        id: string;
+        key: string;
+        label: string;
+        title: string;
+        duration?: string;
+        summary?: string;
+        totalItems: number;
+        items: Array<{
+          id: string;
+          no: number;
+          criterion: string;
+          options: {
+            knowledge: Array<{ id: string; label: string }>;
+            experience: Array<{ id: string; label: string }>;
+          };
+        }>;
+      }>;
+    };
+  };
+};
+
 export type BookingFlowStep = {
   id: "documents" | "checklist" | "signatures" | "submit" | "review" | "payment" | "confirmed" | string;
   label: string;
@@ -453,6 +520,7 @@ export type GetBookingFlowDocumentsResponse = {
 
 export type UploadBookingDocumentRequest = {
   bookingId: string;
+  flow?: string;
   documentType: string;
   documentLabel: string;
   file: File;
@@ -838,14 +906,16 @@ export const bookingApi = baseApi.injectEndpoints({
       UploadBookingDocumentResponse,
       UploadBookingDocumentRequest
     >({
-      query: ({ bookingId, documentType, documentLabel, file }) => {
+      query: ({ bookingId, flow, documentType, documentLabel, file }) => {
         const body = new FormData();
         body.append("documentType", documentType);
         body.append("documentLabel", documentLabel);
         body.append("file", file);
 
+        const params = flow ? { flow } : undefined;
         return {
           url: `/bookings/${bookingId}/flow/documents/upload`,
+          params,
           method: "POST",
           body,
         };
@@ -1069,6 +1139,21 @@ export const bookingApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Booking"],
     }),
+    getAm2eChecklistFlowByCourse: builder.query<
+      GetAm2eChecklistFlowByCourseResponse,
+      GetAm2eChecklistFlowByCourseRequest
+    >({
+      query: ({ variant, courseId, questionId, answerId }) => ({
+        url: `/bookings/${variant}-checklist-flow`,
+        method: "GET",
+        params: {
+          courseId,
+          questionId,
+          answerId,
+        },
+      }),
+      providesTags: ["Booking"],
+    }),
     createBookingPaymentIntent: builder.mutation<
       CreateBookingPaymentIntentResponse,
       CreateBookingPaymentIntentRequest
@@ -1125,6 +1210,7 @@ export const {
   useSaveRegistrationEmployerMutation,
   useSaveRegistrationTrainingMutation,
   useSaveRegistrationPrivacyMutation,
+  useLazyGetAm2eChecklistFlowByCourseQuery,
   useCreateBookingPaymentIntentMutation,
   useCompleteBookingPaymentMutation,
   useGetBookingPaymentStatusQuery,

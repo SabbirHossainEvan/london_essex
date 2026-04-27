@@ -7,7 +7,9 @@ import { ChevronRight } from "lucide-react";
 import type { CourseSummary } from "@/app/(website)/courses/courses-data";
 import PanelCard from "@/components/dashboard/panel-card";
 import {
+  type GetAm2eChecklistFlowByCourseResponse,
   type GetBookingFlowChecklistFullResponse,
+  useLazyGetAm2eChecklistFlowByCourseQuery,
   useGetBookingFlowChecklistFullQuery,
   useSaveBookingChecklistDraftMutation,
 } from "@/lib/redux/features/bookings/booking-api";
@@ -16,6 +18,7 @@ type Am2FullChecklistPageProps = {
   course: CourseSummary;
   flow: "am2" | "am2e" | "am2e-v1";
   bookingId?: string;
+  courseId?: string;
   section?: string;
 };
 
@@ -42,6 +45,243 @@ const checklistMeta = {
     title: "AM2E V1 Checklist",
   },
 } as const;
+
+const am2eChecklistSections = [
+  {
+    id: "section-a1",
+    key: "A1",
+    label: "Section A1",
+    title: "Section A1: Safe Isolation and Risk Assessment (45 mins)",
+    duration: "45 mins",
+    summary: "To demonstrate occupational competence candidates will be expected to:",
+    items: [
+      "Carry out and document an assessment of risk",
+      "Carry out safe isolation in the correct sequence",
+    ],
+  },
+  {
+    id: "section-a2-a6",
+    key: "A2-A6",
+    label: "Sections A2-A6",
+    title: "Sections A2-A6: Composite Installation (10 hours)",
+    duration: "10 hours",
+    summary:
+      "This section has areas where candidates will need to demonstrate occupational competence in accordance with statutory and non-statutory regulations and approved industry working practices.",
+    items: [
+      "Interpretation of specifications and technical data",
+      "Selection of protective devices",
+      "Install protective equipotential bonding",
+      "Install and terminate PVC singles cable",
+      "Install and terminate PVC/PVC multi-core & cpc cable",
+      "Install and terminate SY multi-flex cable",
+      "Install and terminate heat-resistant flex",
+      "Install and terminate XLPE SWA",
+      "Install and terminate data-cable",
+      "Install and terminate FP200 type cable",
+      "Forming and install 20mm metal conduit",
+      "Forming and installing 20mm PVC conduit",
+      "Install protective devices in a TP&N distribution board",
+      "Install a two-way and intermediate lighting circuit in PVC/PVC multi-core cable",
+      "Install a BS 1363 13A socket outlet ring circuit in PVC singles cable",
+      "Install a carbon monoxide detector safety service circuit in FP200 type cable",
+      "Install data outlets circuit in Cat. 5 cable",
+      "Install a BS EN 60309 16A T P & N socket outlet in XLPE SWA cable",
+      "Install protective equipotential bonding to gas and water services",
+      "Connect a 3-phase direct on line motor circuit in SY cable",
+      "Install an S Plan central heating and hot water system with a solar thermal sustainable energy element utilising heat resistant flexible cable and PVC singles cable",
+    ],
+  },
+  {
+    id: "section-b",
+    key: "B",
+    label: "Section B",
+    title: "Section B: Inspection, Testing and Certification (3.5 hours)",
+    duration: "3.5 hours",
+    summary:
+      "In this area candidates will be expected to follow practices and procedures that take into account electrically sensitive equipment. To demonstrate occupational competence, candidates will be expected to:",
+    items: [
+      "Work according to best practice as required by Health and Safety legislation",
+      "Ensure the installation is correctly isolated before commencing the inspection and test activity",
+      "Carry out a visual inspection of the installation in accordance with BS 7671 and IET Guidance Note 3",
+      "Complete the following tests on the installation in accordance with BS 7671 and IET Guidance Note 3:",
+      "Continuity of protective conductors",
+      "Continuity of ring final circuit conductors",
+      "Insulation resistance",
+      "Polarity",
+      "Earth fault-loop impedance (EFLI)",
+      "Prospective fault current (PFC)",
+      "Check for phase sequence and phase rotation",
+      "Functional testing",
+      "Verify that the test results obtained conform to the values required by BS 7671 and IET Guidance Note 3",
+      "Complete an electrical installation certificate, schedule of inspections and schedule of test results using the model forms as illustrated in Appendix 6 of BS 7671",
+    ],
+  },
+  {
+    id: "section-c",
+    key: "C",
+    label: "Section C",
+    title: "Section C: Safe Isolation of Circuits (30 mins)",
+    duration: "30 mins",
+    summary: "To demonstrate occupational competence candidates will be expected to:",
+    items: [
+      "Carry out safe isolation in the correct sequence on a single-phase circuit",
+      "Carry out safe isolation in the correct sequence on a three-phase circuit",
+      "Carry out safe isolation in the correct sequence on a three-phase installation",
+    ],
+  },
+  {
+    id: "section-d",
+    key: "D",
+    label: "Section D",
+    title: "Section D: Fault Diagnosis and Rectification (2 hours)",
+    duration: "2 hours",
+    summary: "To demonstrate occupational competence candidates will be expected to:",
+    items: [
+      "Work according to best practice as required by Health and Safety legislation",
+      "Correctly identify and use tools, equipment and test instruments that are fit for purpose",
+      "Carry out checks and preparations that must be completed prior to undertaking fault diagnosis",
+      "Identify faults from 'fault symptom' information given by the assessor",
+      "State and record how the identified faults can be rectified",
+    ],
+  },
+  {
+    id: "section-e",
+    key: "E",
+    label: "Section E",
+    title: "Section E: Assessment of Applied Knowledge (1 hour)",
+    duration: "1 hour",
+    summary:
+      "This assessment will last for one hour and be in the form of a computerised multiple-choice test. Candidates will be expected to answer 30 questions and will be assessed on their application of knowledge associated with:",
+    items: [
+      "Health and Safety",
+      "BS 7671: Requirements for Electrical Installations",
+      "Building Regulations",
+      "Inspection, Testing and Fault Finding",
+    ],
+  },
+] as const;
+
+const am2eV1ChecklistSections = [
+  {
+    id: "section-a1",
+    key: "A1",
+    label: "Section A1",
+    title: "Section A1: Safe Isolation and Risk Assessment (45 mins)",
+    duration: "45 mins",
+    summary: "To demonstrate occupational competence candidates will be expected to:",
+    items: [
+      "Carry out and document an assessment of risk",
+      "Carry out safe isolation in the correct sequence considering any separate energy systems",
+    ],
+  },
+  {
+    id: "section-a2-a6",
+    key: "A2-A6",
+    label: "Sections A2-A6",
+    title: "Sections A2-A6: Composite Installation (10.5 hours)",
+    duration: "10.5 hours",
+    summary:
+      "This section has areas where candidates will need to demonstrate occupational competence in accordance with statutory and non-statutory regulations and approved industry working practices.",
+    items: [
+      "Interpretation of specifications and technical data",
+      "Selection of protective devices, single pole and triple pole",
+      "Install protective equipotential bonding",
+      "Install and terminate PVC singles cable",
+      "Install and terminate PVC/PVC multi-core & cpc cable",
+      "Install and terminate SY multi-flex cable",
+      "Install and terminate heat-resistant flex",
+      "Install and terminate XLPE SWA",
+      "Install and terminate data-cable",
+      "Install and terminate FP200 type cable",
+      "Form and install metal conduit systems",
+      "Form and install PVC conduit systems",
+      "Install protective devices in a TP&N distribution board",
+      "Install a two-way, intermediate and key switch for various lighting circuits in PVC/PVC multi-core cable",
+      "Install a BS 1363 13A socket outlet ring circuit using PVC single cables",
+      "Install a carbon monoxide detector safety service circuit in FP200 type cable",
+      "Install data outlets circuit in Cat. 5 cable",
+      "Install a BS EN 60309 20A T P & N supply in XLPE SWA cable for electric vehicle pillar",
+      "Install protective equipotential bonding to gas and water services",
+      "Connect a 3-phase direct online motor circuit in SY cable with remote start stop function using PVC singles",
+      "Install an S Plan central heating and hot water system with a solar thermal sustainable energy element utilising heat resistant flexible cable and PVC singles cable",
+    ],
+  },
+  {
+    id: "section-b",
+    key: "B",
+    label: "Section B",
+    title: "Section B: Inspection, Testing and Certification (3.5 hours)",
+    duration: "3.5 hours",
+    summary:
+      "In this area candidates will be expected to follow practices and procedures that take into account electrically sensitive equipment. To demonstrate occupational competence, candidates will be expected to:",
+    items: [
+      "Work according to best practice as required by Health and Safety legislation",
+      "Ensure the installation is correctly isolated before commencing the inspection and test activity taking into account any renewable sources",
+      "Carry out a visual inspection of the installation in accordance with BS 7671 and IET Guidance Note 3",
+      "Complete the following tests on the installation in accordance with BS 7671 and IET Guidance Note 3:",
+      "Continuity of protective conductors",
+      "Continuity of ring final circuit conductors",
+      "Insulation resistance",
+      "Polarity",
+      "Earth fault-loop impedance (EFLI)",
+      "Prospective fault current (PFC)",
+      "Check for phase sequence and phase rotation",
+      "Functional testing",
+      "Verify that the test results obtained conform to the values required by BS 7671 and IET Guidance Note 3",
+      "Complete an electrical installation certificate, schedule of inspections and schedule of test results using the model forms as illustrated in Appendix 6 of BS 7671",
+    ],
+  },
+  {
+    id: "section-c",
+    key: "C",
+    label: "Section C",
+    title: "Section C: Safe Isolation of Circuits (30 mins)",
+    duration: "30 mins",
+    summary: "To demonstrate occupational competence candidates will be expected to:",
+    items: [
+      "Carry out safe isolation in the correct sequence on a single-phase circuit",
+      "Carry out safe isolation in the correct sequence on a three-phase circuit",
+      "Carry out safe isolation in the correct sequence on a three-phase installation",
+    ],
+  },
+  {
+    id: "section-d",
+    key: "D",
+    label: "Section D",
+    title: "Section D: Fault Diagnosis and Rectification (2 hours)",
+    duration: "2 hours",
+    summary: "To demonstrate occupational competence candidates will be expected to:",
+    items: [
+      "Work according to best practice as required by Health and Safety legislation",
+      "Correctly select and use tools, equipment and test instruments.",
+      "Carry out checks and preparations that must be completed prior to undertaking fault diagnosis",
+      "Identify faults from 'fault symptom' information.",
+      "State and record how the identified faults can be rectified",
+    ],
+  },
+  {
+    id: "section-e",
+    key: "E",
+    label: "Section E",
+    title: "Section E: Assessment of Applied Knowledge (1.5 hours)",
+    duration: "1.5 hours",
+    summary:
+      "This assessment will last for 1.5 hours and be in the form of a computerised multiple-choice test. Candidates will be expected to answer 40 questions and will be assessed on their application of knowledge associated with:",
+    items: [
+      "Health and Safety",
+      "BS 7671: Requirements for Electrical Installations including any current amendments",
+      "Building Regulations",
+      "Inspection, Testing and Fault Finding",
+    ],
+  },
+] as const;
+
+const defaultChecklistOptions = [
+  { id: "limited", label: "Limited" },
+  { id: "adequate", label: "Adequate" },
+  { id: "extensive", label: "Extensive" },
+  { id: "unsure", label: "Unsure" },
+];
 
 function resolveApiErrorMessage(error: unknown, fallback: string) {
   if (
@@ -85,10 +325,12 @@ function extractSectionFromApiUrl(value?: string | null) {
 function buildQueryString({
   flow,
   bookingId,
+  courseId,
   section,
 }: {
   flow: Am2FullChecklistPageProps["flow"];
   bookingId?: string;
+  courseId?: string;
   section?: string;
 }) {
   const params = new URLSearchParams();
@@ -96,6 +338,10 @@ function buildQueryString({
 
   if (bookingId) {
     params.set("bookingId", bookingId);
+  }
+
+  if (courseId) {
+    params.set("courseId", courseId);
   }
 
   if (section) {
@@ -218,33 +464,163 @@ function renderOptionGroup({
   );
 }
 
+type Am2eChecklistFlowData =
+  GetAm2eChecklistFlowByCourseResponse["data"];
+
+function getNvqAnswerForChecklistFlow(
+  flow: Am2FullChecklistPageProps["flow"]
+) {
+  return flow === "am2e"
+    ? "before-3rd-september-2023"
+    : flow === "am2e-v1"
+      ? "after-september-2023"
+      : null;
+}
+
+function mapAm2eFlowToFullChecklistScreen({
+  flowData,
+  flow,
+  requestedSection,
+}: {
+  flowData: Am2eChecklistFlowData;
+  flow: Am2FullChecklistPageProps["flow"];
+  requestedSection: string;
+}): ChecklistScreen {
+  const meta = checklistMeta[flow];
+  const overrideSections =
+    flow === "am2e"
+      ? am2eChecklistSections
+      : flow === "am2e-v1"
+        ? am2eV1ChecklistSections
+        : null;
+  const sections =
+    overrideSections
+      ? overrideSections.map((section) => ({
+          ...section,
+          totalItems: section.items.length,
+          items: section.items.map((criterion, index) => ({
+            id: `${section.id}-item-${index + 1}`,
+            no: index + 1,
+            criterion,
+            options: {
+              knowledge: defaultChecklistOptions,
+              experience: defaultChecklistOptions,
+            },
+          })),
+        }))
+      : flowData.flow.checklistSections ?? [];
+  const activeSource =
+    sections.find(
+      (entry) =>
+        entry.key.trim().toUpperCase() === requestedSection.trim().toUpperCase()
+    ) ||
+    sections[0];
+  const activeSection = activeSource
+    ? {
+        id: activeSource.id,
+        key: activeSource.key,
+        title: activeSource.title,
+        summary: activeSource.summary,
+        duration: activeSource.duration,
+        completedItems: 0,
+        totalItems: activeSource.totalItems,
+        items: activeSource.items.map((item) => ({
+          ...item,
+          completed: false,
+        })),
+      }
+    : {
+        id: "section-a1",
+        key: "A1",
+        title: "Section A1",
+        completedItems: 0,
+        totalItems: 0,
+        items: [],
+      };
+
+  return {
+    steps: flowData.flow.steps.map((step) => ({
+      id: step.id,
+      label: step.label,
+      status:
+        step.id === "documents"
+          ? "completed"
+          : step.id === "checklist"
+            ? "current"
+            : "upcoming",
+    })),
+    title: meta.title,
+    subtitle: `Complete your ${meta.title}.`,
+    overallCompletion: flowData.flow.checklistSummary?.overallCompletion ?? 0,
+    actions: {
+      saveDraft: {
+        label: "Save Draft",
+      },
+      nextSection: {
+        label: "Next Section",
+      },
+    },
+    sections: sections.map((entry) => ({
+      id: entry.id,
+      key: entry.key,
+      label: entry.label,
+      completedItems: 0,
+      totalItems: entry.totalItems,
+      active: entry.key === activeSection.key,
+    })),
+    activeSection,
+  };
+}
+
 function FullChecklistContent({
   course,
   flow,
   bookingId,
+  courseId,
   screen,
   onScreenChange,
 }: {
   course: CourseSummary;
   flow: Am2FullChecklistPageProps["flow"];
   bookingId: string;
+  courseId?: string;
   screen: ChecklistScreen;
   onScreenChange: React.Dispatch<React.SetStateAction<ChecklistScreen | null>>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const meta = checklistMeta[flow];
+  const displayTitle = flow === "am2" ? screen.title || meta.title : meta.title;
+  const displaySubtitle =
+    flow === "am2"
+      ? screen.subtitle || `Complete your ${meta.title.toLowerCase()}.`
+      : `Complete your ${meta.title}.`;
   const [saveDraft, { isLoading: isSavingDraft }] =
     useSaveBookingChecklistDraftMutation();
   const [saveMessage, setSaveMessage] = React.useState("");
   const [saveError, setSaveError] = React.useState("");
   const [isNavigatingSection, setIsNavigatingSection] = React.useState(false);
-  const nextSectionKey = extractSectionFromApiUrl(
-    screen.actions?.nextSection?.apiUrl
+  const activeSectionIndex = screen.sections.findIndex(
+    (section) => section.key === screen.activeSection.key
   );
+  const fallbackNextSectionKey =
+    activeSectionIndex >= 0
+      ? screen.sections[activeSectionIndex + 1]?.key
+      : undefined;
+  const nextSectionKey =
+    extractSectionFromApiUrl(screen.actions?.nextSection?.apiUrl) ||
+    fallbackNextSectionKey;
+  const isCurrentSectionComplete =
+    screen.activeSection.items.length > 0 &&
+    screen.activeSection.items.every(
+      (item) => item.knowledgeLevel && item.experienceLevel
+    );
+  const isNextSectionDisabled =
+    !isCurrentSectionComplete || isSavingDraft || isNavigatingSection;
   const signaturesHref = `/dashboard/courses/${course.slug}/book?${buildQueryString({
     flow,
     bookingId,
+    courseId,
   })}&netStep=signatures`;
 
   const navigateToSection = React.useCallback(
@@ -253,11 +629,12 @@ function FullChecklistContent({
         `${pathname}?${buildQueryString({
           flow,
           bookingId,
+          courseId,
           section: targetSection,
         })}`
       );
     },
-    [bookingId, flow, pathname, router]
+    [bookingId, courseId, flow, pathname, router]
   );
 
   const updateItemSelection = React.useCallback(
@@ -325,6 +702,11 @@ function FullChecklistContent({
     setSaveMessage("");
     setSaveError("");
 
+    if (flow !== "am2") {
+      setSaveMessage("Checklist draft saved successfully.");
+      return screen;
+    }
+
     const responses = screen.activeSection.items.map((item) => ({
       itemId: item.id,
       knowledgeLevel: item.knowledgeLevel ?? "",
@@ -338,9 +720,11 @@ function FullChecklistContent({
         responses,
       }).unwrap();
 
-      onScreenChange(response.data.screen);
+      if (flow === "am2") {
+        onScreenChange(response.data.screen);
+      }
       setSaveMessage(response.message || "Checklist draft saved successfully.");
-      return response.data.screen;
+      return flow === "am2" ? response.data.screen : screen;
     } catch (saveDraftError) {
       setSaveError(
         resolveApiErrorMessage(
@@ -352,10 +736,10 @@ function FullChecklistContent({
     }
   }, [
     bookingId,
+    flow,
     onScreenChange,
     saveDraft,
-    screen.activeSection.items,
-    screen.activeSection.key,
+    screen,
   ]);
 
   const handleSaveDraft = React.useCallback(async () => {
@@ -374,6 +758,10 @@ function FullChecklistContent({
   }, [navigateToSection, persistCurrentSection]);
 
   const handleNextSection = React.useCallback(async () => {
+    if (!isCurrentSectionComplete) {
+      return;
+    }
+
     setIsNavigatingSection(true);
     const savedScreen = await persistCurrentSection();
 
@@ -390,7 +778,14 @@ function FullChecklistContent({
 
     router.push(signaturesHref);
     setIsNavigatingSection(false);
-  }, [navigateToSection, nextSectionKey, persistCurrentSection, router, signaturesHref]);
+  }, [
+    isCurrentSectionComplete,
+    navigateToSection,
+    nextSectionKey,
+    persistCurrentSection,
+    router,
+    signaturesHref,
+  ]);
 
   return (
     <PanelCard className="rounded-[24px] border-[#d7e5f7] bg-[#eef6ff] p-4 sm:p-5">
@@ -400,11 +795,11 @@ function FullChecklistContent({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-[1.4rem] font-semibold text-[#3849a0]">
-              {screen.title || meta.title}
+              {displayTitle}
             </h1>
-            {screen.subtitle || meta.title ? (
+            {displaySubtitle ? (
               <p className="mt-2 text-sm text-[#7a88a3]">
-                {screen.subtitle || `Complete your ${meta.title.toLowerCase()}.`}
+                {displaySubtitle}
               </p>
             ) : null}
           </div>
@@ -427,8 +822,12 @@ function FullChecklistContent({
             <button
               type="button"
               onClick={handleNextSection}
-              disabled={isSavingDraft || isNavigatingSection}
-              className="rounded-md bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] px-4 py-2 text-xs font-medium text-white"
+              disabled={isNextSectionDisabled}
+              className={`rounded-md px-4 py-2 text-xs font-medium text-white ${
+                isNextSectionDisabled
+                  ? "cursor-not-allowed bg-[#cbd5e1]"
+                  : "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)]"
+              }`}
             >
               {isNavigatingSection
                 ? "Saving..."
@@ -558,8 +957,12 @@ function FullChecklistContent({
             <button
               type="button"
               onClick={handleNextSection}
-              disabled={isSavingDraft || isNavigatingSection}
-              className="rounded-md bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)] px-4 py-2 text-xs font-medium text-white"
+              disabled={isNextSectionDisabled}
+              className={`rounded-md px-4 py-2 text-xs font-medium text-white ${
+                isNextSectionDisabled
+                  ? "cursor-not-allowed bg-[#cbd5e1]"
+                  : "bg-[linear-gradient(135deg,#6ad7ff_0%,#1eb8f2_45%,#0ea5e9_100%)]"
+              }`}
             >
               {isNavigatingSection
                 ? "Saving..."
@@ -576,10 +979,16 @@ export default function Am2FullChecklistPage({
   course,
   flow,
   bookingId = "",
+  courseId = "",
   section = "A1",
 }: Am2FullChecklistPageProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const [getAm2eChecklistFlowByCourse] = useLazyGetAm2eChecklistFlowByCourseQuery();
+  const [am2eFlowData, setAm2eFlowData] =
+    React.useState<Am2eChecklistFlowData | null>(null);
+  const [am2eFlowError, setAm2eFlowError] = React.useState<unknown>(null);
+  const [isAm2eFlowLoading, setIsAm2eFlowLoading] = React.useState(false);
   const {
     data,
     isLoading,
@@ -588,9 +997,22 @@ export default function Am2FullChecklistPage({
     error,
   } = useGetBookingFlowChecklistFullQuery(
     { bookingId, section },
-    { skip: !bookingId }
+    { skip: !bookingId || flow !== "am2" }
   );
-  const screen = data?.data.screen;
+  const previewCourseId = courseId || course.id || "";
+  const screen = React.useMemo(
+    () =>
+      flow === "am2"
+        ? data?.data.screen
+        : am2eFlowData
+          ? mapAm2eFlowToFullChecklistScreen({
+              flowData: am2eFlowData,
+              flow,
+              requestedSection: section,
+            })
+          : null,
+    [am2eFlowData, data?.data, flow, section]
+  );
   const [editableScreen, setEditableScreen] = React.useState<ChecklistScreen | null>(
     null
   );
@@ -598,11 +1020,47 @@ export default function Am2FullChecklistPage({
   const isShowingRequestedSection =
     editableScreen?.activeSection.key?.trim().toUpperCase() === normalizedSection;
   const isSectionTransitioning =
-    Boolean(bookingId) && (isLoading || isFetching || !isShowingRequestedSection);
+    Boolean(bookingId) &&
+    ((flow === "am2" && (isLoading || isFetching)) ||
+      (flow !== "am2" && isAm2eFlowLoading) ||
+      !isShowingRequestedSection);
+
+  React.useEffect(() => {
+    if (flow === "am2") {
+      setAm2eFlowData(null);
+      setAm2eFlowError(null);
+      return;
+    }
+
+    const answerId = getNvqAnswerForChecklistFlow(flow);
+
+    if (!answerId || !previewCourseId) {
+      return;
+    }
+
+    setIsAm2eFlowLoading(true);
+    setAm2eFlowError(null);
+    getAm2eChecklistFlowByCourse({
+      variant: flow,
+      courseId: previewCourseId,
+      questionId: "nvq-registration-date",
+      answerId,
+    })
+      .unwrap()
+      .then((response) => {
+        setAm2eFlowData(response.data);
+      })
+      .catch((errorResponse) => {
+        setAm2eFlowError(errorResponse);
+      })
+      .finally(() => {
+        setIsAm2eFlowLoading(false);
+      });
+  }, [flow, getAm2eChecklistFlowByCourse, previewCourseId]);
 
   React.useEffect(() => {
     setEditableScreen(null);
-  }, [bookingId, normalizedSection]);
+  }, [bookingId, flow, normalizedSection]);
 
   React.useEffect(() => {
     if (screen) {
@@ -631,10 +1089,11 @@ export default function Am2FullChecklistPage({
       `${pathname}?${buildQueryString({
         flow,
         bookingId: nextBookingId,
+        courseId: previewCourseId,
         section,
       })}`
     );
-  }, [bookingId, editableScreen, flow, pathname, router, section]);
+  }, [bookingId, editableScreen, flow, pathname, previewCourseId, router, section]);
 
   return (
     <div className="space-y-6">
@@ -676,11 +1135,25 @@ export default function Am2FullChecklistPage({
         </PanelCard>
       ) : null}
 
-      {bookingId && !isSectionTransitioning && !isError && editableScreen ? (
+      {bookingId && !isSectionTransitioning && flow !== "am2" && am2eFlowError ? (
+        <PanelCard className="rounded-[24px] border-[#fecaca] bg-[#fff3f3] p-5 text-sm text-[#dc2626]">
+          {resolveApiErrorMessage(
+            am2eFlowError,
+            "We could not load the AM2E full checklist right now."
+          )}
+        </PanelCard>
+      ) : null}
+
+      {bookingId &&
+      !isSectionTransitioning &&
+      !isError &&
+      !am2eFlowError &&
+      editableScreen ? (
         <FullChecklistContent
           course={course}
           flow={flow}
           bookingId={bookingId}
+          courseId={previewCourseId}
           screen={editableScreen}
           onScreenChange={setEditableScreen}
         />
