@@ -1,196 +1,142 @@
 "use client";
-
 import Image from "next/image";
-import React from "react";
+import React, { useRef } from "react";
 import { Camera } from "lucide-react";
-import {
-  useDashboardAvatar,
-  writeStoredDashboardAvatar,
-} from "@/lib/dashboard-avatar";
-import { writeStoredDashboardProfile } from "@/lib/dashboard-profile";
 
-export type ProfileSettingsFormValues = {
-  name: string;
-  email: string;
-};
-
-type ProfileSettingsFormProps = {
-  initialValues?: ProfileSettingsFormValues;
-  onDirtyChange?: (dirty: boolean) => void;
-  onSubmitReady?: (submit: () => void) => void;
-};
-
-const defaultInitialValues: ProfileSettingsFormValues = {
-  name: "Jenny Wilson",
-  email: "admin@londonessex.co.uk",
-};
+interface ProfileSettingsFormProps {
+  section: {
+    title: string;
+    subtitle: string;
+    avatar: {
+      imageUrl: string;
+      initials: string;
+      tone: string;
+      actions: {
+        upload: {
+          label: string;
+          method: string;
+          apiUrl: string;
+          fieldName: string;
+        };
+        delete: {
+          label: string;
+          method: string;
+          apiUrl: string;
+          enabled: boolean;
+        };
+      };
+    };
+    form: {
+      fields: {
+        id: string;
+        label: string;
+        type: string;
+        value: string;
+        required: boolean;
+      }[];
+    };
+  };
+  values: Record<string, string>;
+  onChange: (id: string, value: string) => void;
+  onPhotoUpload: (file: File) => void;
+  onPhotoDelete: () => void;
+}
 
 export default function ProfileSettingsForm({
-  initialValues = defaultInitialValues,
-  onDirtyChange,
-  onSubmitReady,
+  section,
+  values,
+  onChange,
+  onPhotoUpload,
+  onPhotoDelete
 }: ProfileSettingsFormProps) {
-  const savedAvatarSrc = useDashboardAvatar();
-  const [pendingAvatarSrc, setPendingAvatarSrc] = React.useState<string | null>(null);
-  const [removeAvatar, setRemoveAvatar] = React.useState(false);
-  const [formValues, setFormValues] =
-    React.useState<ProfileSettingsFormValues>(initialValues);
-  const [savedValues, setSavedValues] =
-    React.useState<ProfileSettingsFormValues>(initialValues);
-  const [isSaved, setIsSaved] = React.useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
-  const displayAvatarSrc = removeAvatar
-    ? null
-    : pendingAvatarSrc || savedAvatarSrc || null;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatar = section.avatar;
 
-  const isDirty =
-    pendingAvatarSrc !== null ||
-    removeAvatar ||
-    formValues.name !== savedValues.name ||
-    formValues.email !== savedValues.email;
-
-  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onPhotoUpload(file);
     }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setPendingAvatarSrc(reader.result);
-        setRemoveAvatar(false);
-        setIsSaved(false);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleDeletePhoto = () => {
-    setPendingAvatarSrc(null);
-    setRemoveAvatar(true);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+    // reset input
+    if (e.target) {
+      e.target.value = '';
     }
-
-    setIsSaved(false);
   };
-
-  React.useEffect(() => {
-    onDirtyChange?.(isDirty);
-  }, [isDirty, onDirtyChange]);
-
-  React.useEffect(() => {
-    setFormValues(initialValues);
-    setSavedValues(initialValues);
-    setIsSaved(false);
-  }, [initialValues]);
-
-  const handleFieldChange = (
-    field: keyof ProfileSettingsFormValues,
-    value: string
-  ) => {
-    setFormValues((current) => ({
-      ...current,
-      [field]: value,
-    }));
-    setIsSaved(false);
-  };
-
-  const handleSubmit = React.useCallback(() => {
-    if (removeAvatar) {
-      writeStoredDashboardAvatar(null);
-      setRemoveAvatar(false);
-    } else if (pendingAvatarSrc) {
-      writeStoredDashboardAvatar(pendingAvatarSrc);
-      setPendingAvatarSrc(null);
-    }
-
-    writeStoredDashboardProfile({
-      name: formValues.name,
-      email: formValues.email,
-    });
-    setSavedValues(formValues);
-    setIsSaved(true);
-  }, [formValues, pendingAvatarSrc, removeAvatar]);
-
-  React.useEffect(() => {
-    onSubmitReady?.(handleSubmit);
-  }, [handleSubmit, onSubmitReady]);
 
   return (
     <div>
       <div className="flex flex-col gap-4 border-b border-[#edf2f9] pb-5 sm:flex-row sm:items-center">
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#1ea6df] text-white"
-        >
-          {displayAvatarSrc ? (
-            <Image
-              src={displayAvatarSrc}
-              alt="Profile preview"
-              width={56}
-              height={56}
-              unoptimized
-              className="h-14 w-14 rounded-full object-cover"
-            />
-          ) : (
-            <Camera className="h-6 w-6" />
-          )}
-        </button>
+        <div className="relative group">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border-2 border-[#3851bb]/10 bg-[#f8fbff] transition-all group-hover:border-[#3851bb]/30"
+          >
+            {avatar.imageUrl ? (
+              <Image
+                src={avatar.imageUrl}
+                alt="Profile"
+                width={64}
+                height={64}
+                className="h-full w-full object-cover"
+                unoptimized
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-[#3851bb] text-xl font-bold text-white">
+                {avatar.initials}
+              </div>
+            )}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity group-hover:opacity-100">
+              <Camera className="h-5 w-5 text-white" />
+            </div>
+          </button>
+        </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="rounded-[10px] border border-[#d8e4f6] bg-white px-5 py-3 text-sm font-medium text-[#26355f]"
+            className="rounded-[10px] border border-[#d8e4f6] bg-white px-5 py-2 text-sm font-semibold text-[#26355f] transition-all hover:bg-[#f8fbff] hover:border-[#3851bb]/30"
           >
-            Change Photo
+            {avatar.actions.upload.label}
           </button>
-          <button
-            type="button"
-            onClick={handleDeletePhoto}
-            className="text-sm font-medium text-[#ff5a63]"
-          >
-            Delete
-          </button>
+          {avatar.actions.delete.enabled && (
+            <button
+              type="button"
+              onClick={onPhotoDelete}
+              className="text-sm font-semibold text-[#ff5a63] transition-colors hover:text-red-700"
+            >
+              {avatar.actions.delete.label}
+            </button>
+          )}
         </div>
 
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          onChange={handlePhotoChange}
+          onChange={handleFileChange}
           className="hidden"
         />
       </div>
 
-      <div className="mt-5 grid gap-4">
-        {isSaved ? (
-          <div className="rounded-[10px] border border-[#bbf7d0] bg-[#f0fdf4] px-4 py-3 text-sm text-[#15803d]">
-            Profile changes saved successfully.
-          </div>
-        ) : null}
-
-        <div>
-          <label className="mb-2 block text-sm text-[#6d7d98]">Your Name</label>
-          <input
-            value={formValues.name}
-            onChange={(event) => handleFieldChange("name", event.target.value)}
-            className="h-12 w-full rounded-[8px] border border-[#e5edf8] bg-[#f8fbff] px-4 text-sm text-[#3345a6] outline-none"
-          />
-        </div>
-
-        <div>
-          <label className="mb-2 block text-sm text-[#6d7d98]">Admin Email</label>
-          <input
-            value={formValues.email}
-            onChange={(event) => handleFieldChange("email", event.target.value)}
-            className="h-12 w-full rounded-[8px] border border-[#e5edf8] bg-[#f8fbff] px-4 text-sm text-[#3345a6] outline-none"
-          />
-        </div>
+      <div className="mt-6 grid gap-5">
+        {section.form.fields
+          .filter((field) => field.id !== "phoneNumber" && field.id !== "ntiNumber")
+          .map((field) => (
+            <div key={field.id}>
+              <label className="mb-2 block text-sm font-medium text-[#64748b]">
+                {field.label}
+              </label>
+              <input
+                type={field.type}
+                value={values[field.id] || ""}
+                onChange={(e) => onChange(field.id, e.target.value)}
+                required={field.required}
+                className="h-12 w-full rounded-xl border border-[#e2eaf5] bg-[#f8fbff] px-4 text-sm text-[#1e293b] outline-none transition-all focus:border-[#3851bb]/50 focus:ring-4 focus:ring-[#3851bb]/5"
+              />
+            </div>
+          ))}
       </div>
     </div>
   );

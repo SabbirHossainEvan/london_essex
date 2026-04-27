@@ -3,12 +3,16 @@
 import React, { useState, useEffect } from "react";
 import NotificationSettingsList from "@/components/dashboard/notification-settings-list";
 import SecuritySettingsForm from "@/components/dashboard/security-settings-form";
+import ProfileSettingsForm from "@/components/dashboard/profile-settings-form";
 import SettingsSectionCard from "@/components/dashboard/settings-section-card";
 import {
   useGetNotificationSettingsQuery,
   useUpdateNotificationSettingsMutation,
   useGetSecuritySettingsQuery,
   useChangePasswordMutation,
+  useGetProfileSettingsQuery,
+  useUpdateProfileSettingsMutation,
+  useDeleteProfilePhotoMutation,
 } from "@/lib/redux/features/settings/settings-api";
 import {
   settingsTabs,
@@ -18,6 +22,14 @@ import {
 export default function DashboardSettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTabKey>("profile");
   
+  // Profile States
+  const { data: profileData, isLoading: isProfileLoading } = useGetProfileSettingsQuery(undefined, {
+    skip: activeTab !== "profile",
+  });
+  const [updateProfile, { isLoading: isUpdatingProfile }] = useUpdateProfileSettingsMutation();
+  const [deletePhoto, { isLoading: isDeletingPhoto }] = useDeleteProfilePhotoMutation();
+  const [profileFormValues, setProfileFormValues] = useState<Record<string, string>>({});
+
   // Notification States
   const { data: notificationData, isLoading: isNotificationLoading } = useGetNotificationSettingsQuery(undefined, {
     skip: activeTab !== "notifications",
@@ -32,6 +44,18 @@ export default function DashboardSettingsPage() {
   const [changePassword, { isLoading: isChangingPassword }] = useChangePasswordMutation();
   const [securityFormValues, setSecurityFormValues] = useState<Record<string, string>>({});
 
+  // Initialize Profile Form
+  useEffect(() => {
+    if (profileData) {
+      const initial: Record<string, string> = {};
+      profileData.data.screen.section.form.fields.forEach((f) => {
+        initial[f.id] = f.value;
+      });
+      setProfileFormValues(initial);
+    }
+  }, [profileData]);
+
+  // Initialize Notification Form
   useEffect(() => {
     if (notificationData) {
       const initial: Record<string, boolean> = {};
@@ -42,6 +66,10 @@ export default function DashboardSettingsPage() {
     }
   }, [notificationData]);
 
+  const handleProfileChange = (id: string, value: string) => {
+    setProfileFormValues((prev) => ({ ...prev, [id]: value }));
+  };
+
   const handleNotificationChange = (id: string, value: boolean) => {
     setLocalNotificationSettings((prev) => ({ ...prev, [id]: value }));
   };
@@ -49,6 +77,40 @@ export default function DashboardSettingsPage() {
   const handleSecurityChange = (id: string, value: string) => {
     setSecurityFormValues((prev) => ({ ...prev, [id]: value }));
   };
+
+  const handlePhotoUpload = async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      // Include current form values but exclude removed fields to avoid validation errors
+      Object.entries(profileFormValues).forEach(([key, value]) => {
+        if (key !== "phoneNumber" && key !== "ntiNumber" && value) {
+          formData.append(key, value);
+        }
+      });
+      await updateProfile(formData).unwrap();
+      alert("Profile photo updated successfully!");
+    } catch (err: any) {
+      console.error("Failed to upload photo", err);
+      alert(err?.data?.message || "Failed to upload photo.");
+    }
+  };
+
+  const handlePhotoDelete = async () => {
+    try {
+      await deletePhoto().unwrap();
+      alert("Profile photo removed successfully!");
+    } catch (err) {
+      console.error("Failed to delete photo", err);
+      alert("Failed to remove photo.");
+    }
+  };
+
+  const isProfileDirty = profileData
+    ? profileData.data.screen.section.form.fields
+        .filter((f) => f.id !== "phoneNumber" && f.id !== "ntiNumber")
+        .some((f) => profileFormValues[f.id] !== f.value)
+    : false;
 
   const isNotificationDirty = notificationData
     ? notificationData.data.screen.section.toggles.some(
@@ -59,9 +121,24 @@ export default function DashboardSettingsPage() {
   const isSecurityDirty = Object.values(securityFormValues).some(v => v !== "");
 
   const handleSave = async () => {
-    if (activeTab === "notifications" && isNotificationDirty) {
+    if (activeTab === "profile" && isProfileDirty) {
+      try {
+        const formData = new FormData();
+        Object.entries(profileFormValues).forEach(([key, value]) => {
+          if (key !== "phoneNumber" && key !== "ntiNumber" && value) {
+            formData.append(key, value);
+          }
+        });
+        await updateProfile(formData).unwrap();
+        alert("Profile updated successfully!");
+      } catch (err) {
+        console.error("Failed to update profile", err);
+        alert("Failed to update profile.");
+      }
+    } else if (activeTab === "notifications" && isNotificationDirty) {
       try {
         await updateNotifications(localNotificationSettings).unwrap();
+        alert("Notification settings updated successfully!");
       } catch (err) {
         console.error("Failed to update notifications", err);
       }
@@ -72,19 +149,28 @@ export default function DashboardSettingsPage() {
       }
       try {
         const response = await changePassword(securityFormValues).unwrap();
-        setSecurityFormValues({}); // Clear form on success
+        setSecurityFormValues({});
         alert(response?.message || "Password updated successfully!");
       } catch (err: any) {
         console.error("Failed to change password", err);
-        alert(err?.data?.message || "Failed to update password. Please check your current password.");
+        alert(err?.data?.message || "Failed to update password.");
       }
     }
   };
 
-  const isLoading = (activeTab === "notifications" && isNotificationLoading) || (activeTab === "security" && isSecurityLoading);
-  const isSaving = isUpdatingNotifications || isChangingPassword;
-  const isDirty = activeTab === "notifications" ? isNotificationDirty : activeTab === "security" ? isSecurityDirty : false;
+  const isLoading = 
+    (activeTab === "profile" && isProfileLoading) || 
+    (activeTab === "notifications" && isNotificationLoading) || 
+    (activeTab === "security" && isSecurityLoading);
 
+  const isSaving = isUpdatingProfile || isUpdatingNotifications || isChangingPassword || isDeletingPhoto;
+  
+  const isDirty = 
+    activeTab === "profile" ? isProfileDirty : 
+    activeTab === "notifications" ? isNotificationDirty : 
+    activeTab === "security" ? isSecurityDirty : false;
+
+  const profileScreen = profileData?.data.screen;
   const notificationScreen = notificationData?.data.screen;
   const securityScreen = securityData?.data.screen;
 
@@ -92,13 +178,15 @@ export default function DashboardSettingsPage() {
     return <div className="py-20 text-center text-[#7a88a3]">Loading settings...</div>;
   }
 
+  const currentScreen = activeTab === "profile" ? profileScreen : activeTab === "notifications" ? notificationScreen : securityScreen;
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Header */}
       <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-bold text-[#1e293b]">
-            {activeTab === "notifications" ? notificationScreen?.title : activeTab === "security" ? securityScreen?.title : "Setting"}
+            {currentScreen?.title || "Setting"}
           </h1>
           <p className="mt-1 text-[#64748b]">
             Manage your account settings and preferences.
@@ -121,14 +209,14 @@ export default function DashboardSettingsPage() {
           <div className="rounded-2xl border border-[#e2eaf5] bg-white p-5 text-center">
             <div className="mx-auto mb-4 h-20 w-20 overflow-hidden rounded-full border-2 border-[#3851bb]/10 bg-[#f8fbff] p-1">
               <div className="flex h-full w-full items-center justify-center rounded-full bg-[#3851bb] text-2xl font-bold text-white">
-                {(activeTab === "notifications" ? notificationScreen?.sidebarProfile.initials : securityScreen?.sidebarProfile.initials) || "M"}
+                {currentScreen?.sidebarProfile.initials || "M"}
               </div>
             </div>
             <h3 className="font-semibold text-[#1e293b]">
-              {(activeTab === "notifications" ? notificationScreen?.sidebarProfile.name : securityScreen?.sidebarProfile.name) || "Michael Johnson"}
+              {currentScreen?.sidebarProfile.name || "Michael Johnson"}
             </h3>
             <p className="text-sm text-[#64748b]">
-              {(activeTab === "notifications" ? notificationScreen?.sidebarProfile.email : securityScreen?.sidebarProfile.email) || "michael.johnson@example.com"}
+              {currentScreen?.sidebarProfile.email || "michael.johnson@example.com"}
             </p>
           </div>
 
@@ -155,21 +243,25 @@ export default function DashboardSettingsPage() {
 
         {/* Content */}
         <main className="space-y-6">
-          {activeTab === "profile" && (
+          {activeTab === "profile" && profileScreen && (
             <SettingsSectionCard
-              title="Profile Information"
-              subtitle="Update your personal details and how others see you."
+              title={profileScreen.section.title}
+              description={profileScreen.section.subtitle}
             >
-              <div className="py-10 text-center text-[#94a3b8]">
-                Profile settings coming soon...
-              </div>
+              <ProfileSettingsForm 
+                section={profileScreen.section}
+                values={profileFormValues}
+                onChange={handleProfileChange}
+                onPhotoUpload={handlePhotoUpload}
+                onPhotoDelete={handlePhotoDelete}
+              />
             </SettingsSectionCard>
           )}
 
           {activeTab === "notifications" && notificationScreen && (
             <SettingsSectionCard
               title={notificationScreen.section.title}
-              subtitle={notificationScreen.section.subtitle}
+              description={notificationScreen.section.subtitle}
             >
               <NotificationSettingsList 
                 toggles={notificationScreen.section.toggles}
@@ -182,7 +274,7 @@ export default function DashboardSettingsPage() {
           {activeTab === "security" && securityScreen && (
             <SettingsSectionCard
               title={securityScreen.section.title}
-              subtitle={securityScreen.section.subtitle}
+              description={securityScreen.section.subtitle}
             >
               <SecuritySettingsForm 
                 fields={securityScreen.section.form.fields}

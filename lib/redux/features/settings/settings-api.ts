@@ -116,7 +116,66 @@ export interface UpdateNotificationSettingsRequest {
   [key: string]: boolean;
 }
 
+export interface ProfileSettingsResponse {
+  success: boolean;
+  message: string;
+  data: {
+    screen: {
+      breadcrumb: SettingsBreadcrumb[];
+      title: string;
+      tabs: SettingsTab[];
+      sidebarProfile: {
+        name: string;
+        email: string;
+        avatar: {
+          imageUrl: string;
+          initials: string;
+          tone: string;
+        };
+      };
+      section: {
+        title: string;
+        subtitle: string;
+        avatar: {
+          imageUrl: string;
+          initials: string;
+          tone: string;
+          actions: {
+            upload: {
+              label: string;
+              method: string;
+              apiUrl: string;
+              fieldName: string;
+            };
+            delete: {
+              label: string;
+              method: string;
+              apiUrl: string;
+              enabled: boolean;
+            };
+          };
+        };
+        form: {
+          submitAction: {
+            label: string;
+            method: string;
+            apiUrl: string;
+          };
+          fields: {
+            id: string;
+            label: string;
+            type: string;
+            value: string;
+            required: boolean;
+          }[];
+        };
+      };
+    };
+  };
+}
+
 export const settingsApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     getNotificationSettings: builder.query<NotificationSettingsResponse, void>({
       query: () => ({
@@ -155,6 +214,28 @@ export const settingsApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Settings"],
     }),
+    getProfileSettings: builder.query<ProfileSettingsResponse, void>({
+      query: () => ({
+        url: "/settings/profile",
+        method: "GET",
+      }),
+      providesTags: ["Settings"],
+    }),
+    updateProfileSettings: builder.mutation<any, FormData>({
+      query: (body) => ({
+        url: "/settings/profile",
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: ["Settings"],
+    }),
+    deleteProfilePhoto: builder.mutation<any, void>({
+      query: () => ({
+        url: "/settings/profile/photo",
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Settings"],
+    }),
   }),
 });
 
@@ -164,4 +245,7 @@ export const {
   useGetNotificationsQuery,
   useGetSecuritySettingsQuery,
   useChangePasswordMutation,
+  useGetProfileSettingsQuery,
+  useUpdateProfileSettingsMutation,
+  useDeleteProfilePhotoMutation,
 } = settingsApi;
