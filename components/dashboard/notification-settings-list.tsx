@@ -2,56 +2,49 @@
 
 import React from "react";
 
-type NotificationSetting = {
-  title: string;
+export type NotificationToggleItem = {
+  id: string;
+  label: string;
   description: string;
-  enabled: boolean;
+  value: boolean;
 };
 
 type NotificationSettingsListProps = {
-  items: NotificationSetting[];
+  items: NotificationToggleItem[];
+  onChange?: (id: string, value: boolean) => void;
 };
 
 export default function NotificationSettingsList({
   items,
+  onChange,
 }: NotificationSettingsListProps) {
-  const [settings, setSettings] = React.useState(items);
-
   return (
     <div className="space-y-1">
-      {settings.map((item, index) => (
+      {items.map((item) => (
         <div
-          key={item.title}
-          className="flex items-center justify-between gap-4 border-b border-dashed border-[#e8eef8] py-5 last:border-b-0 last:pb-0 first:pt-0"
+          key={item.id}
+          className="flex items-center justify-between gap-4 border-b border-dashed border-[#e8eef8] py-5 last:border-b-0 last:pb-0 first:pt-0 group transition-all"
         >
-          <div>
-            <p className="text-[1.05rem] font-medium text-[#3646a5]">
-              {item.title}
+          <div className="flex-1 min-w-0">
+            <p className="text-[16px] font-semibold text-[#3646a5] group-hover:text-[#1e293b] transition-colors">
+              {item.label}
             </p>
-            <p className="mt-2 text-[13px] text-[#7a88a3]">
+            <p className="mt-1 text-[13px] text-[#7a88a3] leading-relaxed">
               {item.description}
             </p>
           </div>
 
           <button
             type="button"
-            onClick={() =>
-              setSettings((current) =>
-                current.map((entry, entryIndex) =>
-                  entryIndex === index
-                    ? { ...entry, enabled: !entry.enabled }
-                    : entry
-                )
-              )
-            }
-            className={`relative h-8 w-14 rounded-full transition ${
-              item.enabled ? "bg-[#1ea6df]" : "bg-[#c9c9c9]"
+            onClick={() => onChange?.(item.id, !item.value)}
+            className={`relative h-7 w-12 rounded-full transition-all duration-300 ease-in-out ${
+              item.value ? "bg-[#1ea6df] shadow-[0_0_12px_rgba(30,166,223,0.3)]" : "bg-[#cbd5e1]"
             }`}
-            aria-pressed={item.enabled}
+            aria-pressed={item.value}
           >
             <span
-              className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow-sm transition ${
-                item.enabled ? "left-7" : "left-1"
+              className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-md transition-all duration-300 ease-in-out ${
+                item.value ? "left-6" : "left-1"
               }`}
             />
           </button>
