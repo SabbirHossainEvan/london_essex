@@ -26,6 +26,8 @@ export interface NotificationItem {
   time: string;
   unread: boolean;
   type?: "course" | "support" | "booking" | "system";
+  actionLabel?: string;
+  actionUrl?: string;
 }
 
 export interface NotificationListResponse {

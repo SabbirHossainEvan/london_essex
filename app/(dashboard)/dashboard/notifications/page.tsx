@@ -61,7 +61,7 @@ export default function NotificationsPage() {
     // To be implemented with mutation
   };
 
-  const getIcon = (type: string) => {
+  const getIcon = (type: Notification["type"] | undefined) => {
     switch (type) {
       case "course": return <BookOpen className="h-5 w-5" />;
       case "support": return <MessageSquare className="h-5 w-5" />;
@@ -70,7 +70,7 @@ export default function NotificationsPage() {
     }
   };
 
-  const getIconBg = (type: string, unread: boolean) => {
+  const getIconBg = (type: Notification["type"] | undefined, unread: boolean) => {
     if (!unread) return "bg-gray-100 text-gray-500";
     switch (type) {
       case "course": return "bg-blue-100 text-blue-600";
