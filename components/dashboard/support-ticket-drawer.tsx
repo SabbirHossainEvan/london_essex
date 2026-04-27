@@ -1,16 +1,49 @@
 "use client";
 
+import React, { useState } from "react";
 import { SendHorizontal, X } from "lucide-react";
+import { useCreateTicketMutation, type SupportFormField } from "@/lib/redux/features/support/support-api";
 
 type SupportTicketDrawerProps = {
   open: boolean;
   onClose: () => void;
+  fields: SupportFormField[];
+  title: string;
 };
 
 export default function SupportTicketDrawer({
   open,
   onClose,
+  fields,
+  title,
 }: SupportTicketDrawerProps) {
+  const [formValues, setFormValues] = useState<Record<string, string>>({});
+  const [createTicket, { isLoading }] = useCreateTicketMutation();
+
+  const handleInputChange = (id: string, value: string) => {
+    setFormValues((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const handleSubmit = async () => {
+    // Basic validation
+    for (const field of fields) {
+      if (field.required && !formValues[field.id]) {
+        alert(`${field.label} is required.`);
+        return;
+      }
+    }
+
+    try {
+      await createTicket(formValues).unwrap();
+      alert("Ticket submitted successfully!");
+      setFormValues({});
+      onClose();
+    } catch (err: any) {
+      console.error("Failed to submit ticket", err);
+      alert(err?.data?.message || "Failed to submit ticket. Please try again.");
+    }
+  };
+
   return (
     <>
       <div
@@ -28,7 +61,7 @@ export default function SupportTicketDrawer({
         <div className="flex h-full flex-col p-5">
           <div className="flex items-center justify-between gap-4 border-b border-[#edf3fb] pb-4">
             <h3 className="text-[1.05rem] font-semibold text-[#3646a5]">
-              Submit a New Ticket
+              {title}
             </h3>
             <button
               type="button"
@@ -40,51 +73,57 @@ export default function SupportTicketDrawer({
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto py-5">
-            <div>
-              <label className="mb-2 block text-sm text-[#6c7b97]">Subject</label>
-              <input
-                type="text"
-                placeholder="Brief summary of your issue"
-                className="h-11 w-full rounded-[8px] border border-[#e5edf8] bg-[#edf7ff] px-4 text-sm text-[#3345a6] outline-none placeholder:text-[#92a1b8]"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm text-[#6c7b97]">Category</label>
-              <select className="h-11 w-full rounded-[8px] border border-[#e5edf8] bg-[#edf7ff] px-4 text-sm text-[#75849d] outline-none">
-                <option>Select Category</option>
-                <option>Course issue</option>
-                <option>Booking issue</option>
-                <option>Technical issue</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm text-[#6c7b97]">Priority</label>
-              <select className="h-11 w-full rounded-[8px] border border-[#e5edf8] bg-[#edf7ff] px-4 text-sm text-[#75849d] outline-none">
-                <option>Select Priority</option>
-                <option>High</option>
-                <option>Medium</option>
-                <option>Low</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm text-[#6c7b97]">Message</label>
-              <textarea
-                rows={8}
-                placeholder="Please describe your issue in detail..."
-                className="w-full rounded-[8px] border border-[#e5edf8] bg-[#edf7ff] px-4 py-3 text-sm text-[#3345a6] outline-none placeholder:text-[#92a1b8]"
-              />
-            </div>
+            {fields.map((field) => (
+              <div key={field.id}>
+                <label className="mb-2 block text-sm text-[#6c7b97]">{field.label}</label>
+                {field.type === "select" ? (
+                  <select
+                    value={formValues[field.id] || ""}
+                    onChange={(e) => handleInputChange(field.id, e.target.value)}
+                    className="h-11 w-full rounded-[8px] border border-[#e5edf8] bg-[#edf7ff] px-4 text-sm text-[#3345a6] outline-none"
+                  >
+                    <option value="">Select {field.label}</option>
+                    {field.options?.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : field.type === "textarea" ? (
+                  <textarea
+                    rows={6}
+                    value={formValues[field.id] || ""}
+                    onChange={(e) => handleInputChange(field.id, e.target.value)}
+                    placeholder={`Enter your ${field.label.toLowerCase()}...`}
+                    className="w-full rounded-[8px] border border-[#e5edf8] bg-[#edf7ff] px-4 py-3 text-sm text-[#3345a6] outline-none placeholder:text-[#92a1b8]"
+                  />
+                ) : (
+                  <input
+                    type={field.type}
+                    value={formValues[field.id] || ""}
+                    onChange={(e) => handleInputChange(field.id, e.target.value)}
+                    placeholder={`Enter ${field.label.toLowerCase()}`}
+                    className="h-11 w-full rounded-[8px] border border-[#e5edf8] bg-[#edf7ff] px-4 text-sm text-[#3345a6] outline-none placeholder:text-[#92a1b8]"
+                  />
+                )}
+              </div>
+            ))}
           </div>
 
           <button
             type="button"
-            className="inline-flex items-center justify-center gap-2 rounded-[8px] bg-[#1ea6df] px-5 py-3 text-sm font-medium text-white shadow-[0_8px_18px_rgba(30,166,223,0.2)]"
+            onClick={handleSubmit}
+            disabled={isLoading}
+            className="inline-flex items-center justify-center gap-2 rounded-[8px] bg-[#1ea6df] px-5 py-3 text-sm font-medium text-white shadow-[0_8px_18px_rgba(30,166,223,0.2)] disabled:opacity-50"
           >
-            <SendHorizontal className="h-4 w-4" />
-            Submit Ticket
+            {isLoading ? (
+              "Submitting..."
+            ) : (
+              <>
+                <SendHorizontal className="h-4 w-4" />
+                Submit Ticket
+              </>
+            )}
           </button>
         </div>
       </aside>

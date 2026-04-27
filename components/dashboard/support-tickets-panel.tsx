@@ -3,14 +3,16 @@
 import { Headset, Plus } from "lucide-react";
 import PanelCard from "@/components/dashboard/panel-card";
 import SupportTicketCard from "@/components/dashboard/support-ticket-card";
-import type { SupportTicket } from "@/app/(dashboard)/dashboard/support/support-data";
+import type { SupportTicket } from "@/lib/redux/features/support/support-api";
 
 type SupportTicketsPanelProps = {
+  title?: string;
   tickets: SupportTicket[];
   onNewTicket: () => void;
 };
 
 export default function SupportTicketsPanel({
+  title = "My Tickets",
   tickets,
   onNewTicket,
 }: SupportTicketsPanelProps) {
@@ -20,7 +22,7 @@ export default function SupportTicketsPanel({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-[1rem] font-medium text-[#3646a5]">
             <Headset className="h-4 w-4" />
-            My Tickets
+            {title}
           </div>
 
           <button
