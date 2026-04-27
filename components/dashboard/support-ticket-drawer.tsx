@@ -26,6 +26,8 @@ export default function SupportTicketDrawer({
 
   const handleSubmit = async () => {
     // Basic validation
+    if (!fields) return;
+    
     for (const field of fields) {
       if (field.required && !formValues[field.id]) {
         alert(`${field.label} is required.`);
