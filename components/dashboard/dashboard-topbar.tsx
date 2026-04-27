@@ -5,14 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { Bell, Menu, Check, ExternalLink, X } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useAppSelector } from "@/lib/redux/hooks";
-import { useGetMeQuery } from "@/lib/redux/features/auth/auth-api";
-import {
-  useGetNotificationSettingsQuery,
+import { 
   useGetNotificationsQuery,
+  useGetProfileSettingsQuery
 } from "@/lib/redux/features/settings/settings-api";
-import { useDashboardAvatar } from "@/lib/dashboard-avatar";
-import { useDashboardProfile } from "@/lib/dashboard-profile";
 import { motion, AnimatePresence } from "framer-motion";
 
 type DashboardTopbarProps = {
@@ -29,13 +25,12 @@ const breadcrumbMap: Record<string, string[]> = {
 
 export function DashboardTopbar({ onMenuClick }: DashboardTopbarProps) {
   const pathname = usePathname();
-  const user = useAppSelector((state) => state.auth.user);
-  const { data: settingsData } = useGetNotificationSettingsQuery();
-  const sidebarProfile = settingsData?.data.screen.sidebarProfile;
+  const { data: profileSettings } = useGetProfileSettingsQuery();
+  const profile = profileSettings?.data.screen.sidebarProfile;
 
-  const displayName = sidebarProfile?.name || "Michael Johnson";
-  const displayEmail = sidebarProfile?.email || "michael.johnson@example.com";
-  const avatarSrc = sidebarProfile?.avatar.imageUrl || useDashboardAvatar();
+  const displayName = profile?.name || "Learner";
+  const displayEmail = profile?.email || "No email available";
+  const avatar = profile?.avatar;
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
 
@@ -201,13 +196,22 @@ export function DashboardTopbar({ onMenuClick }: DashboardTopbarProps) {
             href="/dashboard/settings"
             className="hidden items-center gap-3 rounded-full border border-[#bde3fd] bg-[#fbfdff]/95 px-2 py-1.5 pr-5 text-left shadow-[0_8px_18px_rgba(58,165,228,0.08)] sm:flex"
           >
-            <Image
-              src={avatarSrc}
-              alt={displayName || "User avatar"}
-              width={42}
-              height={42}
-              className="h-10 w-10 rounded-full object-cover"
-            />
+            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[#3851bb]/10 bg-[#f8fbff]">
+              {avatar?.imageUrl ? (
+                <Image
+                  src={avatar.imageUrl}
+                  alt={displayName}
+                  width={40}
+                  height={40}
+                  className="h-full w-full object-cover"
+                  unoptimized
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-[#3851bb] text-base font-bold text-white">
+                  {avatar?.initials || displayName[0]}
+                </div>
+              )}
+            </div>
             <div>
               <p className="text-[16px] font-medium leading-none text-[#3646a5]">
                 {displayName}

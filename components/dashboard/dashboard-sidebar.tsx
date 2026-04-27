@@ -15,11 +15,8 @@ import {
   X,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
-import { useGetMeQuery } from "@/lib/redux/features/auth/auth-api";
+import { useAppDispatch } from "@/lib/redux/hooks";
 import { clearCredentials } from "@/lib/redux/features/auth/auth-slice";
-import { useDashboardAvatar } from "@/lib/dashboard-avatar";
-import { useDashboardProfile } from "@/lib/dashboard-profile";
 
 type DashboardSidebarProps = {
   open: boolean;
@@ -34,6 +31,8 @@ const dashboardNavItems = [
   { label: "Setting", href: "/dashboard/settings", icon: Settings, group: "Help" },
 ];
 
+import { useGetProfileSettingsQuery } from "@/lib/redux/features/settings/settings-api";
+
 export function DashboardSidebar({
   open,
   onClose,
@@ -42,15 +41,13 @@ export function DashboardSidebar({
   const dispatch = useAppDispatch();
   const router = useRouter();
   const pathname = usePathname();
-  const user = useAppSelector((state) => state.auth.user);
-  const { data: meData } = useGetMeQuery();
-  const avatarSrc = useDashboardAvatar();
-  const profile = useDashboardProfile({
-    name: meData?.data.user.name || user?.fullName || "Learner",
-    email: meData?.data.user.email || user?.email || "No email available",
-  });
-  const displayName = profile.name;
-  const displayEmail = profile.email;
+  
+  const { data: profileSettings } = useGetProfileSettingsQuery();
+  
+  const profile = profileSettings?.data.screen.sidebarProfile;
+  const displayName = profile?.name || "Learner";
+  const displayEmail = profile?.email || "No email available";
+  const avatar = profile?.avatar;
 
   return (
     <>
@@ -156,18 +153,27 @@ export function DashboardSidebar({
               onClick={onClose}
               className="flex items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-[#f2f7fd]"
             >
-              <Image
-                src={avatarSrc}
-                alt={displayName || "User avatar"}
-                width={42}
-                height={42}
-                className="h-11 w-11 rounded-full object-cover"
-              />
-              <div>
-                <p className="text-[15px] font-medium text-[#2f3fa0]">
+              <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-[#3851bb]/10 bg-[#f8fbff]">
+                {avatar?.imageUrl ? (
+                  <Image
+                    src={avatar.imageUrl}
+                    alt={displayName}
+                    width={44}
+                    height={44}
+                    className="h-full w-full object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-[#3851bb] text-lg font-bold text-white">
+                    {avatar?.initials || displayName[0]}
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[15px] font-medium text-[#2f3fa0]">
                   {displayName}
                 </p>
-                <p className="text-xs text-[#93a2ba]">
+                <p className="truncate text-xs text-[#93a2ba]">
                   {displayEmail}
                 </p>
               </div>
