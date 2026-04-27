@@ -10,7 +10,7 @@ function normalizeApiBaseUrl(value: string) {
 
 export const apiBaseUrl =
   normalizeApiBaseUrl(
-    process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || fallbackBaseUrl
+    process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || "https://londonex.onrender.com/api"
   );
 
 export const baseApi = createApi({
@@ -30,6 +30,6 @@ export const baseApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Auth", "Profile", "Course", "Booking", "SupportTicket"],
+  tagTypes: ["Auth", "Profile", "Course", "Booking", "SupportTicket", "Support", "Settings"],
   endpoints: () => ({}),
 });

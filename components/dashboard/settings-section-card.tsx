@@ -25,14 +25,16 @@ export default function SettingsSectionCard({
           <p className="mt-2 text-[14px] text-[#7383a0]">{description}</p>
         </div>
 
-        <button
-          type="button"
-          onClick={onAction}
-          disabled={actionDisabled}
-          className="rounded-[10px] bg-[#1ea6df] px-6 py-3 text-sm font-medium text-white shadow-[0_8px_18px_rgba(30,166,223,0.2)]"
-        >
-          {actionLabel}
-        </button>
+        {onAction && (
+          <button
+            type="button"
+            onClick={onAction}
+            disabled={actionDisabled}
+            className="rounded-[10px] bg-[#1ea6df] px-6 py-3 text-sm font-medium text-white shadow-[0_8px_18px_rgba(30,166,223,0.2)]"
+          >
+            {actionLabel}
+          </button>
+        )}
       </div>
 
       <div className="mt-5 rounded-[12px] border border-[#e4ecf8] bg-white p-4">
