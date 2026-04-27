@@ -209,7 +209,7 @@ export default function DashboardSettingsPage() {
           <div className="rounded-2xl border border-[#e2eaf5] bg-white p-5 text-center">
             <div className="mx-auto mb-4 h-20 w-20 overflow-hidden rounded-full border-2 border-[#3851bb]/10 bg-[#f8fbff] p-1">
               <div className="flex h-full w-full items-center justify-center rounded-full bg-[#3851bb] text-2xl font-bold text-white">
-                {currentScreen?.sidebarProfile.initials || "M"}
+                {currentScreen?.sidebarProfile.avatar.initials || "M"}
               </div>
             </div>
             <h3 className="font-semibold text-[#1e293b]">
