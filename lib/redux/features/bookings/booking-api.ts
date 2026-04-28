@@ -399,26 +399,55 @@ export type SaveRegistrationPrivacyResponse = {
   };
 };
 
-export type Am2eChecklistFlowVariant = "am2e" | "am2e-v1";
+export type Am2eChecklistFlowVariant = "am2" | "am2e" | "am2e-v1";
 
 export type GetAm2eChecklistFlowByCourseRequest = {
   variant: Am2eChecklistFlowVariant;
   courseId: string;
-  questionId: "nvq-registration-date";
-  answerId: "before-3rd-september-2023" | "after-september-2023";
+  questionId?: "nvq-registration-date";
+  answerId?: "before-3rd-september-2023" | "after-september-2023";
 };
 
 export type GetAm2eChecklistFlowByCourseResponse = {
   success: boolean;
   message: string;
   data: {
-    checklistVariant: Am2eChecklistFlowVariant;
+    checklistVariant?: Am2eChecklistFlowVariant;
+    course?: {
+      id: string;
+      title: string;
+      slug: string;
+      qualification?: string;
+      location?: string;
+      schedule?: string;
+      duration?: string;
+      price?: number;
+      currency?: string;
+      thumbnailUrl?: string;
+      galleryImages?: string[];
+    };
     resolvedFrom?: {
       routeVariant?: string;
       selectedQuestionId?: string;
       selectedAnswerId?: string;
       selectedAnswerLabel?: string;
       routeSource?: string;
+    };
+    eligibilityRouting?: {
+      qualificationStep?: {
+        id: string;
+        question: string;
+        acceptedRouteIds: string[];
+      };
+      nvqRegistrationDateStep?: {
+        id: string;
+        question: string;
+        options: Array<{
+          id: string;
+          label: string;
+          leadsToVariant: Am2eChecklistFlowVariant;
+        }>;
+      };
     };
     flow: {
       steps: Array<{
@@ -462,6 +491,42 @@ export type GetAm2eChecklistFlowByCourseResponse = {
           };
         }>;
       }>;
+      signatures?: {
+        candidate?: {
+          supportedTypes?: string[];
+          uploadFields?: string[];
+        };
+        trainingProvider?: {
+          fields?: string[];
+        };
+      };
+      submit?: {
+        title?: string;
+        checks?: string[];
+      };
+      reviewStates?: Array<{
+        key: string;
+        label: string;
+      }>;
+      payment?: {
+        title?: string;
+        availableAfterApproval?: boolean;
+      };
+      confirmed?: {
+        title?: string;
+      };
+    };
+    coverage?: {
+      checklistCoverage?: {
+        matched?: string[];
+        missingFields?: string[];
+        mismatches?: Array<{
+          field: string;
+          status: string;
+          note: string;
+        }>;
+        notes?: string[];
+      };
     };
   };
 };
@@ -1148,8 +1213,8 @@ export const bookingApi = baseApi.injectEndpoints({
         method: "GET",
         params: {
           courseId,
-          questionId,
-          answerId,
+          ...(questionId ? { questionId } : {}),
+          ...(answerId ? { answerId } : {}),
         },
       }),
       providesTags: ["Booking"],
