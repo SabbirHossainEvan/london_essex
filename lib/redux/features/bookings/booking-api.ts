@@ -399,6 +399,8 @@ export type SaveRegistrationPrivacyResponse = {
   };
 };
 
+export type ChecklistBooleanSelection = Record<string, boolean>;
+
 export type Am2eChecklistFlowVariant = "am2" | "am2e" | "am2e-v1";
 
 export type GetAm2eChecklistFlowByCourseRequest = {
@@ -485,6 +487,10 @@ export type GetAm2eChecklistFlowByCourseResponse = {
           id: string;
           no: number;
           criterion: string;
+          knowledgeLevel?: string;
+          experienceLevel?: string;
+          knowledge?: ChecklistBooleanSelection;
+          experience?: ChecklistBooleanSelection;
           options: {
             knowledge: Array<{ id: string; label: string }>;
             experience: Array<{ id: string; label: string }>;
@@ -664,6 +670,8 @@ export type GetBookingFlowChecklistFullResponse = {
           criterion: string;
           knowledgeLevel?: string;
           experienceLevel?: string;
+          knowledge?: ChecklistBooleanSelection;
+          experience?: ChecklistBooleanSelection;
           completed: boolean;
           options: {
             knowledge: Array<{
@@ -688,6 +696,8 @@ export type SaveBookingChecklistDraftRequest = {
     itemId: string;
     knowledgeLevel: string;
     experienceLevel: string;
+    knowledge?: ChecklistBooleanSelection;
+    experience?: ChecklistBooleanSelection;
   }>;
 };
 
