@@ -507,10 +507,12 @@ function mapAm2eFlowToFullChecklistScreen({
   flowData,
   flow,
   requestedSection,
+  persistedScreen,
 }: {
   flowData: Am2eChecklistFlowData;
   flow: Am2FullChecklistPageProps["flow"];
   requestedSection: string;
+  persistedScreen?: ChecklistScreen;
 }): ChecklistScreen {
   const meta = checklistMeta[flow];
   const backendSections = flowData.flow.checklistSections;
@@ -521,9 +523,7 @@ function mapAm2eFlowToFullChecklistScreen({
         ? am2eV1ChecklistSections
         : null;
   const sections =
-    backendSections && backendSections.length > 0
-      ? backendSections
-      : overrideSections
+    overrideSections
       ? overrideSections.map((section) => ({
           ...section,
           totalItems: section.items.length,
@@ -537,13 +537,18 @@ function mapAm2eFlowToFullChecklistScreen({
             },
           })),
         }))
-      : flowData.flow.checklistSections ?? [];
+      : backendSections ?? [];
   const activeSource =
     sections.find(
       (entry) =>
         entry.key.trim().toUpperCase() === requestedSection.trim().toUpperCase()
     ) ||
     sections[0];
+  const persistedActiveSection =
+    persistedScreen?.activeSection?.key?.trim().toUpperCase() ===
+    requestedSection.trim().toUpperCase()
+      ? persistedScreen.activeSection
+      : undefined;
   const activeSection = activeSource
     ? {
         id: activeSource.id,
@@ -551,16 +556,19 @@ function mapAm2eFlowToFullChecklistScreen({
         title: activeSource.title,
         summary: activeSource.summary,
         duration: activeSource.duration,
-        completedItems: 0,
+        completedItems: persistedActiveSection?.completedItems ?? 0,
         totalItems: activeSource.totalItems,
         items: activeSource.items.map((item) => {
+          const persistedItem = persistedActiveSection?.items.find(
+            (entry) => entry.id === item.id
+          );
           const knowledgeLevel = resolveSelectedValueFromMap(
-            item.knowledge,
-            item.knowledgeLevel
+            persistedItem?.knowledge ?? item.knowledge,
+            persistedItem?.knowledgeLevel ?? item.knowledgeLevel
           );
           const experienceLevel = resolveSelectedValueFromMap(
-            item.experience,
-            item.experienceLevel
+            persistedItem?.experience ?? item.experience,
+            persistedItem?.experienceLevel ?? item.experienceLevel
           );
 
           return {
@@ -570,12 +578,12 @@ function mapAm2eFlowToFullChecklistScreen({
             knowledge: buildBooleanSelectionMap(
               item.options.knowledge,
               knowledgeLevel,
-              item.knowledge
+              persistedItem?.knowledge ?? item.knowledge
             ),
             experience: buildBooleanSelectionMap(
               item.options.experience,
               experienceLevel,
-              item.experience
+              persistedItem?.experience ?? item.experience
             ),
             completed: Boolean(knowledgeLevel && experienceLevel),
           };
@@ -603,25 +611,60 @@ function mapAm2eFlowToFullChecklistScreen({
     })),
     title: meta.title,
     subtitle: `Complete your ${meta.title}.`,
-    overallCompletion: flowData.flow.checklistSummary?.overallCompletion ?? 0,
+    overallCompletion:
+      persistedScreen?.overallCompletion ??
+      flowData.flow.checklistSummary?.overallCompletion ??
+      0,
     actions: {
       saveDraft: {
-        label: "Save Draft",
+        label: persistedScreen?.actions?.saveDraft?.label || "Save Draft",
+        method: persistedScreen?.actions?.saveDraft?.method,
+        apiUrl: persistedScreen?.actions?.saveDraft?.apiUrl,
       },
       nextSection: {
-        label: "Next Section",
+        label: persistedScreen?.actions?.nextSection?.label || "Next Section",
+        apiUrl: persistedScreen?.actions?.nextSection?.apiUrl,
       },
     },
     sections: sections.map((entry) => ({
       id: entry.id,
       key: entry.key,
       label: entry.label,
-      completedItems: 0,
+      completedItems:
+        persistedScreen?.sections.find(
+          (persistedEntry) => persistedEntry.key === entry.key
+        )?.completedItems ?? 0,
       totalItems: entry.totalItems,
       active: entry.key === activeSection.key,
+      apiUrl: persistedScreen?.sections.find(
+        (persistedEntry) => persistedEntry.key === entry.key
+      )?.apiUrl,
     })),
     activeSection,
   };
+}
+
+function buildOptimisticChecklistScreenForSection({
+  flow,
+  flowData,
+  persistedScreen,
+  targetSection,
+}: {
+  flow: Am2FullChecklistPageProps["flow"];
+  flowData: Am2eChecklistFlowData | null;
+  persistedScreen: ChecklistScreen;
+  targetSection: string;
+}) {
+  if (flow === "am2" || !flowData) {
+    return null;
+  }
+
+  return mapAm2eFlowToFullChecklistScreen({
+    flowData,
+    flow,
+    requestedSection: targetSection,
+    persistedScreen,
+  });
 }
 
 function FullChecklistContent({
@@ -631,6 +674,7 @@ function FullChecklistContent({
   courseId,
   screen,
   onScreenChange,
+  flowData,
 }: {
   course: CourseSummary;
   flow: Am2FullChecklistPageProps["flow"];
@@ -638,6 +682,7 @@ function FullChecklistContent({
   courseId?: string;
   screen: ChecklistScreen;
   onScreenChange: React.Dispatch<React.SetStateAction<ChecklistScreen | null>>;
+  flowData: Am2eChecklistFlowData | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -660,8 +705,10 @@ function FullChecklistContent({
       ? screen.sections[activeSectionIndex + 1]?.key
       : undefined;
   const nextSectionKey =
-    extractSectionFromApiUrl(screen.actions?.nextSection?.apiUrl) ||
-    fallbackNextSectionKey;
+    flow === "am2"
+      ? extractSectionFromApiUrl(screen.actions?.nextSection?.apiUrl) ||
+        fallbackNextSectionKey
+      : fallbackNextSectionKey;
   const isCurrentSectionComplete =
     screen.activeSection.items.length > 0 &&
     screen.activeSection.items.every(
@@ -817,11 +864,22 @@ function FullChecklistContent({
     const savedScreen = await persistCurrentSection();
 
     if (savedScreen) {
+      const optimisticScreen = buildOptimisticChecklistScreenForSection({
+        flow,
+        flowData,
+        persistedScreen: savedScreen,
+        targetSection,
+      });
+
+      if (optimisticScreen) {
+        onScreenChange(optimisticScreen);
+      }
+
       navigateToSection(targetSection);
     }
 
     setIsNavigatingSection(false);
-  }, [navigateToSection, persistCurrentSection]);
+  }, [flow, flowData, navigateToSection, onScreenChange, persistCurrentSection]);
 
   const handleNextSection = React.useCallback(async () => {
     if (!isCurrentSectionComplete) {
@@ -837,6 +895,17 @@ function FullChecklistContent({
     }
 
     if (nextSectionKey) {
+      const optimisticScreen = buildOptimisticChecklistScreenForSection({
+        flow,
+        flowData,
+        persistedScreen: savedScreen,
+        targetSection: nextSectionKey,
+      });
+
+      if (optimisticScreen) {
+        onScreenChange(optimisticScreen);
+      }
+
       navigateToSection(nextSectionKey);
       setIsNavigatingSection(false);
       return;
@@ -845,9 +914,12 @@ function FullChecklistContent({
     router.push(signaturesHref);
     setIsNavigatingSection(false);
   }, [
+    flow,
+    flowData,
     isCurrentSectionComplete,
     navigateToSection,
     nextSectionKey,
+    onScreenChange,
     persistCurrentSection,
     router,
     signaturesHref,
@@ -1068,13 +1140,14 @@ export default function Am2FullChecklistPage({
   const previewCourseId = courseId || course.id || "";
   const screen = React.useMemo(
     () =>
-      data?.data.screen
-        ? data.data.screen
+      flow === "am2"
+        ? data?.data.screen
         : am2eFlowData
           ? mapAm2eFlowToFullChecklistScreen({
               flowData: am2eFlowData,
               flow,
               requestedSection: section,
+              persistedScreen: data?.data.screen,
             })
           : null,
     [am2eFlowData, data, flow, section]
@@ -1085,9 +1158,12 @@ export default function Am2FullChecklistPage({
   const normalizedSection = section.trim().toUpperCase();
   const isShowingRequestedSection =
     editableScreen?.activeSection.key?.trim().toUpperCase() === normalizedSection;
+  const hasUsableOptimisticScreen =
+    flow !== "am2" && Boolean(editableScreen) && isShowingRequestedSection;
   const isSectionTransitioning =
     Boolean(bookingId) &&
-    ((isLoading || isFetching) ||
+    ((flow === "am2" && (isLoading || isFetching)) ||
+      (!hasUsableOptimisticScreen && isFetching) ||
       (flow !== "am2" && isAm2eFlowLoading) ||
       !isShowingRequestedSection);
 
@@ -1125,8 +1201,15 @@ export default function Am2FullChecklistPage({
   }, [flow, getAm2eChecklistFlowByCourse, previewCourseId]);
 
   React.useEffect(() => {
-    setEditableScreen(null);
-  }, [bookingId, flow, normalizedSection]);
+    if (flow === "am2") {
+      setEditableScreen(null);
+      return;
+    }
+
+    if (!editableScreen || bookingId !== extractBookingIdFromApiUrl(editableScreen.actions?.saveDraft?.apiUrl)) {
+      setEditableScreen(null);
+    }
+  }, [bookingId, editableScreen, flow]);
 
   React.useEffect(() => {
     if (screen) {
@@ -1215,14 +1298,15 @@ export default function Am2FullChecklistPage({
       !isError &&
       !am2eFlowError &&
       editableScreen ? (
-        <FullChecklistContent
-          course={course}
-          flow={flow}
-          bookingId={bookingId}
-          courseId={previewCourseId}
-          screen={editableScreen}
-          onScreenChange={setEditableScreen}
-        />
+          <FullChecklistContent
+            course={course}
+            flow={flow}
+            bookingId={bookingId}
+            courseId={previewCourseId}
+            screen={editableScreen}
+            onScreenChange={setEditableScreen}
+            flowData={am2eFlowData}
+          />
       ) : null}
     </div>
   );
