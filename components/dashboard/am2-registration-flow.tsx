@@ -496,22 +496,97 @@ function formatShortDateInput(value: string) {
 type Am2eChecklistFlowData =
   GetAm2eChecklistFlowByCourseResponse["data"];
 
-function mapAm2eFlowToDocumentsScreen(
-  flowData: Am2eChecklistFlowData,
-  uploadedDocumentIds: string[]
-) {
-  const documents = flowData.flow.documents;
-  const requirements =
-    documents?.requirements.map((item) => ({
+type LocalDocumentRequirement = {
+  id: string;
+  title: string;
+  description: string;
+};
+
+const am2DocumentRequirements: LocalDocumentRequirement[] = [
+  {
+    id: "learner-history-report-or-walled-garden-report",
+    title: "Learner History Report or Walled Garden Report (City & Guilds)",
+    description: "Requested from your NVQ provider",
+  },
+];
+
+const am2eV1DocumentRequirements: LocalDocumentRequirement[] = [
+  {
+    id: "experienced-worker-qualification-certificate",
+    title: "The Experienced Worker Qualification Certificate",
+    description: "certificate from either City & Guilds (2346) or EAL (603/5982/1)",
+  },
+  {
+    id: "city-and-guilds-walled-garden-report-or-eal-learner-history-report",
+    title: "City & Guilds Walled Garden Report or EAL Learner History Report",
+    description: "You will need to request this from your NVQ provider",
+  },
+  {
+    id: "skills-scan-pre-sept-2023",
+    title: "Skills Scan (Pre-Sept 2023)",
+    description: "You will need to request this from your NVQ provider",
+  },
+  {
+    id: "level-2-or-level-3-technical-certificate",
+    title: "Level 2 or Level 3 Technical Certificate",
+    description:
+      "For overseas candidates an Electrotechnical Statement from Ecctis (formerly UK NARIC) is required to show UK equivalence if you do not hold a UK Level 2 or 3 technical certificate.",
+  },
+];
+
+function getDocumentRequirementsForFlow({
+  flowType,
+  fallbackRequirements,
+}: {
+  flowType: NetFlowType;
+  fallbackRequirements: LocalDocumentRequirement[];
+}) {
+  if (flowType === "am2") {
+    return am2DocumentRequirements;
+  }
+
+  if (flowType === "am2e-v1") {
+    return am2eV1DocumentRequirements;
+  }
+
+  return fallbackRequirements;
+}
+
+function mapLocalDocumentsScreen({
+  flowType,
+  uploadedDocumentIds,
+  baseScreen,
+}: {
+  flowType: NetFlowType;
+  uploadedDocumentIds: string[];
+  baseScreen?: GetBookingFlowDocumentsResponse["data"]["screen"];
+}) {
+  const requirementsSource = getDocumentRequirementsForFlow({
+    flowType,
+    fallbackRequirements:
+      baseScreen?.requirements.map((item) => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+      })) ?? [],
+  });
+  const requirements = requirementsSource.map((item) => {
+    const matchingRequirement = baseScreen?.requirements.find(
+      (requirement) => requirement.id === item.id
+    );
+    const isUploaded = uploadedDocumentIds.includes(item.id);
+
+    return {
       id: item.id,
       title: item.title,
       description: item.description,
-      uploaded: uploadedDocumentIds.includes(item.id),
-      document: null,
+      uploaded: isUploaded,
+      document: matchingRequirement?.document ?? null,
       action: {
-        label: uploadedDocumentIds.includes(item.id) ? "Re upload" : "Upload",
+        label: isUploaded ? "Re upload" : "Upload",
       },
-    })) ?? [];
+    };
+  });
   const uploadedCount = requirements.filter((item) => item.uploaded).length;
   const percentage = requirements.length
     ? Math.round((uploadedCount / requirements.length) * 100)
@@ -519,26 +594,77 @@ function mapAm2eFlowToDocumentsScreen(
 
   return {
     title:
-      documents?.title ||
-      (flowData.checklistVariant === "am2e-v1"
-        ? "AM2E V1 Checklist"
-        : "AM2E Checklist"),
+      flowType === "am2"
+        ? "AM2 Readiness Checklist"
+        : flowType === "am2e-v1"
+          ? "AM2E V1 Checklist"
+          : baseScreen?.title || "AM2E Checklist",
     subtitle:
-      documents?.subtitle || "The required documents to be uploaded are:",
+      flowType === "am2"
+        ? "for those who don't already hold AM2"
+        : baseScreen?.subtitle || "The required documents to be uploaded are:",
     importantInformation:
-      documents?.importantInformation ||
-      "Note: For reasonable adjustments to be applied, please contact the center for further information.",
+      flowType === "am2"
+        ? "You must upload all required documents before proceeding."
+        : baseScreen?.importantInformation ||
+          "Note: For reasonable adjustments to be applied, please contact the center for further information.",
     requirements,
     completion: {
       percentage,
     },
     actions: {
       continue: {
-        label: "Continue",
-        enabled: requirements.length > 0 && requirements.every((item) => item.uploaded),
+        label: baseScreen?.actions?.continue?.label || "Continue",
+        enabled:
+          requirements.length > 0 &&
+          requirements.every((item) => item.uploaded) &&
+          baseScreen?.actions?.continue?.enabled !== false,
       },
     },
   };
+}
+
+function mapAm2eFlowToDocumentsScreen(
+  flowData: Am2eChecklistFlowData,
+  uploadedDocumentIds: string[]
+) {
+  return mapLocalDocumentsScreen({
+    flowType: flowData.checklistVariant,
+    uploadedDocumentIds,
+    baseScreen: flowData.flow.documents
+      ? {
+          steps: [],
+          title: flowData.flow.documents.title,
+          subtitle: flowData.flow.documents.subtitle,
+          importantInformation: flowData.flow.documents.importantInformation,
+          course: {
+            id: "",
+            title: "",
+            slug: "",
+          },
+          requirements: flowData.flow.documents.requirements.map((item) => ({
+            id: item.id,
+            title: item.title,
+            description: item.description,
+            uploaded: uploadedDocumentIds.includes(item.id),
+            document: null,
+            action: null,
+          })),
+          completion: {
+            uploadedCount: 0,
+            totalRequired: 0,
+            percentage: 0,
+          },
+          actions: {
+            continue: {
+              label: "Continue",
+              enabled: true,
+              apiUrl: "",
+            },
+          },
+        }
+      : undefined,
+  });
 }
 
 function mapAm2eFlowToChecklistSummaryScreen(flowData: Am2eChecklistFlowData) {
@@ -2486,12 +2612,30 @@ Thank you,`,
     am2eChecklistFlowData?.checklistVariant === netFlowType
       ? am2eChecklistFlowData
       : null;
+  const uploadedDocumentIds = React.useMemo(() => {
+    const serverUploadedIds =
+      documentsScreenData?.data.screen.requirements
+        .filter((item) => item.uploaded)
+        .map((item) => item.id) ?? [];
+
+    return Array.from(
+      new Set([...serverUploadedIds, ...sessionUploadedDocIds])
+    );
+  }, [documentsScreenData?.data.screen.requirements, sessionUploadedDocIds]);
   const am2eDocumentsScreen = activeAm2eChecklistFlowData
     ? mapAm2eFlowToDocumentsScreen(
         activeAm2eChecklistFlowData,
-        sessionUploadedDocIds
+        uploadedDocumentIds
       )
     : null;
+  const am2DocumentsScreen =
+    netFlowType === "am2"
+      ? mapLocalDocumentsScreen({
+          flowType: "am2",
+          uploadedDocumentIds,
+          baseScreen: documentsScreenData?.data.screen,
+        })
+      : null;
   const am2eChecklistSummaryScreen = activeAm2eChecklistFlowData
     ? mapAm2eFlowToChecklistSummaryScreen(activeAm2eChecklistFlowData)
     : null;
@@ -4232,9 +4376,15 @@ Thank you,`,
 
               {!isDocumentsScreenLoading &&
               !isDocumentsScreenError &&
-              (am2eDocumentsScreen || documentsScreenData?.data.screen) ? (
+              (am2DocumentsScreen ||
+                am2eDocumentsScreen ||
+                documentsScreenData?.data.screen) ? (
                 <NetDocumentsPanel
-                  screen={am2eDocumentsScreen || documentsScreenData!.data.screen}
+                  screen={
+                    am2DocumentsScreen ||
+                    am2eDocumentsScreen ||
+                    documentsScreenData!.data.screen
+                  }
                   onUpload={handleUploadDocument}
                   onContinue={() => moveToNetStep("checklist")}
                   uploadingDocumentId={uploadingDocumentId}
