@@ -1039,6 +1039,7 @@ function NetSignaturesPanel({
   onCandidateSign,
   onProviderRequest,
   onContinue,
+  requiresProviderSignature,
 }: {
   screen: {
     card: {
@@ -1065,6 +1066,7 @@ function NetSignaturesPanel({
   onCandidateSign: () => void;
   onProviderRequest: () => void;
   onContinue: () => void;
+  requiresProviderSignature: boolean;
 }) {
   const candidateItem = screen.items.find((item) => item.id === "candidate");
   const providerItem = screen.items.find(
@@ -1077,7 +1079,8 @@ function NetSignaturesPanel({
   // backend enables the step after provider signature completion.
   const allSigned =
     screen.actions?.continue?.enabled !== false ||
-    (candidateSigned && (providerSigned || providerRequested));
+    (candidateSigned &&
+      (!requiresProviderSignature || providerSigned || providerRequested));
 
   return (
     <>
@@ -1144,45 +1147,47 @@ function NetSignaturesPanel({
             </div>
           </div>
 
-          <div className="rounded-xl border border-[#dbe7f4] bg-white p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="flex items-center gap-2 text-sm font-semibold text-[#4451ac]">
-                  <PenTool className="h-4 w-4" />
-                  {providerItem?.label || "Training Provider"}
-                </p>
-                <p
-                  className={`mt-3 flex items-center gap-2 text-xs ${
-                    providerSigned ? "text-[#1e9d57]" : "text-[#8b97ac]"
-                  }`}
-                >
-                  {providerSigned ? (
-                    <CircleCheckBig className="h-4 w-4" />
-                  ) : providerRequested ? (
-                    <Clock3 className="h-4 w-4" />
-                  ) : (
-                    <span className="grid h-4 w-4 place-items-center rounded-full bg-[#ffe8ea] text-[10px] text-[#d55465]">
-                      x
-                    </span>
-                  )}
-                  {providerSigned
-                    ? "Signed"
-                    : providerRequested
-                      ? "Request sent"
-                      : "not Signed"}
-                </p>
-              </div>
+          {requiresProviderSignature ? (
+            <div className="rounded-xl border border-[#dbe7f4] bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="flex items-center gap-2 text-sm font-semibold text-[#4451ac]">
+                    <PenTool className="h-4 w-4" />
+                    {providerItem?.label || "Training Provider"}
+                  </p>
+                  <p
+                    className={`mt-3 flex items-center gap-2 text-xs ${
+                      providerSigned ? "text-[#1e9d57]" : "text-[#8b97ac]"
+                    }`}
+                  >
+                    {providerSigned ? (
+                      <CircleCheckBig className="h-4 w-4" />
+                    ) : providerRequested ? (
+                      <Clock3 className="h-4 w-4" />
+                    ) : (
+                      <span className="grid h-4 w-4 place-items-center rounded-full bg-[#ffe8ea] text-[10px] text-[#d55465]">
+                        x
+                      </span>
+                    )}
+                    {providerSigned
+                      ? "Signed"
+                      : providerRequested
+                        ? "Request sent"
+                        : "not Signed"}
+                  </p>
+                </div>
 
-              <button
-                type="button"
-                onClick={onProviderRequest}
-                className="rounded-lg border border-[#d5e2f2] bg-white px-4 py-2 text-xs font-medium text-[#4451ac]"
-              >
-                {providerItem?.action?.label ||
-                  (providerSigned ? "View" : "Ask for signed")}
-              </button>
+                <button
+                  type="button"
+                  onClick={onProviderRequest}
+                  className="rounded-lg border border-[#d5e2f2] bg-white px-4 py-2 text-xs font-medium text-[#4451ac]"
+                >
+                  {providerItem?.action?.label ||
+                    (providerSigned ? "View" : "Ask for signed")}
+                </button>
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
 
         <div className="mt-4">
@@ -2486,6 +2491,7 @@ Thank you,`,
 
   const selectedQualification = searchParams.get("qualification") ?? "";
   const selectedQualificationIdParam = searchParams.get("qualificationId") ?? "";
+  const requestedHasEmployer = searchParams.get("hasEmployer");
   const requestedFlow = searchParams.get("flow");
   const requestedNetStep = searchParams.get("netStep");
   const requestedReviewStatus = searchParams.get("reviewStatus");
@@ -2558,6 +2564,7 @@ Thank you,`,
     activeRegistrationScreen?.submission?.continueLabel ??
     activeRegistrationScreen?.navigation?.next?.label ??
     "Continue";
+  const requiresProviderSignature = hasEmployer === "yes";
 
   const resolvedBookingId = activeBookingId;
   const {
@@ -2660,6 +2667,12 @@ Thank you,`,
       setActiveBookingId(requestedBookingId);
     }
   }, [activeBookingId, searchParams]);
+
+  React.useEffect(() => {
+    if (requestedHasEmployer === "yes" || requestedHasEmployer === "no") {
+      setHasEmployer(requestedHasEmployer);
+    }
+  }, [requestedHasEmployer]);
 
   React.useEffect(() => {
     const variant =
@@ -3583,6 +3596,8 @@ Thank you,`,
         params.set("bookingId", bookingReference);
       }
 
+      params.set("hasEmployer", hasEmployer);
+
       if (nextReviewStatus) {
         params.set("reviewStatus", nextReviewStatus);
       } else {
@@ -3591,7 +3606,7 @@ Thank you,`,
 
       router.replace(`/dashboard/courses/${course.slug}/book?${params.toString()}`);
     },
-    [course.slug, netFlowType, resolvedBookingId, router, searchParams]
+    [course.slug, hasEmployer, netFlowType, resolvedBookingId, router, searchParams]
   );
 
   const moveToNetStep = React.useCallback(
@@ -4095,7 +4110,15 @@ Thank you,`,
                     value={hasEmployer === "yes" ? "Yes" : "No"}
                     onChange={(value) => {
                       setEmployerStepError("");
-                      setHasEmployer(value === "Yes" ? "yes" : "no");
+                      const nextHasEmployer = value === "Yes" ? "yes" : "no";
+                      setHasEmployer(nextHasEmployer);
+                      router.replace(
+                        `/dashboard/courses/${course.slug}/book?${(() => {
+                          const params = new URLSearchParams(searchParams.toString());
+                          params.set("hasEmployer", nextHasEmployer);
+                          return params.toString();
+                        })()}`
+                      );
                     }}
                   />
                 </div>
@@ -4498,6 +4521,7 @@ Thank you,`,
                       setProviderRequestModalOpen(true);
                     }}
                     onContinue={handleSignaturesContinue}
+                    requiresProviderSignature={requiresProviderSignature}
                   />
                 </>
               ) : null}
@@ -4849,7 +4873,7 @@ Thank you,`,
       />
 
       <AskForSignedModal
-        open={providerRequestModalOpen}
+        open={providerRequestModalOpen && requiresProviderSignature}
         value={providerSignatureRequest}
         onChange={updateProviderSignatureRequest}
         onClose={() => setProviderRequestModalOpen(false)}
