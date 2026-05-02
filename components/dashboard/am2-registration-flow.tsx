@@ -1739,6 +1739,44 @@ function NetSubmitPanelContent({
   );
 }
 
+function mapSubmitScreenForFlow({
+  screen,
+  flowType,
+  requiresProviderSignature,
+}: {
+  screen: GetBookingFlowSubmitResponse["data"]["screen"];
+  flowType: NetFlowType;
+  requiresProviderSignature: boolean;
+}) {
+  const checklistLabel =
+    flowType === "am2e-v1"
+      ? "AM2E V1 Checklist"
+      : flowType === "am2e"
+        ? "AM2E Checklist"
+        : "AM2 Checklist";
+
+  return {
+    ...screen,
+    sections: screen.sections
+      .filter((section) =>
+        requiresProviderSignature
+          ? true
+          : section.id !== "training_provider_signature" &&
+            section.label !== "Training Provider Signature"
+      )
+      .map((section) => ({
+        ...section,
+        label:
+          section.id === "checklist" ||
+          section.label === "AM2 Checklist" ||
+          section.label === "AM2E Checklist" ||
+          section.label === "AM2E V1 Checklist"
+            ? checklistLabel
+            : section.label,
+      })),
+  };
+}
+
 function NetReviewPanel({
   reviewStatus,
   reviewScreen,
@@ -3498,6 +3536,13 @@ Thank you,`,
 
   const effectiveReviewScreen: GetBookingFlowReviewResponse["data"]["screen"] | SubmitBookingForReviewResponse["data"]["screen"] | null =
     reviewScreenData?.data.screen ?? reviewScreen;
+  const effectiveSubmitScreen = submitScreenData?.data.screen
+    ? mapSubmitScreenForFlow({
+        screen: submitScreenData.data.screen,
+        flowType: netFlowType,
+        requiresProviderSignature,
+      })
+    : null;
 
   const handleCandidateSignatureSubmit = async (
     payload: SignatureSubmissionPayload
@@ -4550,8 +4595,8 @@ Thank you,`,
 
               {!isSubmitScreenLoading &&
               !isSubmitScreenError &&
-              submitScreenData?.data.screen ? (
-                <NetSubmitPanelContent screen={submitScreenData.data.screen} />
+              effectiveSubmitScreen ? (
+                <NetSubmitPanelContent screen={effectiveSubmitScreen} />
               ) : null}
             </>
           ) : null}
