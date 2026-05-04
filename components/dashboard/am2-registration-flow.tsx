@@ -496,22 +496,97 @@ function formatShortDateInput(value: string) {
 type Am2eChecklistFlowData =
   GetAm2eChecklistFlowByCourseResponse["data"];
 
-function mapAm2eFlowToDocumentsScreen(
-  flowData: Am2eChecklistFlowData,
-  uploadedDocumentIds: string[]
-) {
-  const documents = flowData.flow.documents;
-  const requirements =
-    documents?.requirements.map((item) => ({
+type LocalDocumentRequirement = {
+  id: string;
+  title: string;
+  description: string;
+};
+
+const am2DocumentRequirements: LocalDocumentRequirement[] = [
+  {
+    id: "learner-history-report-or-walled-garden-report",
+    title: "Learner History Report or Walled Garden Report (City & Guilds)",
+    description: "Requested from your NVQ provider",
+  },
+];
+
+const am2eV1DocumentRequirements: LocalDocumentRequirement[] = [
+  {
+    id: "experienced-worker-qualification-certificate",
+    title: "The Experienced Worker Qualification Certificate",
+    description: "certificate from either City & Guilds (2346) or EAL (603/5982/1)",
+  },
+  {
+    id: "city-and-guilds-walled-garden-report-or-eal-learner-history-report",
+    title: "City & Guilds Walled Garden Report or EAL Learner History Report",
+    description: "You will need to request this from your NVQ provider",
+  },
+  {
+    id: "skills-scan-pre-sept-2023",
+    title: "Skills Scan (Pre-Sept 2023)",
+    description: "You will need to request this from your NVQ provider",
+  },
+  {
+    id: "level-2-or-level-3-technical-certificate",
+    title: "Level 2 or Level 3 Technical Certificate",
+    description:
+      "For overseas candidates an Electrotechnical Statement from Ecctis (formerly UK NARIC) is required to show UK equivalence if you do not hold a UK Level 2 or 3 technical certificate.",
+  },
+];
+
+function getDocumentRequirementsForFlow({
+  flowType,
+  fallbackRequirements,
+}: {
+  flowType: NetFlowType;
+  fallbackRequirements: LocalDocumentRequirement[];
+}) {
+  if (flowType === "am2") {
+    return am2DocumentRequirements;
+  }
+
+  if (flowType === "am2e-v1") {
+    return am2eV1DocumentRequirements;
+  }
+
+  return fallbackRequirements;
+}
+
+function mapLocalDocumentsScreen({
+  flowType,
+  uploadedDocumentIds,
+  baseScreen,
+}: {
+  flowType: NetFlowType;
+  uploadedDocumentIds: string[];
+  baseScreen?: GetBookingFlowDocumentsResponse["data"]["screen"];
+}) {
+  const requirementsSource = getDocumentRequirementsForFlow({
+    flowType,
+    fallbackRequirements:
+      baseScreen?.requirements.map((item) => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+      })) ?? [],
+  });
+  const requirements = requirementsSource.map((item) => {
+    const matchingRequirement = baseScreen?.requirements.find(
+      (requirement) => requirement.id === item.id
+    );
+    const isUploaded = uploadedDocumentIds.includes(item.id);
+
+    return {
       id: item.id,
       title: item.title,
       description: item.description,
-      uploaded: uploadedDocumentIds.includes(item.id),
-      document: null,
+      uploaded: isUploaded,
+      document: matchingRequirement?.document ?? null,
       action: {
-        label: uploadedDocumentIds.includes(item.id) ? "Re upload" : "Upload",
+        label: isUploaded ? "Re upload" : "Upload",
       },
-    })) ?? [];
+    };
+  });
   const uploadedCount = requirements.filter((item) => item.uploaded).length;
   const percentage = requirements.length
     ? Math.round((uploadedCount / requirements.length) * 100)
@@ -519,26 +594,77 @@ function mapAm2eFlowToDocumentsScreen(
 
   return {
     title:
-      documents?.title ||
-      (flowData.checklistVariant === "am2e-v1"
-        ? "AM2E V1 Checklist"
-        : "AM2E Checklist"),
+      flowType === "am2"
+        ? "AM2 Readiness Checklist"
+        : flowType === "am2e-v1"
+          ? "AM2E V1 Checklist"
+          : baseScreen?.title || "AM2E Checklist",
     subtitle:
-      documents?.subtitle || "The required documents to be uploaded are:",
+      flowType === "am2"
+        ? "for those who don't already hold AM2"
+        : baseScreen?.subtitle || "The required documents to be uploaded are:",
     importantInformation:
-      documents?.importantInformation ||
-      "Note: For reasonable adjustments to be applied, please contact the center for further information.",
+      flowType === "am2"
+        ? "You must upload all required documents before proceeding."
+        : baseScreen?.importantInformation ||
+          "Note: For reasonable adjustments to be applied, please contact the center for further information.",
     requirements,
     completion: {
       percentage,
     },
     actions: {
       continue: {
-        label: "Continue",
-        enabled: requirements.length > 0 && requirements.every((item) => item.uploaded),
+        label: baseScreen?.actions?.continue?.label || "Continue",
+        enabled:
+          requirements.length > 0 &&
+          requirements.every((item) => item.uploaded) &&
+          baseScreen?.actions?.continue?.enabled !== false,
       },
     },
   };
+}
+
+function mapAm2eFlowToDocumentsScreen(
+  flowData: Am2eChecklistFlowData,
+  uploadedDocumentIds: string[]
+) {
+  return mapLocalDocumentsScreen({
+    flowType: flowData.checklistVariant,
+    uploadedDocumentIds,
+    baseScreen: flowData.flow.documents
+      ? {
+          steps: [],
+          title: flowData.flow.documents.title,
+          subtitle: flowData.flow.documents.subtitle,
+          importantInformation: flowData.flow.documents.importantInformation,
+          course: {
+            id: "",
+            title: "",
+            slug: "",
+          },
+          requirements: flowData.flow.documents.requirements.map((item) => ({
+            id: item.id,
+            title: item.title,
+            description: item.description,
+            uploaded: uploadedDocumentIds.includes(item.id),
+            document: null,
+            action: null,
+          })),
+          completion: {
+            uploadedCount: 0,
+            totalRequired: 0,
+            percentage: 0,
+          },
+          actions: {
+            continue: {
+              label: "Continue",
+              enabled: true,
+              apiUrl: "",
+            },
+          },
+        }
+      : undefined,
+  });
 }
 
 function mapAm2eFlowToChecklistSummaryScreen(flowData: Am2eChecklistFlowData) {
@@ -913,6 +1039,7 @@ function NetSignaturesPanel({
   onCandidateSign,
   onProviderRequest,
   onContinue,
+  requiresProviderSignature,
 }: {
   screen: {
     card: {
@@ -939,6 +1066,7 @@ function NetSignaturesPanel({
   onCandidateSign: () => void;
   onProviderRequest: () => void;
   onContinue: () => void;
+  requiresProviderSignature: boolean;
 }) {
   const candidateItem = screen.items.find((item) => item.id === "candidate");
   const providerItem = screen.items.find(
@@ -951,7 +1079,8 @@ function NetSignaturesPanel({
   // backend enables the step after provider signature completion.
   const allSigned =
     screen.actions?.continue?.enabled !== false ||
-    (candidateSigned && (providerSigned || providerRequested));
+    (candidateSigned &&
+      (!requiresProviderSignature || providerSigned || providerRequested));
 
   return (
     <>
@@ -1018,45 +1147,47 @@ function NetSignaturesPanel({
             </div>
           </div>
 
-          <div className="rounded-xl border border-[#dbe7f4] bg-white p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="flex items-center gap-2 text-sm font-semibold text-[#4451ac]">
-                  <PenTool className="h-4 w-4" />
-                  {providerItem?.label || "Training Provider"}
-                </p>
-                <p
-                  className={`mt-3 flex items-center gap-2 text-xs ${
-                    providerSigned ? "text-[#1e9d57]" : "text-[#8b97ac]"
-                  }`}
-                >
-                  {providerSigned ? (
-                    <CircleCheckBig className="h-4 w-4" />
-                  ) : providerRequested ? (
-                    <Clock3 className="h-4 w-4" />
-                  ) : (
-                    <span className="grid h-4 w-4 place-items-center rounded-full bg-[#ffe8ea] text-[10px] text-[#d55465]">
-                      x
-                    </span>
-                  )}
-                  {providerSigned
-                    ? "Signed"
-                    : providerRequested
-                      ? "Request sent"
-                      : "not Signed"}
-                </p>
-              </div>
+          {requiresProviderSignature ? (
+            <div className="rounded-xl border border-[#dbe7f4] bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="flex items-center gap-2 text-sm font-semibold text-[#4451ac]">
+                    <PenTool className="h-4 w-4" />
+                    {providerItem?.label || "Training Provider"}
+                  </p>
+                  <p
+                    className={`mt-3 flex items-center gap-2 text-xs ${
+                      providerSigned ? "text-[#1e9d57]" : "text-[#8b97ac]"
+                    }`}
+                  >
+                    {providerSigned ? (
+                      <CircleCheckBig className="h-4 w-4" />
+                    ) : providerRequested ? (
+                      <Clock3 className="h-4 w-4" />
+                    ) : (
+                      <span className="grid h-4 w-4 place-items-center rounded-full bg-[#ffe8ea] text-[10px] text-[#d55465]">
+                        x
+                      </span>
+                    )}
+                    {providerSigned
+                      ? "Signed"
+                      : providerRequested
+                        ? "Request sent"
+                        : "not Signed"}
+                  </p>
+                </div>
 
-              <button
-                type="button"
-                onClick={onProviderRequest}
-                className="rounded-lg border border-[#d5e2f2] bg-white px-4 py-2 text-xs font-medium text-[#4451ac]"
-              >
-                {providerItem?.action?.label ||
-                  (providerSigned ? "View" : "Ask for signed")}
-              </button>
+                <button
+                  type="button"
+                  onClick={onProviderRequest}
+                  className="rounded-lg border border-[#d5e2f2] bg-white px-4 py-2 text-xs font-medium text-[#4451ac]"
+                >
+                  {providerItem?.action?.label ||
+                    (providerSigned ? "View" : "Ask for signed")}
+                </button>
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
 
         <div className="mt-4">
@@ -1606,6 +1737,44 @@ function NetSubmitPanelContent({
       </div>
     </>
   );
+}
+
+function mapSubmitScreenForFlow({
+  screen,
+  flowType,
+  requiresProviderSignature,
+}: {
+  screen: GetBookingFlowSubmitResponse["data"]["screen"];
+  flowType: NetFlowType;
+  requiresProviderSignature: boolean;
+}) {
+  const checklistLabel =
+    flowType === "am2e-v1"
+      ? "AM2E V1 Checklist"
+      : flowType === "am2e"
+        ? "AM2E Checklist"
+        : "AM2 Checklist";
+
+  return {
+    ...screen,
+    sections: screen.sections
+      .filter((section) =>
+        requiresProviderSignature
+          ? true
+          : section.id !== "training_provider_signature" &&
+            section.label !== "Training Provider Signature"
+      )
+      .map((section) => ({
+        ...section,
+        label:
+          section.id === "checklist" ||
+          section.label === "AM2 Checklist" ||
+          section.label === "AM2E Checklist" ||
+          section.label === "AM2E V1 Checklist"
+            ? checklistLabel
+            : section.label,
+      })),
+  };
 }
 
 function NetReviewPanel({
@@ -2360,6 +2529,7 @@ Thank you,`,
 
   const selectedQualification = searchParams.get("qualification") ?? "";
   const selectedQualificationIdParam = searchParams.get("qualificationId") ?? "";
+  const requestedHasEmployer = searchParams.get("hasEmployer");
   const requestedFlow = searchParams.get("flow");
   const requestedNetStep = searchParams.get("netStep");
   const requestedReviewStatus = searchParams.get("reviewStatus");
@@ -2432,6 +2602,7 @@ Thank you,`,
     activeRegistrationScreen?.submission?.continueLabel ??
     activeRegistrationScreen?.navigation?.next?.label ??
     "Continue";
+  const requiresProviderSignature = hasEmployer === "yes";
 
   const resolvedBookingId = activeBookingId;
   const {
@@ -2486,12 +2657,30 @@ Thank you,`,
     am2eChecklistFlowData?.checklistVariant === netFlowType
       ? am2eChecklistFlowData
       : null;
+  const uploadedDocumentIds = React.useMemo(() => {
+    const serverUploadedIds =
+      documentsScreenData?.data.screen.requirements
+        .filter((item) => item.uploaded)
+        .map((item) => item.id) ?? [];
+
+    return Array.from(
+      new Set([...serverUploadedIds, ...sessionUploadedDocIds])
+    );
+  }, [documentsScreenData?.data.screen.requirements, sessionUploadedDocIds]);
   const am2eDocumentsScreen = activeAm2eChecklistFlowData
     ? mapAm2eFlowToDocumentsScreen(
         activeAm2eChecklistFlowData,
-        sessionUploadedDocIds
+        uploadedDocumentIds
       )
     : null;
+  const am2DocumentsScreen =
+    netFlowType === "am2"
+      ? mapLocalDocumentsScreen({
+          flowType: "am2",
+          uploadedDocumentIds,
+          baseScreen: documentsScreenData?.data.screen,
+        })
+      : null;
   const am2eChecklistSummaryScreen = activeAm2eChecklistFlowData
     ? mapAm2eFlowToChecklistSummaryScreen(activeAm2eChecklistFlowData)
     : null;
@@ -2516,6 +2705,12 @@ Thank you,`,
       setActiveBookingId(requestedBookingId);
     }
   }, [activeBookingId, searchParams]);
+
+  React.useEffect(() => {
+    if (requestedHasEmployer === "yes" || requestedHasEmployer === "no") {
+      setHasEmployer(requestedHasEmployer);
+    }
+  }, [requestedHasEmployer]);
 
   React.useEffect(() => {
     const variant =
@@ -3341,6 +3536,13 @@ Thank you,`,
 
   const effectiveReviewScreen: GetBookingFlowReviewResponse["data"]["screen"] | SubmitBookingForReviewResponse["data"]["screen"] | null =
     reviewScreenData?.data.screen ?? reviewScreen;
+  const effectiveSubmitScreen = submitScreenData?.data.screen
+    ? mapSubmitScreenForFlow({
+        screen: submitScreenData.data.screen,
+        flowType: netFlowType,
+        requiresProviderSignature,
+      })
+    : null;
 
   const handleCandidateSignatureSubmit = async (
     payload: SignatureSubmissionPayload
@@ -3439,6 +3641,8 @@ Thank you,`,
         params.set("bookingId", bookingReference);
       }
 
+      params.set("hasEmployer", hasEmployer);
+
       if (nextReviewStatus) {
         params.set("reviewStatus", nextReviewStatus);
       } else {
@@ -3447,7 +3651,7 @@ Thank you,`,
 
       router.replace(`/dashboard/courses/${course.slug}/book?${params.toString()}`);
     },
-    [course.slug, netFlowType, resolvedBookingId, router, searchParams]
+    [course.slug, hasEmployer, netFlowType, resolvedBookingId, router, searchParams]
   );
 
   const moveToNetStep = React.useCallback(
@@ -3951,7 +4155,15 @@ Thank you,`,
                     value={hasEmployer === "yes" ? "Yes" : "No"}
                     onChange={(value) => {
                       setEmployerStepError("");
-                      setHasEmployer(value === "Yes" ? "yes" : "no");
+                      const nextHasEmployer = value === "Yes" ? "yes" : "no";
+                      setHasEmployer(nextHasEmployer);
+                      router.replace(
+                        `/dashboard/courses/${course.slug}/book?${(() => {
+                          const params = new URLSearchParams(searchParams.toString());
+                          params.set("hasEmployer", nextHasEmployer);
+                          return params.toString();
+                        })()}`
+                      );
                     }}
                   />
                 </div>
@@ -4232,9 +4444,15 @@ Thank you,`,
 
               {!isDocumentsScreenLoading &&
               !isDocumentsScreenError &&
-              (am2eDocumentsScreen || documentsScreenData?.data.screen) ? (
+              (am2DocumentsScreen ||
+                am2eDocumentsScreen ||
+                documentsScreenData?.data.screen) ? (
                 <NetDocumentsPanel
-                  screen={am2eDocumentsScreen || documentsScreenData!.data.screen}
+                  screen={
+                    am2DocumentsScreen ||
+                    am2eDocumentsScreen ||
+                    documentsScreenData!.data.screen
+                  }
                   onUpload={handleUploadDocument}
                   onContinue={() => moveToNetStep("checklist")}
                   uploadingDocumentId={uploadingDocumentId}
@@ -4348,6 +4566,7 @@ Thank you,`,
                       setProviderRequestModalOpen(true);
                     }}
                     onContinue={handleSignaturesContinue}
+                    requiresProviderSignature={requiresProviderSignature}
                   />
                 </>
               ) : null}
@@ -4376,8 +4595,8 @@ Thank you,`,
 
               {!isSubmitScreenLoading &&
               !isSubmitScreenError &&
-              submitScreenData?.data.screen ? (
-                <NetSubmitPanelContent screen={submitScreenData.data.screen} />
+              effectiveSubmitScreen ? (
+                <NetSubmitPanelContent screen={effectiveSubmitScreen} />
               ) : null}
             </>
           ) : null}
@@ -4699,7 +4918,7 @@ Thank you,`,
       />
 
       <AskForSignedModal
-        open={providerRequestModalOpen}
+        open={providerRequestModalOpen && requiresProviderSignature}
         value={providerSignatureRequest}
         onChange={updateProviderSignatureRequest}
         onClose={() => setProviderRequestModalOpen(false)}
