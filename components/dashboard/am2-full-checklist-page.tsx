@@ -523,21 +523,62 @@ function mapAm2eFlowToFullChecklistScreen({
         ? am2eV1ChecklistSections
         : null;
   const sections =
-    overrideSections
-      ? overrideSections.map((section) => ({
-          ...section,
-          totalItems: section.items.length,
-          items: section.items.map((criterion, index) => ({
-            id: `${section.id}-item-${index + 1}`,
-            no: index + 1,
-            criterion,
-            options: {
-              knowledge: defaultChecklistOptions,
-              experience: defaultChecklistOptions,
-            },
-          })),
-        }))
-      : backendSections ?? [];
+    overrideSections && backendSections?.length
+      ? overrideSections.map((section) => {
+          const backendSection = backendSections.find(
+            (entry) => entry.key.trim().toUpperCase() === section.key.trim().toUpperCase()
+          );
+
+          return {
+            id: backendSection?.id ?? section.id,
+            key: backendSection?.key ?? section.key,
+            label: backendSection?.label ?? section.label,
+            title: backendSection?.title ?? section.title,
+            duration: backendSection?.duration ?? section.duration,
+            summary: backendSection?.summary ?? section.summary,
+            totalItems: backendSection?.totalItems ?? section.items.length,
+            items: section.items.map((criterion, index) => {
+              const backendItem = backendSection?.items[index];
+
+              return {
+                id: backendItem?.id ?? `${section.id}-item-${index + 1}`,
+                no: backendItem?.no ?? index + 1,
+                criterion: backendItem?.criterion ?? criterion,
+                knowledgeLevel: backendItem?.knowledgeLevel,
+                experienceLevel: backendItem?.experienceLevel,
+                knowledge: backendItem?.knowledge,
+                experience: backendItem?.experience,
+                options: {
+                  knowledge:
+                    backendItem?.options.knowledge?.length
+                      ? backendItem.options.knowledge
+                      : defaultChecklistOptions,
+                  experience:
+                    backendItem?.options.experience?.length
+                      ? backendItem.options.experience
+                      : defaultChecklistOptions,
+                },
+              };
+            }),
+          };
+        })
+      : backendSections?.length
+        ? backendSections
+        : overrideSections
+          ? overrideSections.map((section) => ({
+              ...section,
+              totalItems: section.items.length,
+              items: section.items.map((criterion, index) => ({
+                id: `${section.id}-item-${index + 1}`,
+                no: index + 1,
+                criterion,
+                options: {
+                  knowledge: defaultChecklistOptions,
+                  experience: defaultChecklistOptions,
+                },
+              })),
+            }))
+          : [];
   const activeSource =
     sections.find(
       (entry) =>
