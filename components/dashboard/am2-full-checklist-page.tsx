@@ -1198,7 +1198,9 @@ export default function Am2FullChecklistPage({
   );
   const normalizedSection = section.trim().toUpperCase();
   const isShowingRequestedSection =
-    editableScreen?.activeSection.key?.trim().toUpperCase() === normalizedSection;
+    flow === "am2"
+      ? Boolean(editableScreen)
+      : editableScreen?.activeSection.key?.trim().toUpperCase() === normalizedSection;
   const hasUsableOptimisticScreen =
     flow !== "am2" && Boolean(editableScreen) && isShowingRequestedSection;
   const isSectionTransitioning =
@@ -1243,11 +1245,13 @@ export default function Am2FullChecklistPage({
 
   React.useEffect(() => {
     if (flow === "am2") {
-      setEditableScreen(null);
       return;
     }
 
-    if (!editableScreen || bookingId !== extractBookingIdFromApiUrl(editableScreen.actions?.saveDraft?.apiUrl)) {
+    if (
+      !editableScreen ||
+      bookingId !== extractBookingIdFromApiUrl(editableScreen.actions?.saveDraft?.apiUrl)
+    ) {
       setEditableScreen(null);
     }
   }, [bookingId, editableScreen, flow]);
