@@ -12,10 +12,11 @@ export default async function DashboardCourseFullChecklistPage({
     courseId?: string;
     flow?: string;
     section?: string;
+    hasEmployer?: string;
   }>;
 }) {
   const { slug } = await params;
-  const { bookingId, courseId, flow, section } = await searchParams;
+  const { bookingId, courseId, flow, section, hasEmployer } = await searchParams;
   const fallbackCourse = getCourseBySlug("am2-assessment-preparation");
   const course =
     getCourseBySlug(slug) ??
@@ -38,6 +39,7 @@ export default async function DashboardCourseFullChecklistPage({
       bookingId={bookingId}
       courseId={courseId}
       section={section}
+      hasEmployer={hasEmployer}
     />
   );
 }
