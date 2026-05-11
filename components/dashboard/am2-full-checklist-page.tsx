@@ -21,6 +21,7 @@ type Am2FullChecklistPageProps = {
   bookingId?: string;
   courseId?: string;
   section?: string;
+  hasEmployer?: string;
 };
 
 type ChecklistScreen =
@@ -329,11 +330,13 @@ function buildQueryString({
   bookingId,
   courseId,
   section,
+  hasEmployer,
 }: {
   flow: Am2FullChecklistPageProps["flow"];
   bookingId?: string;
   courseId?: string;
   section?: string;
+  hasEmployer?: string;
 }) {
   const params = new URLSearchParams();
   params.set("flow", flow);
@@ -348,6 +351,10 @@ function buildQueryString({
 
   if (section) {
     params.set("section", section);
+  }
+
+  if (hasEmployer === "yes" || hasEmployer === "no") {
+    params.set("hasEmployer", hasEmployer);
   }
 
   return params.toString();
@@ -523,21 +530,62 @@ function mapAm2eFlowToFullChecklistScreen({
         ? am2eV1ChecklistSections
         : null;
   const sections =
-    overrideSections
-      ? overrideSections.map((section) => ({
-          ...section,
-          totalItems: section.items.length,
-          items: section.items.map((criterion, index) => ({
-            id: `${section.id}-item-${index + 1}`,
-            no: index + 1,
-            criterion,
-            options: {
-              knowledge: defaultChecklistOptions,
-              experience: defaultChecklistOptions,
-            },
-          })),
-        }))
-      : backendSections ?? [];
+    overrideSections && backendSections?.length
+      ? overrideSections.map((section) => {
+          const backendSection = backendSections.find(
+            (entry) => entry.key.trim().toUpperCase() === section.key.trim().toUpperCase()
+          );
+
+          return {
+            id: backendSection?.id ?? section.id,
+            key: backendSection?.key ?? section.key,
+            label: backendSection?.label ?? section.label,
+            title: backendSection?.title ?? section.title,
+            duration: backendSection?.duration ?? section.duration,
+            summary: backendSection?.summary ?? section.summary,
+            totalItems: backendSection?.totalItems ?? section.items.length,
+            items: section.items.map((criterion, index) => {
+              const backendItem = backendSection?.items[index];
+
+              return {
+                id: backendItem?.id ?? `${section.id}-item-${index + 1}`,
+                no: backendItem?.no ?? index + 1,
+                criterion: backendItem?.criterion ?? criterion,
+                knowledgeLevel: backendItem?.knowledgeLevel,
+                experienceLevel: backendItem?.experienceLevel,
+                knowledge: backendItem?.knowledge,
+                experience: backendItem?.experience,
+                options: {
+                  knowledge:
+                    backendItem?.options.knowledge?.length
+                      ? backendItem.options.knowledge
+                      : defaultChecklistOptions,
+                  experience:
+                    backendItem?.options.experience?.length
+                      ? backendItem.options.experience
+                      : defaultChecklistOptions,
+                },
+              };
+            }),
+          };
+        })
+      : backendSections?.length
+        ? backendSections
+        : overrideSections
+          ? overrideSections.map((section) => ({
+              ...section,
+              totalItems: section.items.length,
+              items: section.items.map((criterion, index) => ({
+                id: `${section.id}-item-${index + 1}`,
+                no: index + 1,
+                criterion,
+                options: {
+                  knowledge: defaultChecklistOptions,
+                  experience: defaultChecklistOptions,
+                },
+              })),
+            }))
+          : [];
   const activeSource =
     sections.find(
       (entry) =>
@@ -672,6 +720,7 @@ function FullChecklistContent({
   flow,
   bookingId,
   courseId,
+  hasEmployer,
   screen,
   onScreenChange,
   flowData,
@@ -680,6 +729,7 @@ function FullChecklistContent({
   flow: Am2FullChecklistPageProps["flow"];
   bookingId: string;
   courseId?: string;
+  hasEmployer?: string;
   screen: ChecklistScreen;
   onScreenChange: React.Dispatch<React.SetStateAction<ChecklistScreen | null>>;
   flowData: Am2eChecklistFlowData | null;
@@ -720,6 +770,7 @@ function FullChecklistContent({
     flow,
     bookingId,
     courseId,
+    hasEmployer,
   })}&netStep=signatures`;
 
   const navigateToSection = React.useCallback(
@@ -730,10 +781,11 @@ function FullChecklistContent({
           bookingId,
           courseId,
           section: targetSection,
+          hasEmployer,
         })}`
       );
     },
-    [bookingId, courseId, flow, pathname, router]
+    [bookingId, courseId, flow, hasEmployer, pathname, router]
   );
 
   const updateItemSelection = React.useCallback(
@@ -1119,6 +1171,7 @@ export default function Am2FullChecklistPage({
   bookingId = "",
   courseId = "",
   section = "A1",
+  hasEmployer,
 }: Am2FullChecklistPageProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -1157,7 +1210,9 @@ export default function Am2FullChecklistPage({
   );
   const normalizedSection = section.trim().toUpperCase();
   const isShowingRequestedSection =
-    editableScreen?.activeSection.key?.trim().toUpperCase() === normalizedSection;
+    flow === "am2"
+      ? Boolean(editableScreen)
+      : editableScreen?.activeSection.key?.trim().toUpperCase() === normalizedSection;
   const hasUsableOptimisticScreen =
     flow !== "am2" && Boolean(editableScreen) && isShowingRequestedSection;
   const isSectionTransitioning =
@@ -1202,11 +1257,13 @@ export default function Am2FullChecklistPage({
 
   React.useEffect(() => {
     if (flow === "am2") {
-      setEditableScreen(null);
       return;
     }
 
-    if (!editableScreen || bookingId !== extractBookingIdFromApiUrl(editableScreen.actions?.saveDraft?.apiUrl)) {
+    if (
+      !editableScreen ||
+      bookingId !== extractBookingIdFromApiUrl(editableScreen.actions?.saveDraft?.apiUrl)
+    ) {
       setEditableScreen(null);
     }
   }, [bookingId, editableScreen, flow]);
@@ -1240,9 +1297,10 @@ export default function Am2FullChecklistPage({
         bookingId: nextBookingId,
         courseId: previewCourseId,
         section,
+        hasEmployer,
       })}`
     );
-  }, [bookingId, editableScreen, flow, pathname, previewCourseId, router, section]);
+  }, [bookingId, editableScreen, flow, hasEmployer, pathname, previewCourseId, router, section]);
 
   return (
     <div className="space-y-6">
@@ -1303,6 +1361,7 @@ export default function Am2FullChecklistPage({
             flow={flow}
             bookingId={bookingId}
             courseId={previewCourseId}
+            hasEmployer={hasEmployer}
             screen={editableScreen}
             onScreenChange={setEditableScreen}
             flowData={am2eFlowData}

@@ -12,13 +12,20 @@ export default async function DashboardCourseFullChecklistPage({
     courseId?: string;
     flow?: string;
     section?: string;
+    hasEmployer?: string;
   }>;
 }) {
   const { slug } = await params;
-  const { bookingId, courseId, flow, section } = await searchParams;
-  const course = getCourseBySlug(slug);
+  const { bookingId, courseId, flow, section, hasEmployer } = await searchParams;
+  const fallbackCourse = getCourseBySlug("am2-assessment-preparation");
+  const course =
+    getCourseBySlug(slug) ??
+    ((flow === "am2" || flow === "am2e" || flow === "am2e-v1") &&
+    slug === "am2-assessment-preparation"
+      ? fallbackCourse
+      : undefined);
 
-  if (!course || course.slug !== "am2-assessment-preparation") {
+  if (!course) {
     notFound();
   }
 
@@ -32,6 +39,7 @@ export default async function DashboardCourseFullChecklistPage({
       bookingId={bookingId}
       courseId={courseId}
       section={section}
+      hasEmployer={hasEmployer}
     />
   );
 }

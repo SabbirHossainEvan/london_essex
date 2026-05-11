@@ -267,6 +267,10 @@ function isAm2eEligibleQualification({
   );
 }
 
+function getEmployerStatusStorageKey(bookingId: string) {
+  return `am2-booking-has-employer:${bookingId}`;
+}
+
 function Stepper<T extends string>({
   steps,
   currentStep,
@@ -2605,6 +2609,17 @@ Thank you,`,
   const requiresProviderSignature = hasEmployer === "yes";
 
   const resolvedBookingId = activeBookingId;
+  React.useEffect(() => {
+    if (!resolvedBookingId || typeof window === "undefined") {
+      return;
+    }
+
+    window.sessionStorage.setItem(
+      getEmployerStatusStorageKey(resolvedBookingId),
+      hasEmployer
+    );
+  }, [hasEmployer, resolvedBookingId]);
+
   const {
     data: documentsScreenData,
     isLoading: isDocumentsScreenLoading,
@@ -2709,8 +2724,27 @@ Thank you,`,
   React.useEffect(() => {
     if (requestedHasEmployer === "yes" || requestedHasEmployer === "no") {
       setHasEmployer(requestedHasEmployer);
+      return;
     }
-  }, [requestedHasEmployer]);
+
+    const bookingReference = searchParams.get("bookingId") || activeBookingId;
+
+    if (!bookingReference || typeof window === "undefined") {
+      return;
+    }
+
+    const storedHasEmployer = window.sessionStorage.getItem(
+      getEmployerStatusStorageKey(bookingReference)
+    );
+
+    if (storedHasEmployer === "yes" || storedHasEmployer === "no") {
+      setHasEmployer(storedHasEmployer);
+
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("hasEmployer", storedHasEmployer);
+      router.replace(`/dashboard/courses/${course.slug}/book?${params.toString()}`);
+    }
+  }, [activeBookingId, course.slug, requestedHasEmployer, router, searchParams]);
 
   React.useEffect(() => {
     const variant =
@@ -4498,6 +4532,7 @@ Thank you,`,
                     if (course.id) {
                       params.set("courseId", course.id);
                     }
+                    params.set("hasEmployer", hasEmployer);
                     return params.toString();
                   })()}`}
                   onContinue={() => moveToNetStep("signatures")}
