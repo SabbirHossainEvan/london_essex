@@ -28,6 +28,17 @@ type ChecklistScreen =
   GetBookingFlowChecklistFullResponse["data"]["screen"];
 
 type ChecklistItem = ChecklistScreen["activeSection"]["items"][number];
+type ChecklistSectionItem = Omit<ChecklistItem, "completed">;
+type ChecklistSectionData = {
+  id: string;
+  key: string;
+  label: string;
+  title: string;
+  duration?: string;
+  summary?: string;
+  totalItems: number;
+  items: ChecklistSectionItem[];
+};
 
 type ChecklistOption = {
   id: string;
@@ -497,6 +508,26 @@ function resolveSelectedValueFromMap(
   return selectedEntry?.[0] ?? fallbackValue ?? "";
 }
 
+function createFallbackChecklistItem(
+  sectionId: string,
+  criterion: string,
+  index: number
+): ChecklistSectionItem {
+  return {
+    id: `${sectionId}-item-${index + 1}`,
+    no: index + 1,
+    criterion,
+    knowledgeLevel: undefined,
+    experienceLevel: undefined,
+    knowledge: undefined,
+    experience: undefined,
+    options: {
+      knowledge: defaultChecklistOptions,
+      experience: defaultChecklistOptions,
+    },
+  };
+}
+
 type Am2eChecklistFlowData =
   GetAm2eChecklistFlowByCourseResponse["data"];
 
@@ -529,7 +560,7 @@ function mapAm2eFlowToFullChecklistScreen({
       : flow === "am2e-v1"
         ? am2eV1ChecklistSections
         : null;
-  const sections =
+  const sections: ChecklistSectionData[] =
     overrideSections && backendSections?.length
       ? overrideSections.map((section) => {
           const backendSection = backendSections.find(
@@ -575,15 +606,9 @@ function mapAm2eFlowToFullChecklistScreen({
           ? overrideSections.map((section) => ({
               ...section,
               totalItems: section.items.length,
-              items: section.items.map((criterion, index) => ({
-                id: `${section.id}-item-${index + 1}`,
-                no: index + 1,
-                criterion,
-                options: {
-                  knowledge: defaultChecklistOptions,
-                  experience: defaultChecklistOptions,
-                },
-              })),
+              items: section.items.map((criterion, index) =>
+                createFallbackChecklistItem(section.id, criterion, index)
+              ),
             }))
           : [];
   const activeSource =

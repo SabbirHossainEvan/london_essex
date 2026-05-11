@@ -27,6 +27,7 @@ import PanelCard from "@/components/dashboard/panel-card";
 import {
   type GetBookingFlowSubmitResponse,
   type GetBookingFlowReviewResponse,
+  type GetBookingFlowDocumentsResponse,
   type GetBookingCheckoutPaymentResponse,
   type GetAm2eChecklistFlowByCourseResponse,
   type SubmitBookingForReviewResponse,
@@ -633,7 +634,7 @@ function mapAm2eFlowToDocumentsScreen(
   uploadedDocumentIds: string[]
 ) {
   return mapLocalDocumentsScreen({
-    flowType: flowData.checklistVariant,
+    flowType: flowData.checklistVariant ?? "am2e",
     uploadedDocumentIds,
     baseScreen: flowData.flow.documents
       ? {
@@ -3466,7 +3467,7 @@ Thank you,`,
       }).unwrap();
 
       setAm2eChecklistFlowData(checklistFlowResponse.data);
-      resolvedFlowType = checklistFlowResponse.data.checklistVariant;
+      resolvedFlowType = checklistFlowResponse.data.checklistVariant ?? nextFlowType;
     } catch (checklistFlowError) {
       setEligibilityStepError(
         resolveApiErrorMessage(
