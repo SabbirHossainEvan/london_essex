@@ -158,20 +158,14 @@ export default function CourseDetailsContent({
     setSelectedModalOptionId("");
   }, [initialModalStepId, effectiveBookingModal?.title]);
 
-  const goToBookingPage = (
+  const buildBookingPath = (
     selectedQualification?: string,
     selectedQualificationId?: string,
   ) => {
-    if (!accessToken) {
-      router.push("/login");
-      return;
-    }
-
     const bookingBasePath = bookingHrefBasePath ?? coursesHrefBasePath;
 
     if (!bookingBasePath) {
-      onBookNow?.();
-      return;
+      return "";
     }
 
     const params = new URLSearchParams();
@@ -186,14 +180,35 @@ export default function CourseDetailsContent({
 
     const qualificationQuery = params.toString();
 
-    router.push(
-      `${bookingBasePath}/${course.slug}/book${qualificationQuery ? `?${qualificationQuery}` : ""}`,
-    );
+    return `${bookingBasePath}/${course.slug}/book${qualificationQuery ? `?${qualificationQuery}` : ""}`;
+  };
+
+  const redirectToLoginForBooking = () => {
+    router.push("/login?redirect=%2Fdashboard");
+  };
+
+  const goToBookingPage = (
+    selectedQualification?: string,
+    selectedQualificationId?: string,
+  ) => {
+    if (!accessToken) {
+      redirectToLoginForBooking();
+      return;
+    }
+
+    const bookingPath = buildBookingPath(selectedQualification, selectedQualificationId);
+
+    if (!bookingPath) {
+      onBookNow?.();
+      return;
+    }
+
+    router.push(bookingPath);
   };
 
   const openBookingModal = async () => {
     if (!accessToken) {
-      router.push("/login");
+      redirectToLoginForBooking();
       return;
     }
 
