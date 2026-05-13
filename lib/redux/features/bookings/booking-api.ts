@@ -97,6 +97,199 @@ export type GetBookingsResponse = {
   };
 };
 
+export type GetBookingDashboardResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    dashboard: {
+      welcome: {
+        title: string;
+        subtitle: string;
+        user?: {
+          id: string;
+          name: string;
+          email: string;
+          role?: string;
+          initial?: string;
+          avatarTone?: string;
+        };
+      };
+      runningCourse?: {
+        title: string;
+        booking: {
+          id: string;
+          bookingNumber: string;
+          status: string;
+          paymentStatus: string;
+          statusBadge?: {
+            key?: string;
+            label: string;
+            tone?: string;
+          };
+          course?: {
+            id?: string;
+            title?: string;
+            slug?: string;
+            schedule?: string;
+            duration?: string;
+            location?: string;
+            qualification?: string;
+            assessmentVariant?: string;
+            thumbnailUrl?: string;
+            price?: number;
+            currency?: string;
+            displayPrice?: string;
+            detailsUrl?: string;
+          };
+          session?: {
+            startDateTime?: string | null;
+            endDateTime?: string | null;
+            displayDate?: string;
+            displayTime?: string;
+            displayDateTime?: string;
+            location?: string;
+          };
+          progress?: {
+            title?: string;
+            trackLabel?: string;
+            percentage?: number;
+            percentageLabel?: string;
+            status?: {
+              key?: string;
+              label: string;
+              tone?: string;
+            };
+            description?: string;
+            milestones?: {
+              personalDetails?: boolean;
+              sessionDetails?: boolean;
+              signedTerms?: boolean;
+              payment?: boolean;
+              confirmation?: boolean;
+            };
+          };
+          cards?: {
+            documents?: {
+              id: string;
+              label: string;
+              summary?: string;
+              description?: string;
+              status?: {
+                key?: string;
+                label: string;
+                tone?: string;
+              };
+              action?: {
+                label?: string;
+                url?: string;
+                apiUrl?: string;
+              };
+            };
+            signatures?: {
+              id: string;
+              label: string;
+              summary?: string;
+              description?: string;
+              status?: {
+                key?: string;
+                label: string;
+                tone?: string;
+              };
+              action?: {
+                label?: string;
+                url?: string;
+                apiUrl?: string;
+              };
+            };
+          };
+          action?: {
+            label?: string;
+            url?: string;
+            apiUrl?: string;
+          };
+        } | null;
+        emptyState?: {
+          title?: string;
+          description?: string;
+          action?: {
+            label?: string;
+            url?: string;
+          } | null;
+        } | null;
+      };
+      upcomingCourse?: {
+        title: string;
+        booking: {
+          id: string;
+          bookingNumber: string;
+          statusBadge?: {
+            label: string;
+            tone?: string;
+          };
+          course?: {
+            id?: string;
+            title?: string;
+            slug?: string;
+            schedule?: string;
+            duration?: string;
+            location?: string;
+            qualification?: string;
+            assessmentVariant?: string;
+            thumbnailUrl?: string;
+            price?: number;
+            currency?: string;
+            displayPrice?: string;
+            detailsUrl?: string;
+          };
+          session?: {
+            startDateTime?: string | null;
+            endDateTime?: string | null;
+            displayDate?: string;
+            displayTime?: string;
+            displayDateTime?: string;
+            location?: string;
+          };
+          action?: {
+            label?: string;
+            url?: string;
+            apiUrl?: string;
+          };
+        } | null;
+        emptyState?: {
+          title?: string;
+          description?: string;
+          action?: {
+            label?: string;
+            url?: string;
+          } | null;
+        } | null;
+      };
+      recentActivity?: {
+        title: string;
+        items: Array<{
+          id: string;
+          type?: string;
+          title: string;
+          description?: string;
+          occurredAt?: string;
+          relativeTime?: string;
+          tone?: string;
+        }>;
+        emptyState?: {
+          title?: string;
+          description?: string;
+        } | null;
+      };
+      summary?: {
+        totalBookings?: number;
+        activeBookings?: number;
+        completedBookings?: number;
+        cancelledBookings?: number;
+      };
+    };
+  };
+};
+
 export type GetBookingByIdResponse = {
   success: boolean;
   message: string;
@@ -963,6 +1156,13 @@ export const bookingApi = baseApi.injectEndpoints({
       }),
       providesTags: ["Booking"],
     }),
+    getBookingDashboard: builder.query<GetBookingDashboardResponse, void>({
+      query: () => ({
+        url: "/bookings/dashboard",
+        method: "GET",
+      }),
+      providesTags: ["Booking"],
+    }),
     getBookingById: builder.query<GetBookingByIdResponse, string>({
       query: (bookingId) => ({
         url: `/bookings/${bookingId}`,
@@ -1264,6 +1464,7 @@ export const bookingApi = baseApi.injectEndpoints({
 export const {
   useCreateNormalBookingMutation,
   useGetBookingsQuery,
+  useGetBookingDashboardQuery,
   useGetBookingByIdQuery,
   useGetBookingFlowDocumentsQuery,
   useGetBookingFlowChecklistSummaryQuery,
