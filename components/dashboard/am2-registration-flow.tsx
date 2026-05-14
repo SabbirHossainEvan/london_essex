@@ -4180,10 +4180,7 @@ Thank you,`,
 
               <div className="mt-5 grid gap-4">
                 <div>
-                  <FieldLabel>
-                    If you have no employer or are self-employed please put SELF
-                    EMPLOYED
-                  </FieldLabel>
+                  <FieldLabel>Are you an employer</FieldLabel>
                   <RadioRow
                     name="has-employer"
                     options={["Yes", "No"]}
