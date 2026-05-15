@@ -8,6 +8,21 @@ import AnimatedProgressBar, {
 
 type StatusTone = "success" | "warning" | "info" | "danger" | string;
 
+type SupportCard = {
+  id: string;
+  label: string;
+  summary?: string;
+  description?: string;
+  status?: {
+    label: string;
+    tone?: StatusTone;
+  };
+  action?: {
+    label?: string;
+    url?: string;
+  };
+};
+
 type RunningCourseCardProps = {
   title: string;
   booking?: {
@@ -24,34 +39,8 @@ type RunningCourseCardProps = {
       description?: string;
     };
     cards?: {
-      documents?: {
-        id: string;
-        label: string;
-        summary?: string;
-        description?: string;
-        status?: {
-          label: string;
-          tone?: StatusTone;
-        };
-        action?: {
-          label?: string;
-          url?: string;
-        };
-      };
-      signatures?: {
-        id: string;
-        label: string;
-        summary?: string;
-        description?: string;
-        status?: {
-          label: string;
-          tone?: StatusTone;
-        };
-        action?: {
-          label?: string;
-          url?: string;
-        };
-      };
+      documents?: SupportCard;
+      signatures?: SupportCard;
     };
     action?: {
       label?: string;
@@ -91,9 +80,15 @@ export default function RunningCourseCard({
   emptyState,
 }: RunningCourseCardProps) {
   const progressValue = booking?.progress?.percentage ?? 0;
-  const supportCards = [booking?.cards?.documents, booking?.cards?.signatures].filter(
-    Boolean
-  );
+  const supportCards: SupportCard[] = [];
+
+  if (booking?.cards?.documents) {
+    supportCards.push(booking.cards.documents);
+  }
+
+  if (booking?.cards?.signatures) {
+    supportCards.push(booking.cards.signatures);
+  }
 
   return (
     <PanelCard className="p-0">
@@ -179,7 +174,7 @@ export default function RunningCourseCard({
                           href={item.action.url}
                           className="mt-2 inline-block text-sm font-medium text-[#1ea6df]"
                         >
-                          {item.action.label || "View"} →
+                          {item.action.label || "View"} {"->"}
                         </Link>
                       ) : null}
                     </div>

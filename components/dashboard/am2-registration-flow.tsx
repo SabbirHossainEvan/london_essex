@@ -933,28 +933,25 @@ function NetChecklistPanel({
 }) {
   return (
     <>
-      <div className="mt-2 overflow-hidden rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] px-4 pb-4 pt-3 sm:px-5 sm:pb-5 sm:pt-4">
-        <div className="ml-auto max-w-[290px] text-center sm:max-w-[340px]">
-          {screen.card.subtitle ? (
-            <h2 className="text-[1.35rem] font-semibold leading-[1.12] text-[#0b4a94] sm:text-[1.75rem]">
-              {screen.card.subtitle}
-            </h2>
-          ) : null}
-
-          <div className="mx-auto mt-4 h-1 w-[calc(100vw-3rem)] max-w-[380px] rounded-full bg-[#11b6ad]" />
-
-          <h3 className="mt-3 text-[1.15rem] font-semibold leading-[1.04] text-[#0b4a94] sm:text-[1.55rem]">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-[1rem] font-semibold text-[#3849a0]">
             {screen.card.title}
-          </h3>
-
-          {screen.importantInformation ? (
-            <p className="mx-auto mt-3 max-w-[300px] text-[0.88rem] leading-[1.18] text-[#148fb7] sm:max-w-[320px] sm:text-[0.96rem]">
-              {screen.importantInformation}
-            </p>
+          </h2>
+          {screen.card.subtitle ? (
+            <p className="mt-1 text-xs text-[#7a88a3]">{screen.card.subtitle}</p>
           ) : null}
         </div>
+        <button
+          type="button"
+          className="text-sm font-semibold text-[#4451ac]"
+        >
+          {screen.importantInformation || "Important Information"}
+        </button>
+      </div>
 
-        <div className="mt-5 flex items-center justify-between gap-4">
+      <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
+        <div className="flex items-center justify-between gap-4">
           <span className="text-xs text-[#7a88a3]">Overall Completion</span>
           <span className="text-xs text-[#7a88a3]">{screen.overallCompletion}%</span>
         </div>
