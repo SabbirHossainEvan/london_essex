@@ -742,6 +742,15 @@ export type GetBookingFlowDocumentsResponse = {
   data: {
     screen: {
       steps: BookingFlowStep[];
+      checklistVariant?: string;
+      assessmentVariant?: string;
+      templateId?: string;
+      resolvedFrom?: {
+        source?: string;
+        selectedQuestionId?: string;
+        selectedAnswerId?: string;
+        selectedAnswerLabel?: string;
+      };
       title: string;
       subtitle?: string;
       importantInformation?: string;
@@ -754,16 +763,32 @@ export type GetBookingFlowDocumentsResponse = {
         id: string;
         title: string;
         description: string;
+        acceptedFileTypes?: string[];
+        required?: boolean;
         uploaded: boolean;
         document: {
+          id?: string;
+          type?: string;
+          label?: string;
           fileName?: string;
           fileUrl?: string;
+          mimeType?: string;
           uploadedAt?: string;
         } | null;
         action?: {
           label?: string;
           method?: string;
           apiUrl?: string;
+          contentType?: string;
+          fields?: Array<{
+            id: string;
+            aliases?: string[];
+            label?: string;
+            type?: string;
+            required?: boolean;
+            acceptedFileTypes?: string[];
+            value?: string;
+          }>;
         } | null;
       }>;
       completion: {

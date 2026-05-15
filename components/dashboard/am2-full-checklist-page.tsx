@@ -1003,10 +1003,10 @@ function FullChecklistContent({
   ]);
 
   return (
-    <PanelCard className="rounded-[24px] border-[#d7e5f7] bg-[#eef6ff] p-4 sm:p-5">
+    <PanelCard className="rounded-[24px] border-[#d7e5f7] bg-[#eef6ff] px-4 pb-4 pt-2 sm:px-5 sm:pb-5 sm:pt-3">
       <Stepper steps={screen.steps} />
 
-      <div className="mt-5 rounded-[18px] border border-[#d7e5f7] bg-white/75 p-4 sm:p-5">
+      <div className="mt-2 rounded-[18px] border border-[#d7e5f7] bg-white/75 px-4 pb-4 pt-2 sm:px-5 sm:pb-5 sm:pt-3">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-[1.4rem] font-semibold text-[#3849a0]">

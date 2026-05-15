@@ -501,175 +501,49 @@ function formatShortDateInput(value: string) {
 type Am2eChecklistFlowData =
   GetAm2eChecklistFlowByCourseResponse["data"];
 
-type LocalDocumentRequirement = {
-  id: string;
-  title: string;
-  description: string;
-};
-
-const am2DocumentRequirements: LocalDocumentRequirement[] = [
-  {
-    id: "learner-history-report-or-walled-garden-report",
-    title: "Learner History Report or Walled Garden Report (City & Guilds)",
-    description: "Requested from your NVQ provider",
-  },
-];
-
-const am2eV1DocumentRequirements: LocalDocumentRequirement[] = [
-  {
-    id: "experienced-worker-qualification-certificate",
-    title: "The Experienced Worker Qualification Certificate",
-    description: "certificate from either City & Guilds (2346) or EAL (603/5982/1)",
-  },
-  {
-    id: "city-and-guilds-walled-garden-report-or-eal-learner-history-report",
-    title: "City & Guilds Walled Garden Report or EAL Learner History Report",
-    description: "You will need to request this from your NVQ provider",
-  },
-  {
-    id: "skills-scan-pre-sept-2023",
-    title: "Skills Scan (Pre-Sept 2023)",
-    description: "You will need to request this from your NVQ provider",
-  },
-  {
-    id: "level-2-or-level-3-technical-certificate",
-    title: "Level 2 or Level 3 Technical Certificate",
-    description:
-      "For overseas candidates an Electrotechnical Statement from Ecctis (formerly UK NARIC) is required to show UK equivalence if you do not hold a UK Level 2 or 3 technical certificate.",
-  },
-];
-
-function getDocumentRequirementsForFlow({
-  flowType,
-  fallbackRequirements,
-}: {
-  flowType: NetFlowType;
-  fallbackRequirements: LocalDocumentRequirement[];
-}) {
-  if (flowType === "am2") {
-    return am2DocumentRequirements;
+function mapDocumentsScreen(
+  screen?: GetBookingFlowDocumentsResponse["data"]["screen"] | null
+) {
+  if (!screen || !screen.requirements?.length) {
+    return null;
   }
 
-  if (flowType === "am2e-v1") {
-    return am2eV1DocumentRequirements;
-  }
+  const requirements = screen.requirements.map((item) => ({
+    ...item,
+    action: item.action
+      ? item.action
+      : {
+          label: item.uploaded ? "Replace" : "Upload",
+        },
+  }));
 
-  return fallbackRequirements;
-}
-
-function mapLocalDocumentsScreen({
-  flowType,
-  uploadedDocumentIds,
-  baseScreen,
-}: {
-  flowType: NetFlowType;
-  uploadedDocumentIds: string[];
-  baseScreen?: GetBookingFlowDocumentsResponse["data"]["screen"];
-}) {
-  const requirementsSource = getDocumentRequirementsForFlow({
-    flowType,
-    fallbackRequirements:
-      baseScreen?.requirements.map((item) => ({
-        id: item.id,
-        title: item.title,
-        description: item.description,
-      })) ?? [],
-  });
-  const requirements = requirementsSource.map((item) => {
-    const matchingRequirement = baseScreen?.requirements.find(
-      (requirement) => requirement.id === item.id
-    );
-    const isUploaded = uploadedDocumentIds.includes(item.id);
-
-    return {
-      id: item.id,
-      title: item.title,
-      description: item.description,
-      uploaded: isUploaded,
-      document: matchingRequirement?.document ?? null,
-      action: {
-        label: isUploaded ? "Re upload" : "Upload",
-      },
-    };
-  });
-  const uploadedCount = requirements.filter((item) => item.uploaded).length;
-  const percentage = requirements.length
-    ? Math.round((uploadedCount / requirements.length) * 100)
-    : 0;
+  const totalRequired = screen.completion?.totalRequired ?? requirements.length;
+  const uploadedCount =
+    screen.completion?.uploadedCount ??
+    requirements.filter((item) => item.uploaded).length;
+  const percentage =
+    typeof screen.completion?.percentage === "number"
+      ? screen.completion.percentage
+      : totalRequired > 0
+        ? Math.round((uploadedCount / totalRequired) * 100)
+        : 0;
 
   return {
-    title:
-      flowType === "am2"
-        ? "AM2 Readiness Checklist"
-        : flowType === "am2e-v1"
-          ? "AM2E V1 Checklist"
-          : baseScreen?.title || "AM2E Checklist",
-    subtitle:
-      flowType === "am2"
-        ? "for those who don't already hold AM2"
-        : baseScreen?.subtitle || "The required documents to be uploaded are:",
-    importantInformation:
-      flowType === "am2"
-        ? "You must upload all required documents before proceeding."
-        : baseScreen?.importantInformation ||
-          "Note: For reasonable adjustments to be applied, please contact the center for further information.",
+    ...screen,
     requirements,
     completion: {
       percentage,
     },
     actions: {
       continue: {
-        label: baseScreen?.actions?.continue?.label || "Continue",
+        label: screen.actions?.continue?.label || "Continue",
         enabled:
           requirements.length > 0 &&
           requirements.every((item) => item.uploaded) &&
-          baseScreen?.actions?.continue?.enabled !== false,
+          screen.actions?.continue?.enabled !== false,
       },
     },
   };
-}
-
-function mapAm2eFlowToDocumentsScreen(
-  flowData: Am2eChecklistFlowData,
-  uploadedDocumentIds: string[]
-) {
-  return mapLocalDocumentsScreen({
-    flowType: flowData.checklistVariant ?? "am2e",
-    uploadedDocumentIds,
-    baseScreen: flowData.flow.documents
-      ? {
-          steps: [],
-          title: flowData.flow.documents.title,
-          subtitle: flowData.flow.documents.subtitle,
-          importantInformation: flowData.flow.documents.importantInformation,
-          course: {
-            id: "",
-            title: "",
-            slug: "",
-          },
-          requirements: flowData.flow.documents.requirements.map((item) => ({
-            id: item.id,
-            title: item.title,
-            description: item.description,
-            uploaded: uploadedDocumentIds.includes(item.id),
-            document: null,
-            action: null,
-          })),
-          completion: {
-            uploadedCount: 0,
-            totalRequired: 0,
-            percentage: 0,
-          },
-          actions: {
-            continue: {
-              label: "Continue",
-              enabled: true,
-              apiUrl: "",
-            },
-          },
-        }
-      : undefined,
-  });
 }
 
 function mapAm2eFlowToChecklistSummaryScreen(flowData: Am2eChecklistFlowData) {
@@ -801,12 +675,19 @@ function NetDocumentsPanel({
       id: string;
       title: string;
       description: string;
+      acceptedFileTypes?: string[];
       uploaded: boolean;
       document: {
         fileName?: string;
+        fileUrl?: string;
       } | null;
       action?: {
         label?: string;
+        fields?: Array<{
+          id: string;
+          value?: string;
+          acceptedFileTypes?: string[];
+        }>;
       } | null;
     }>;
     completion: {
@@ -819,19 +700,34 @@ function NetDocumentsPanel({
       } | null;
     };
   };
-  onUpload: (id: string, title: string, file: File) => void;
+  onUpload: (
+    payload: {
+      id: string;
+      title: string;
+      documentType: string;
+      documentLabel: string;
+      file: File;
+    }
+  ) => void;
   onContinue: () => void;
   uploadingDocumentId: string | null;
   uploadError: string;
 }) {
   const allRequiredUploaded = screen.requirements.every((item) => item.uploaded);
 
-  const acceptedDocumentTypes =
-    ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.rtf,.odt,.ods,.zip,.jpg,.jpeg,.png,.webp";
-
   const handleFileChange = (
-    id: string,
-    title: string,
+    item: {
+      id: string;
+      title: string;
+      acceptedFileTypes?: string[];
+      action?: {
+        fields?: Array<{
+          id: string;
+          value?: string;
+          acceptedFileTypes?: string[];
+        }>;
+      } | null;
+    },
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
@@ -840,7 +736,54 @@ function NetDocumentsPanel({
       return;
     }
 
-    onUpload(id, title, file);
+    const maxFileSizeInBytes = 10 * 1024 * 1024;
+    const fieldAcceptedTypes =
+      item.action?.fields?.find((field) => field.id === "file")?.acceptedFileTypes;
+    const acceptedTypes = fieldAcceptedTypes ?? item.acceptedFileTypes ?? [
+      "pdf",
+      "jpg",
+      "jpeg",
+      "png",
+      "webp",
+    ];
+    const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+
+    if (!acceptedTypes.includes(extension)) {
+      onUpload({
+        id: item.id,
+        title: item.title,
+        documentType: "__invalid_file_type__",
+        documentLabel: `Only ${acceptedTypes.map((type) => type.toUpperCase()).join(", ")} uploads are allowed.`,
+        file,
+      });
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > maxFileSizeInBytes) {
+      onUpload({
+        id: item.id,
+        title: item.title,
+        documentType: "__file_too_large__",
+        documentLabel: "Document size must be 10MB or smaller.",
+        file,
+      });
+      event.target.value = "";
+      return;
+    }
+
+    const resolvedDocumentType =
+      item.action?.fields?.find((field) => field.id === "documentType")?.value || item.id;
+    const resolvedDocumentLabel =
+      item.action?.fields?.find((field) => field.id === "documentLabel")?.value || item.title;
+
+    onUpload({
+      id: item.id,
+      title: item.title,
+      documentType: resolvedDocumentType,
+      documentLabel: resolvedDocumentLabel,
+      file,
+    });
     event.target.value = "";
   };
 
@@ -848,7 +791,7 @@ function NetDocumentsPanel({
     <>
       <div>
         <h2 className="inline-flex items-center gap-2 text-[1rem] font-semibold text-[#3849a0]">
-          Upload Full Certificate
+          {screen.title}
         </h2>
       </div>
 
@@ -894,9 +837,12 @@ function NetDocumentsPanel({
                     <p className="mt-1 text-xs text-[#7d8da7]">
                       {item.description}
                     </p>
-                    {item.document?.fileName ? (
+                    {item.document?.fileName || item.document?.fileUrl ? (
                       <p className="mt-2 text-xs font-medium text-[#1f8f54]">
-                        Selected file: {item.document.fileName}
+                        Uploaded:{" "}
+                        {item.document?.fileName ||
+                          item.document?.fileUrl?.split("/").pop() ||
+                          "File attached"}
                       </p>
                     ) : null}
                   </div>
@@ -910,10 +856,17 @@ function NetDocumentsPanel({
                   >
                     <input
                       type="file"
-                      accept={acceptedDocumentTypes}
+                      accept={(
+                        item.action?.fields?.find((field) => field.id === "file")
+                          ?.acceptedFileTypes ??
+                        item.acceptedFileTypes ??
+                        ["pdf", "jpg", "jpeg", "png", "webp"]
+                      )
+                        .map((type) => `.${type}`)
+                        .join(",")}
                       className="hidden"
                       disabled={isUploading}
-                      onChange={(event) => handleFileChange(item.id, item.title, event)}
+                      onChange={(event) => handleFileChange(item, event)}
                     />
                     {isUploading
                       ? "Uploading..."
@@ -980,25 +933,28 @@ function NetChecklistPanel({
 }) {
   return (
     <>
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-[1rem] font-semibold text-[#3849a0]">
-            {screen.card.title}
-          </h2>
+      <div className="mt-2 overflow-hidden rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] px-4 pb-4 pt-3 sm:px-5 sm:pb-5 sm:pt-4">
+        <div className="ml-auto max-w-[290px] text-center sm:max-w-[340px]">
           {screen.card.subtitle ? (
-            <p className="mt-1 text-xs text-[#7a88a3]">{screen.card.subtitle}</p>
+            <h2 className="text-[1.35rem] font-semibold leading-[1.12] text-[#0b4a94] sm:text-[1.75rem]">
+              {screen.card.subtitle}
+            </h2>
+          ) : null}
+
+          <div className="mx-auto mt-4 h-1 w-[calc(100vw-3rem)] max-w-[380px] rounded-full bg-[#11b6ad]" />
+
+          <h3 className="mt-3 text-[1.15rem] font-semibold leading-[1.04] text-[#0b4a94] sm:text-[1.55rem]">
+            {screen.card.title}
+          </h3>
+
+          {screen.importantInformation ? (
+            <p className="mx-auto mt-3 max-w-[300px] text-[0.88rem] leading-[1.18] text-[#148fb7] sm:max-w-[320px] sm:text-[0.96rem]">
+              {screen.importantInformation}
+            </p>
           ) : null}
         </div>
-        <button
-          type="button"
-          className="text-sm font-semibold text-[#4451ac]"
-        >
-          {screen.importantInformation || "Important Information"}
-        </button>
-      </div>
 
-      <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
-        <div className="flex items-center justify-between gap-4">
+        <div className="mt-5 flex items-center justify-between gap-4">
           <span className="text-xs text-[#7a88a3]">Overall Completion</span>
           <span className="text-xs text-[#7a88a3]">{screen.overallCompletion}%</span>
         </div>
@@ -2496,8 +2452,10 @@ export default function Am2RegistrationFlow({
     () => searchParams.get("bookingId") ?? bookingId ?? ""
   );
   const [uploadingDocumentId, setUploadingDocumentId] = React.useState<string | null>(null);
-  const [sessionUploadedDocIds, setSessionUploadedDocIds] = React.useState<string[]>([]);
   const [documentUploadError, setDocumentUploadError] = React.useState("");
+  const [uploadedDocumentsScreen, setUploadedDocumentsScreen] = React.useState<
+    GetBookingFlowDocumentsResponse["data"]["screen"] | null
+  >(null);
   const [candidateSignatureError, setCandidateSignatureError] = React.useState("");
   const [candidateSignatureMessage, setCandidateSignatureMessage] = React.useState("");
   const [providerSignatureRequestError, setProviderSignatureRequestError] =
@@ -2586,6 +2544,9 @@ Thank you,`,
       (section) => section.id === "assessment-details"
     ) ?? assessmentRegistrationScreen?.sections[0];
   const assessmentFields = assessmentSection?.fields ?? [];
+  const assessmentTypeField = assessmentFields.find(
+    (field) => assessmentFieldIdMap[field.id] === "assessmentType"
+  );
   const employerSection =
     employerRegistrationScreen?.sections.find(
       (section) => section.id === "employer-details"
@@ -2673,30 +2634,10 @@ Thank you,`,
     am2eChecklistFlowData?.checklistVariant === netFlowType
       ? am2eChecklistFlowData
       : null;
-  const uploadedDocumentIds = React.useMemo(() => {
-    const serverUploadedIds =
-      documentsScreenData?.data.screen.requirements
-        .filter((item) => item.uploaded)
-        .map((item) => item.id) ?? [];
-
-    return Array.from(
-      new Set([...serverUploadedIds, ...sessionUploadedDocIds])
-    );
-  }, [documentsScreenData?.data.screen.requirements, sessionUploadedDocIds]);
-  const am2eDocumentsScreen = activeAm2eChecklistFlowData
-    ? mapAm2eFlowToDocumentsScreen(
-        activeAm2eChecklistFlowData,
-        uploadedDocumentIds
-      )
-    : null;
-  const am2DocumentsScreen =
-    netFlowType === "am2"
-      ? mapLocalDocumentsScreen({
-          flowType: "am2",
-          uploadedDocumentIds,
-          baseScreen: documentsScreenData?.data.screen,
-        })
-      : null;
+  const effectiveDocumentsScreen = React.useMemo(
+    () => mapDocumentsScreen(uploadedDocumentsScreen ?? documentsScreenData?.data.screen),
+    [documentsScreenData?.data.screen, uploadedDocumentsScreen]
+  );
   const am2eChecklistSummaryScreen = activeAm2eChecklistFlowData
     ? mapAm2eFlowToChecklistSummaryScreen(activeAm2eChecklistFlowData)
     : null;
@@ -2746,6 +2687,12 @@ Thank you,`,
       router.replace(`/dashboard/courses/${course.slug}/book?${params.toString()}`);
     }
   }, [activeBookingId, course.slug, requestedHasEmployer, router, searchParams]);
+
+  React.useEffect(() => {
+    setUploadedDocumentsScreen(null);
+    setDocumentUploadError("");
+    setUploadingDocumentId(null);
+  }, [resolvedBookingId, netFlowType]);
 
   React.useEffect(() => {
     const variant =
@@ -2957,6 +2904,36 @@ Thank you,`,
   }, [assessmentRegistrationScreen]);
 
   React.useEffect(() => {
+    if (!assessmentTypeField) {
+      return;
+    }
+
+    setAssessment((current) => {
+      const normalizedLockedValue = normalizeAssessmentValue(lockedAssessmentType);
+      const normalizedCurrentValue = normalizeAssessmentValue(current.assessmentType);
+
+      if (normalizedLockedValue && normalizedCurrentValue !== normalizedLockedValue) {
+        return { ...current, assessmentType: lockedAssessmentType };
+      }
+
+      if (current.assessmentType) {
+        return current;
+      }
+
+      const fallbackAssessmentType = lockedAssessmentType || assessmentTypeField.options?.[0]?.label;
+
+      if (!fallbackAssessmentType) {
+        return current;
+      }
+
+      return {
+        ...current,
+        assessmentType: fallbackAssessmentType,
+      };
+    });
+  }, [assessmentTypeField, lockedAssessmentType]);
+
+  React.useEffect(() => {
     if (!employerRegistrationScreen?.submission?.payloadTemplate?.employerDetails) {
       return;
     }
@@ -3065,18 +3042,6 @@ Thank you,`,
     payment.cvc.length >= 3 &&
     (!isStripeTestMode || selectedPaymentMethodId !== null);
   const isSubmittingPayment = isCreatingPaymentIntent || isCompletingPayment;
-
-  const selectAssessmentType = (value: string) => {
-    if (
-      lockedAssessmentType &&
-      normalizeAssessmentValue(value) !==
-        normalizeAssessmentValue(lockedAssessmentType)
-    ) {
-      return;
-    }
-
-    updateAssessment("assessmentType", value);
-  };
 
   const moveNext = async () => {
     if (currentStep === "candidate") {
@@ -3488,10 +3453,18 @@ Thank you,`,
     startNetFlow(resolvedFlowType, eligibilityBookingId);
   };
 
-  const handleUploadDocument = async (
-    id: string,
-    title: string,
-    file: File
+  const handleUploadDocument = async ({
+    id,
+    documentType,
+    documentLabel,
+    file,
+  }: {
+    id: string;
+    title: string;
+    documentType: string;
+    documentLabel: string;
+    file: File;
+  }
   ) => {
     if (!resolvedBookingId) {
       setDocumentUploadError(
@@ -3500,18 +3473,22 @@ Thank you,`,
       return;
     }
 
+    if (documentType === "__invalid_file_type__" || documentType === "__file_too_large__") {
+      setDocumentUploadError(documentLabel);
+      return;
+    }
+
     try {
       setDocumentUploadError("");
       setUploadingDocumentId(id);
       const response = await uploadBookingDocument({
         bookingId: resolvedBookingId,
-        flow: netFlowType,
-        documentType: id,
-        documentLabel: title,
+        documentType,
+        documentLabel,
         file,
       }).unwrap();
 
-      setSessionUploadedDocIds((prev) => [...prev, id]);
+      setUploadedDocumentsScreen(response.data.screen);
       const nextBookingId = resolveBookingIdFromDocumentsScreen(
         response.data.screen
       );
@@ -4000,6 +3977,10 @@ Thank you,`,
                     return null;
                   }
 
+                  if (stateKey === "assessmentType") {
+                    return null;
+                  }
+
                   if (field.id === "apprentice") {
                     return (
                       <div
@@ -4082,28 +4063,21 @@ Thank you,`,
                         <div className="grid gap-3 md:grid-cols-3">
                           {field.options?.map((option) => {
                             const checked = assessment[stateKey] === option.label;
-                            const disabled =
-                              Boolean(lockedAssessmentType) &&
-                              normalizeAssessmentValue(option.label) !==
-                                normalizeAssessmentValue(lockedAssessmentType);
 
                             return (
                               <label
                                 key={option.id}
                                 className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition ${
-                                  disabled
-                                    ? "cursor-not-allowed border-[#e6edf7] bg-[#f6f9fc] text-[#aab6c9]"
-                                    : checked
-                                      ? "cursor-pointer border-[#8ed7f8] bg-[#dff5ff] text-[#24346b]"
-                                      : "cursor-pointer border-[#dde9f7] bg-[#f4f9ff] text-[#5f6f90]"
+                                  checked
+                                    ? "cursor-pointer border-[#8ed7f8] bg-[#dff5ff] text-[#24346b]"
+                                    : "cursor-pointer border-[#dde9f7] bg-[#f4f9ff] text-[#5f6f90]"
                                 }`}
                               >
                                 <input
                                   type="radio"
                                   name={field.id}
                                   checked={checked}
-                                  disabled={disabled}
-                                  onChange={() => selectAssessmentType(option.label)}
+                                  onChange={() => updateAssessment(stateKey, option.label)}
                                   className="h-4 w-4 accent-[#1ea6df]"
                                 />
                                 <span>{option.label}</span>
@@ -4180,7 +4154,7 @@ Thank you,`,
 
               <div className="mt-5 grid gap-4">
                 <div>
-                  <FieldLabel>Are you an employer</FieldLabel>
+                  <FieldLabel>Are you an employer or self-employed</FieldLabel>
                   <RadioRow
                     name="has-employer"
                     options={["Yes", "No"]}
@@ -4476,20 +4450,22 @@ Thank you,`,
 
               {!isDocumentsScreenLoading &&
               !isDocumentsScreenError &&
-              (am2DocumentsScreen ||
-                am2eDocumentsScreen ||
-                documentsScreenData?.data.screen) ? (
+              effectiveDocumentsScreen ? (
                 <NetDocumentsPanel
-                  screen={
-                    am2DocumentsScreen ||
-                    am2eDocumentsScreen ||
-                    documentsScreenData!.data.screen
-                  }
+                  screen={effectiveDocumentsScreen}
                   onUpload={handleUploadDocument}
                   onContinue={() => moveToNetStep("checklist")}
                   uploadingDocumentId={uploadingDocumentId}
                   uploadError={documentUploadError}
                 />
+              ) : null}
+
+              {!isDocumentsScreenLoading &&
+              !isDocumentsScreenError &&
+              !effectiveDocumentsScreen ? (
+                <div className="rounded-lg border border-[#fecaca] bg-[#fff3f3] px-4 py-3 text-sm text-[#dc2626]">
+                  The backend did not return any document requirements for this booking, so uploads are unavailable right now.
+                </div>
               ) : null}
             </>
           ) : null}
