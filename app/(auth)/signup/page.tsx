@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, LockKeyhole, Mail, Sparkles, User } from "lucide-react";
 import AuthShell from "@/components/auth/auth-shell";
+import { sanitizeInternalRedirect } from "@/lib/auth/redirect";
 import { useAppDispatch } from "@/lib/redux/hooks";
 import { useSignUpMutation } from "@/lib/redux/features/auth/auth-api";
 import { setCredentials } from "@/lib/redux/features/auth/auth-slice";
@@ -20,6 +21,12 @@ export default function SignUpPage() {
   });
   const [formError, setFormError] = React.useState("");
   const [signUp, { isLoading }] = useSignUpMutation();
+  const [redirectPath, setRedirectPath] = React.useState("/dashboard");
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setRedirectPath(sanitizeInternalRedirect(params.get("redirect"), "/dashboard"));
+  }, []);
 
   const handleChange = (field: keyof typeof formData, value: string) => {
     setFormError("");
@@ -54,7 +61,7 @@ export default function SignUpPage() {
         })
       );
 
-      router.push("/dashboard");
+      router.push(redirectPath);
     } catch (error) {
       const message =
         typeof error === "object" &&
@@ -177,7 +184,10 @@ export default function SignUpPage() {
 
       <p className="mt-7 text-center text-sm text-[#6a7891]">
         Already have an account?{" "}
-        <Link href="/login" className="font-semibold text-[#18245a]">
+        <Link
+          href={redirectPath === "/dashboard" ? "/login" : `/login?redirect=${encodeURIComponent(redirectPath)}`}
+          className="font-semibold text-[#18245a]"
+        >
           Sign in
         </Link>
       </p>

@@ -36,6 +36,8 @@ type CourseDetailsContentProps = {
 
 type AccordionKey = "learning" | "delivery" | "additional";
 
+const fallbackCourseImage = "/hero-2.png";
+
 const am2eEligibleQualificationTokens = [
   "ewa-city-and-guilds-2346",
   "city-and-guilds-2346",
@@ -91,8 +93,15 @@ export default function CourseDetailsContent({
   const [fetchBookNowModal, bookNowModalQuery] = useLazyGetCourseBookNowQuery();
   const shouldUseDashboardBookingModal =
     dashboardMode && course.bookingFlow === "am2";
+  const galleryImages = React.useMemo(() => {
+    const normalizedImages = [course.heroImage, ...course.gallery].filter(
+      (image): image is string => typeof image === "string" && image.trim().length > 0
+    );
+
+    return normalizedImages.length > 0 ? Array.from(new Set(normalizedImages)) : [fallbackCourseImage];
+  }, [course.gallery, course.heroImage]);
   const [selectedImage, setSelectedImage] = React.useState(
-    course.gallery[defaultSelectedImageIndex] ?? course.gallery[0] ?? course.heroImage
+    galleryImages[defaultSelectedImageIndex] ?? galleryImages[0] ?? fallbackCourseImage
   );
   const [openSection, setOpenSection] = React.useState<AccordionKey>("learning");
   const [relatedIndex, setRelatedIndex] = React.useState(0);
@@ -158,20 +167,20 @@ export default function CourseDetailsContent({
     setSelectedModalOptionId("");
   }, [initialModalStepId, effectiveBookingModal?.title]);
 
-  const goToBookingPage = (
+  React.useEffect(() => {
+    setSelectedImage(
+      galleryImages[defaultSelectedImageIndex] ?? galleryImages[0] ?? fallbackCourseImage
+    );
+  }, [defaultSelectedImageIndex, galleryImages]);
+
+  const buildBookingPath = (
     selectedQualification?: string,
     selectedQualificationId?: string,
   ) => {
-    if (!accessToken) {
-      router.push("/login");
-      return;
-    }
-
     const bookingBasePath = bookingHrefBasePath ?? coursesHrefBasePath;
 
     if (!bookingBasePath) {
-      onBookNow?.();
-      return;
+      return "";
     }
 
     const params = new URLSearchParams();
@@ -186,14 +195,35 @@ export default function CourseDetailsContent({
 
     const qualificationQuery = params.toString();
 
-    router.push(
-      `${bookingBasePath}/${course.slug}/book${qualificationQuery ? `?${qualificationQuery}` : ""}`,
-    );
+    return `${bookingBasePath}/${course.slug}/book${qualificationQuery ? `?${qualificationQuery}` : ""}`;
+  };
+
+  const redirectToLoginForBooking = () => {
+    router.push("/login?redirect=%2Fdashboard");
+  };
+
+  const goToBookingPage = (
+    selectedQualification?: string,
+    selectedQualificationId?: string,
+  ) => {
+    if (!accessToken) {
+      redirectToLoginForBooking();
+      return;
+    }
+
+    const bookingPath = buildBookingPath(selectedQualification, selectedQualificationId);
+
+    if (!bookingPath) {
+      onBookNow?.();
+      return;
+    }
+
+    router.push(bookingPath);
   };
 
   const openBookingModal = async () => {
     if (!accessToken) {
-      router.push("/login");
+      redirectToLoginForBooking();
       return;
     }
 
@@ -295,7 +325,7 @@ export default function CourseDetailsContent({
             </div>
 
             <div className="mt-4 grid grid-cols-4 gap-3">
-              {course.gallery.map((image, index) => (
+              {galleryImages.map((image, index) => (
                 <button
                   key={`${image}-${index}`}
                   type="button"
