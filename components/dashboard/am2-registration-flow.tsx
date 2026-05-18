@@ -1036,7 +1036,7 @@ function NetSignaturesPanel({
   // Temporary override so we can continue integration work before the
   // backend enables the step after provider signature completion.
   const allSigned =
-    screen.actions?.continue?.enabled !== false ||
+    screen.actions?.continue?.enabled !== false &&
     (candidateSigned &&
       (!requiresProviderSignature || providerSigned || providerRequested));
 
