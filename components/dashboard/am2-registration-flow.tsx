@@ -835,7 +835,7 @@ function NetDocumentsPanel({
                       {item.title}
                     </p>
                     <p className="mt-1 text-xs text-[#7d8da7]">
-                      {item.description}
+                      Requested from your NVQ provider
                     </p>
                     {item.document?.fileName || item.document?.fileUrl ? (
                       <p className="mt-2 text-xs font-medium text-[#1f8f54]">
