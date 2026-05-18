@@ -2689,11 +2689,13 @@ Thank you,`,
     am2eChecklistFlowData?.checklistVariant === netFlowType
       ? am2eChecklistFlowData
       : null;
-  const requiresProviderSignature = signaturesScreenData?.data.screen
-    ? signaturesScreenData.data.screen.items.some(
-        (item) => item.id === "training_provider"
-      )
-    : hasEmployer === "yes";
+  const requiresProviderSignature =
+    hasEmployer === "yes" &&
+    (signaturesScreenData?.data.screen
+      ? signaturesScreenData.data.screen.items.some(
+          (item) => item.id === "training_provider"
+        )
+      : true);
   const effectiveDocumentsScreen = React.useMemo(
     () => mapDocumentsScreen(uploadedDocumentsScreen ?? documentsScreenData?.data.screen),
     [documentsScreenData?.data.screen, uploadedDocumentsScreen]
