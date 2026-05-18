@@ -13,6 +13,7 @@ import {
   ChevronRight,
   CreditCard,
   FileText,
+  Info,
   Lock,
   Mail,
   PenTool,
@@ -1013,6 +1014,12 @@ function NetSignaturesPanel({
       action?: {
         label?: string;
       } | null;
+      request?: {
+        email?: string;
+        name?: string;
+        expiresAt?: string | null;
+        link?: string;
+      } | null;
     }>;
     actions?: {
       continue?: {
@@ -1026,6 +1033,7 @@ function NetSignaturesPanel({
   onContinue: () => void;
   requiresProviderSignature: boolean;
 }) {
+  const [showInfo, setShowInfo] = React.useState(false);
   const candidateItem = screen.items.find((item) => item.id === "candidate");
   const providerItem = screen.items.find(
     (item) => item.id === "training_provider"
@@ -1051,22 +1059,43 @@ function NetSignaturesPanel({
             <p className="mt-1 text-xs text-[#7a88a3]">{screen.card.subtitle}</p>
           ) : null}
         </div>
-        <button
-          type="button"
-          className="text-sm font-semibold text-[#4451ac]"
-        >
-          {screen.importantInformation || "Important Information"}
-        </button>
+        {screen.importantInformation ? (
+          <button
+            type="button"
+            onClick={() => setShowInfo((v) => !v)}
+            className="flex items-center gap-1 text-sm font-semibold text-[#4451ac] transition hover:text-[#2f3fa0]"
+          >
+            <Info className="h-3.5 w-3.5" />
+            Important Information
+          </button>
+        ) : null}
       </div>
+
+      {showInfo && screen.importantInformation ? (
+        <div className="mt-3 rounded-lg border border-[#bcd9f5] bg-[#e8f5ff] px-4 py-3 text-sm leading-6 text-[#2d5a8a]">
+          {screen.importantInformation}
+        </div>
+      ) : null}
 
       <div className="mt-5 rounded-[14px] border border-[#d7e5f7] bg-[#eaf5ff] p-4">
         <div className="flex items-center justify-between gap-4 rounded-lg border border-[#d5e6f5] bg-[#f4fbff] px-4 py-3">
           <span className="text-sm text-[#50637f]">
-            {screen.progressLabel || "Step 1 of 2"}
+            {screen.progressLabel ||
+              `Step 1 of ${requiresProviderSignature ? 2 : 1}`}
           </span>
           <div className="flex items-center gap-2">
-            <span className="h-4 w-4 rounded-full bg-[#1ea6df]" />
-            <span className="h-4 w-4 rounded-full bg-[#bfeaff]" />
+            {screen.items.map((item) => {
+              const active =
+                item.status === "signed" || item.status === "requested";
+              return (
+                <span
+                  key={item.id}
+                  className={`h-4 w-4 rounded-full transition ${
+                    active ? "bg-[#1ea6df]" : "bg-[#bfeaff]"
+                  }`}
+                />
+              );
+            })}
           </div>
         </div>
 
@@ -1133,6 +1162,23 @@ function NetSignaturesPanel({
                         ? "Request sent"
                         : "not Signed"}
                   </p>
+                  {providerRequested && providerItem?.request?.email ? (
+                    <p className="mt-1.5 text-[11px] text-[#6b82a0]">
+                      Sent to{" "}
+                      <span className="font-medium text-[#3849a0]">
+                        {providerItem.request.email}
+                      </span>
+                    </p>
+                  ) : null}
+                  {providerRequested && providerItem?.request?.expiresAt ? (
+                    <p className="mt-0.5 text-[11px] text-[#6b82a0]">
+                      Expires{" "}
+                      {new Date(providerItem.request.expiresAt).toLocaleDateString(
+                        "en-GB",
+                        { day: "numeric", month: "short", year: "numeric" }
+                      )}
+                    </p>
+                  ) : null}
                 </div>
 
                 <button
@@ -1508,6 +1554,7 @@ function SignatureUploadModal({
 
 function AskForSignedModal({
   open,
+  title,
   value,
   onChange,
   onClose,
@@ -1515,6 +1562,7 @@ function AskForSignedModal({
   isSubmitting = false,
 }: {
   open: boolean;
+  title?: string;
   value: ProviderSignatureRequestState;
   onChange: (field: keyof ProviderSignatureRequestState, value: string) => void;
   onClose: () => void;
@@ -1535,8 +1583,19 @@ function AskForSignedModal({
       <div className="fixed inset-0 z-50 bg-[#1f2937]/70" onClick={onClose} />
       <div className="fixed inset-0 z-[60] grid place-items-center p-4">
         <div className="w-full max-w-[460px] rounded-[18px] border border-[#dbe7f4] bg-white p-4 shadow-[0_26px_80px_rgba(18,33,77,0.35)]">
-          <div className="pb-3 text-lg font-medium text-[#5f6f90]">
-            Ask for signed
+          <div className="flex items-center justify-between gap-4 pb-3">
+            <div className="flex items-center gap-2 text-lg font-medium text-[#3849a0]">
+              <PenTool className="h-4.5 w-4.5" />
+              <span>{title || "Ask for signed"}</span>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="rounded-full p-2 text-[#4451ac] transition hover:bg-[#eef5ff]"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
 
           <div className="space-y-4">
@@ -2565,7 +2624,6 @@ Thank you,`,
     activeRegistrationScreen?.submission?.continueLabel ??
     activeRegistrationScreen?.navigation?.next?.label ??
     "Continue";
-  const requiresProviderSignature = hasEmployer === "yes";
 
   const resolvedBookingId = activeBookingId;
   React.useEffect(() => {
@@ -2631,6 +2689,11 @@ Thank you,`,
     am2eChecklistFlowData?.checklistVariant === netFlowType
       ? am2eChecklistFlowData
       : null;
+  const requiresProviderSignature = signaturesScreenData?.data.screen
+    ? signaturesScreenData.data.screen.items.some(
+        (item) => item.id === "training_provider"
+      )
+    : hasEmployer === "yes";
   const effectiveDocumentsScreen = React.useMemo(
     () => mapDocumentsScreen(uploadedDocumentsScreen ?? documentsScreenData?.data.screen),
     [documentsScreenData?.data.screen, uploadedDocumentsScreen]
@@ -3618,10 +3681,18 @@ Thank you,`,
         setActiveBookingId(nextBookingId);
       }
 
-      setProviderSignatureRequestMessage(
-        response.message ||
-          "Training provider signature request sent successfully."
-      );
+      const baseMsg =
+        response.message || "Training provider signature request sent successfully.";
+      const emailPart = response.data.emailSent
+        ? ` An email was sent to ${response.data.email}.`
+        : ` A request link was generated for ${response.data.email}.`;
+      const expiryPart = response.data.expiresAt
+        ? ` The link expires on ${new Date(response.data.expiresAt).toLocaleDateString(
+            "en-GB",
+            { day: "numeric", month: "long", year: "numeric" }
+          )}.`
+        : "";
+      setProviderSignatureRequestMessage(baseMsg + emailPart + expiryPart);
       setProviderRequestModalOpen(false);
     } catch (requestError) {
       setProviderSignatureRequestError(
@@ -4925,6 +4996,15 @@ Thank you,`,
 
       <AskForSignedModal
         open={providerRequestModalOpen && requiresProviderSignature}
+        title={
+          signaturesScreenData?.data.screen.items.find(
+            (item) => item.id === "training_provider"
+          )?.modal?.title ||
+          signaturesScreenData?.data.screen.items.find(
+            (item) => item.id === "training_provider"
+          )?.label ||
+          undefined
+        }
         value={providerSignatureRequest}
         onChange={updateProviderSignatureRequest}
         onClose={() => setProviderRequestModalOpen(false)}
