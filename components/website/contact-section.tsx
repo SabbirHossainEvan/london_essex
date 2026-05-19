@@ -1,6 +1,12 @@
 import Image from "next/image";
 import { Mail, Phone, ChevronDown, MapPin } from "lucide-react";
 
+const trainingCentreAddress =
+  "Unit 1E Bates Industrial Estate, Queens Park Rd, Harold Wood, Romford, Essex, RM3 0HU";
+const googleMapsLiveLink = "https://maps.app.goo.gl/g66ntta8cC3WY37R7";
+const googleMapsEmbedLink =
+  "https://www.google.com/maps?output=embed&q=AM2%20Romford%20(London%20%26%20Essex%20Electrical%20Training)%2C%20Unit%201E%20Bates%20Industrial%20Estate%2C%20Queens%20Park%20Rd%2C%20Harold%20Wood%2C%20Romford%20RM3%200HU";
+
 export default function ContactSection() {
   return (
     <section className="relative overflow-hidden bg-[#f4f9ff] px-4 py-10 sm:px-6 lg:px-10 xl:px-16">
@@ -69,14 +75,13 @@ export default function ContactSection() {
 
             <div className="mt-10 grid gap-6 sm:grid-cols-3">
               <div className="flex items-start gap-3">
-
+                <MapPin className="mt-1 h-6 w-6 text-[#1ea9de]" />
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#3943a5]">
                     Address
                   </p>
                   <p className="mt-1 text-sm text-[#1ea9de]">
-                    Unit 1E Bates Industrial Estate, Queens Park Rd, Harold
-                    Wood, Romford, Essex, RM3 0HU
+                    {trainingCentreAddress}
                   </p>
                 </div>
               </div>
@@ -106,11 +111,20 @@ export default function ContactSection() {
         </div>
 
         <div className="rounded-[18px] border border-white/60 bg-[#1ea9de] p-3 shadow-[0_20px_40px_rgba(35,82,134,0.16)] lg:min-h-[720px]">
-          <div className="h-full overflow-hidden rounded-[16px] bg-white">
+          <div className="flex h-full min-h-[640px] flex-col overflow-hidden rounded-[16px] bg-white lg:min-h-[694px]">
+            <a
+              href={googleMapsLiveLink}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center gap-2 border-b border-[#d8ebf7] bg-[#f8fcff] px-5 py-3 text-sm font-semibold text-[#2f378f] transition-colors hover:bg-[#eef7ff]"
+            >
+              <MapPin className="h-4 w-4" />
+              Open live Google Maps location
+            </a>
             <iframe
               title="Google Map"
-              src="https://www.google.com/maps?q=London%20Bridge%2C%20London&z=14&output=embed"
-              className="h-[620px] w-full border-0 lg:h-[100%] lg:min-h-[690px]"
+              src={googleMapsEmbedLink}
+              className="min-h-[580px] w-full flex-1 border-0 lg:min-h-[640px]"
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
             />
