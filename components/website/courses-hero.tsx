@@ -6,8 +6,8 @@ type CoursesHeroProps = {
 };
 
 export default function CoursesHero({
-  title = "Industry-Leading Courses for Professionals",
-  description = "Join over 20,000 successful students who have trained with London & Essex. Select a course below to view full details, entry requirements, and upcoming start dates",
+  title = "Electrical Training Courses for Professionals",
+  description = "Select a course below to view full details, entry requirements and upcoming start dates.",
 }: CoursesHeroProps) {
   return (
     <section className="bg-[#373792] px-4 pb-10 pt-6 sm:px-6 sm:pb-12 lg:px-10 lg:pt-8 xl:px-16">

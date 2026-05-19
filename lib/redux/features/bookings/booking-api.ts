@@ -996,10 +996,86 @@ export type RequestTrainingProviderSignatureResponse = {
   message: string;
   data: {
     requested: boolean;
+    emailSent?: boolean;
+    emailDelivery?: {
+      sent: boolean;
+      message?: string;
+    } | null;
     email: string;
     link?: string;
+    signatureLink?: string;
+    signatureApiUrl?: string;
     expiresAt?: string | null;
     screen: GetBookingFlowSignaturesResponse["data"]["screen"];
+  };
+};
+
+export type GetProviderSignaturePageResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    screen: {
+      title: string;
+      subtitle?: string;
+      provider: {
+        email: string;
+        name?: string;
+      };
+      booking: {
+        id: string;
+        bookingNumber: string;
+        courseTitle?: string;
+        candidateName?: string;
+      };
+      signature: {
+        status: "requested" | "signed" | string;
+        signedAt?: string | null;
+        signerName?: string;
+        signerEmail?: string;
+        signatureType?: "draw" | "upload" | string;
+        fileName?: string;
+        requestedAt?: string | null;
+        signatureData?: string;
+        imageUrl?: string;
+        previewUrl?: string | null;
+        downloadUrl?: string | null;
+        available?: boolean;
+      };
+      actions?: {
+        submit?: {
+          label?: string;
+          method?: string;
+          enabled?: boolean;
+          apiUrl?: string;
+          contentType?: string;
+          uploadFields?: string[];
+        } | null;
+      };
+    };
+  };
+};
+
+export type SubmitProviderSignatureRequest = {
+  token: string;
+  signatureType: "draw" | "upload";
+  signature?: File;
+  signatureData?: string;
+  fileName?: string;
+  signerName?: string;
+  signerEmail?: string;
+};
+
+export type SubmitProviderSignatureResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    signed?: boolean;
+    signedAt?: string | null;
+    booking?: {
+      id: string;
+      bookingNumber?: string;
+    };
+    screen?: GetProviderSignaturePageResponse["data"]["screen"];
   };
 };
 
@@ -1325,6 +1401,69 @@ export const bookingApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Booking"],
     }),
+    getProviderSignaturePage: builder.query<
+      GetProviderSignaturePageResponse,
+      string
+    >({
+      query: (token) => ({
+        url: `/bookings/provider-signature/${token}`,
+        method: "GET",
+      }),
+      providesTags: ["Booking"],
+    }),
+    submitProviderSignature: builder.mutation<
+      SubmitProviderSignatureResponse,
+      SubmitProviderSignatureRequest
+    >({
+      query: ({
+        token,
+        signatureType,
+        signature,
+        signatureData,
+        fileName,
+        signerName,
+        signerEmail,
+      }) => {
+        if (signatureType === "draw") {
+          return {
+            url: `/bookings/provider-signature/${token}`,
+            method: "POST",
+            body: {
+              signatureType,
+              signatureData,
+              ...(fileName ? { fileName } : {}),
+              ...(signerName ? { signerName } : {}),
+              ...(signerEmail ? { signerEmail } : {}),
+            },
+          };
+        }
+
+        const body = new FormData();
+        if (signature) {
+          body.append("signature", signature);
+        }
+        body.append("signatureType", signatureType);
+
+        if (fileName) {
+          body.append("fileName", fileName);
+        }
+
+        if (signerName) {
+          body.append("signerName", signerName);
+        }
+
+        if (signerEmail) {
+          body.append("signerEmail", signerEmail);
+        }
+
+        return {
+          url: `/bookings/provider-signature/${token}`,
+          method: "POST",
+          body,
+        };
+      },
+      invalidatesTags: ["Booking"],
+    }),
     getBookingFlowSubmit: builder.query<GetBookingFlowSubmitResponse, string>({
       query: (bookingId) => ({
         url: `/bookings/${bookingId}/flow/submit`,
@@ -1500,6 +1639,8 @@ export const {
   useSubmitBookingForReviewMutation,
   useRequestTrainingProviderSignatureMutation,
   useSubmitCandidateSignatureMutation,
+  useGetProviderSignaturePageQuery,
+  useSubmitProviderSignatureMutation,
   useSaveBookingChecklistDraftMutation,
   useUploadBookingDocumentMutation,
   useGetBookingCheckoutDetailsQuery,

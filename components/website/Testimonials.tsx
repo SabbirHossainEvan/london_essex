@@ -54,7 +54,7 @@ const Testimonials = () => {
             Our Testimonials
           </span>
           <h2 className="mt-4 text-3xl font-bold text-slate-800 md:text-4xl">
-            London & Essex Reviews
+            London & Essex Electrical Training Reviews
           </h2>
           <p className="mt-2 text-slate-500">See what our students say</p>
         </div>
@@ -75,7 +75,7 @@ const Testimonials = () => {
               Our Testimonials
             </span>
             <h3 className="mb-8 text-3xl font-bold leading-tight text-slate-800">
-              What Students Think And Say About SkillGrow
+              What Students Think And Say About Us
             </h3>
 
             <div className="relative min-h-[320px] w-full overflow-hidden">
