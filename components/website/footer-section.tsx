@@ -66,11 +66,11 @@ export default function FooterSection({
     { label: "Booking Terms & Conditions", href: "#" },
   ],
   contacts = [
-    { type: "phone", label: "(207) 555-0119", href: "tel:+12075550119" },
+    { type: "phone", label: "0208 243 8770", href: "0208 243 8770" },
     {
       type: "email",
-      label: "sara.cruz@example.com",
-      href: "mailto:sara.cruz@example.com",
+      label: "info@londonessexelectrical.co.uk",
+      href: "mailto:info@londonessexelectrical.co.uk",
     },
   ],
   socials = [
@@ -210,7 +210,7 @@ export default function FooterSection({
                   </motion.div>
                 ))}
 
-                <div className="flex items-center gap-5 pt-1">
+                {/* <div className="flex items-center gap-5 pt-1">
                   {socials.map((social, index) => (
                     <motion.div
                       key={social.platform}
@@ -226,7 +226,7 @@ export default function FooterSection({
                       </Link>
                     </motion.div>
                   ))}
-                </div>
+                </div> */}
               </div>
             </motion.div>
           </div>

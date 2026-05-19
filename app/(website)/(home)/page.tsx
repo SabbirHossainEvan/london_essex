@@ -12,9 +12,9 @@ export default function HomePage() {
   return (
     <>
       <Hero />
-      <PartnersMarquee partners={homePartners} />
+      {/* <PartnersMarquee partners={homePartners} /> */}
       <HomeTrendingCoursesSection />
-      <ProgressTrackingSection />
+      {/* <ProgressTrackingSection /> */}
       <Testimonials />
       <CourseHelpCta />
 
