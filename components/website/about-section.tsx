@@ -1,21 +1,5 @@
 import Image from "next/image";
 
-const highlights = [
-  {
-    value: "20K+",
-    label: "Students trained",
-  },
-  {
-    value: "18+",
-    label: "Years experience",
-  },
-  {
-    value: "98%",
-    label: "Pass rate support",
-  },
-];
-
-
 export default function AboutSection() {
   return (
     <section className="bg-[radial-gradient(circle_at_top,_#ffffff_0%,_#eef7ff_56%,_#e8f3ff_100%)] px-4 py-12 sm:px-6 lg:px-10 xl:px-16">
@@ -34,22 +18,6 @@ export default function AboutSection() {
               learners move from interest to certification through supportive tutors,
               structured training, and real workshop experience.
             </p>
-
-            <div className="mt-8 grid gap-4 sm:grid-cols-3">
-              {highlights.map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-[18px] border border-[#d8e7f5] bg-white p-5 shadow-[0_12px_30px_rgba(90,121,166,0.08)]"
-                >
-                  <p className="text-[2rem] font-semibold leading-none text-[#38439e]">
-                    {item.value}
-                  </p>
-                  <p className="mt-2 text-sm uppercase tracking-[0.16em] text-[#93a0be]">
-                    {item.label}
-                  </p>
-                </div>
-              ))}
-            </div>
           </div>
 
           <div className="relative overflow-hidden rounded-[28px] bg-white p-4 shadow-[0_20px_50px_rgba(76,112,170,0.12)] sm:p-5">
@@ -74,8 +42,6 @@ export default function AboutSection() {
             </div>
           </div>
         </div>
-
-
       </div>
     </section>
   );

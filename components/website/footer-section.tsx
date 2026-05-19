@@ -24,6 +24,7 @@ type FooterSocial = {
 
 type FooterSectionProps = {
   companyTitle?: string;
+  contactTitle?: string;
   legalLinks?: FooterLink[];
   contacts?: FooterContact[];
   socials?: FooterSocial[];
@@ -60,10 +61,10 @@ function SocialIcon({ platform }: { platform: FooterSocial["platform"] }) {
 
 export default function FooterSection({
   companyTitle = "Company",
+  contactTitle = "Contact",
   legalLinks = [
-    { label: "Terms & Conditions", href: "#" },
-    { label: "Privacy Policy", href: "#" },
-    { label: "Booking Terms & Conditions", href: "#" },
+    { label: "Terms & Conditions", href: "/terms-and-conditions" },
+    { label: "Privacy Policy", href: "/privacy-policy" },
   ],
   contacts = [
     { type: "phone", label: "0208 243 8770", href: "0208 243 8770" },
@@ -79,6 +80,7 @@ export default function FooterSection({
     { platform: "linkedin", href: "#" },
     { platform: "youtube", href: "#" },
   ],
+
   copyrightText = "Copyright \u00A9 2025 London & Essex. All rights reserved.",
 }: FooterSectionProps) {
   const reduceMotion = useReducedMotion();
@@ -170,7 +172,7 @@ export default function FooterSection({
               transition={{ delay: 0.2, duration: 0.6 }}
             >
               <h3 className="text-[1.45rem] font-semibold tracking-tight text-[#2D3182] sm:text-[1.6rem]">
-                {companyTitle}
+                {contactTitle}
               </h3>
 
               <div className="mt-6 flex flex-col gap-6">
