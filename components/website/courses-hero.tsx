@@ -43,7 +43,7 @@ export default function CoursesHero({
 
             <div className="relative order-1 min-h-[320px] overflow-hidden rounded-[26px] bg-[linear-gradient(180deg,_#f8fcff_0%,_#eef7ff_100%)] lg:order-2 lg:min-h-[560px]">
               <Image
-                src="/hero-2.png"
+                src="/hero-1.png"
                 alt="Construction training session"
                 fill
                 priority
