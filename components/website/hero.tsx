@@ -221,7 +221,7 @@ const Hero = () => {
             className="max-w-[700px]"
           >
             <h1 className="text-4xl lg:text-6xl font-bold tracking-tight text-[#2D3182] leading-[1.05]">
-              Find the right construction training{" "}
+              Find the right electrical training{" "}
               <span className="relative inline-block">
                 <span className="relative z-10 text-white px-2">course</span>
                 <motion.div
