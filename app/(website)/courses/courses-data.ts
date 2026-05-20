@@ -12,6 +12,7 @@ export type CourseSummary = {
   duration: string;
   price: string;
   vatLabel: string;
+  remainingSeats?: number;
   heroImage: string;
   gallery: string[];
   learning: string;
@@ -34,6 +35,7 @@ export const coursesData: CourseSummary[] = [
     duration: "7 Weeks (Mon - Fri) or 18 Weekends",
     price: "£3,195.00",
     vatLabel: "inc VAT",
+    remainingSeats: 20,
     heroImage: "/hero-1.png",
     gallery: ["/hero-1.png", "/hero-1.png", "/hero-collage.png", "/hero-1.png"],
     learning:
@@ -57,6 +59,7 @@ export const coursesData: CourseSummary[] = [
     duration: "24 Weeks Flexible",
     price: "£4,295.00",
     vatLabel: "inc VAT",
+    remainingSeats: 16,
     heroImage: "/hero-1.png",
     gallery: ["/hero-1.png", "/hero-1.png", "/hero-collage.png", "/hero-1.png"],
     learning:
@@ -80,6 +83,7 @@ export const coursesData: CourseSummary[] = [
     duration: "16 Weeks",
     price: "£3,895.00",
     vatLabel: "inc VAT",
+    remainingSeats: 12,
     heroImage: "/hero-collage.png",
     gallery: ["/hero-collage.png", "/hero-1.png", "/hero-1.png", "/hero-collage.png"],
     learning:
@@ -103,6 +107,7 @@ export const coursesData: CourseSummary[] = [
     duration: "28 Weeks",
     price: "£4,650.00",
     vatLabel: "inc VAT",
+    remainingSeats: 10,
     heroImage: "/hero-1.png",
     gallery: ["/hero-1.png", "/hero-collage.png", "/hero-1.png", "/hero-1.png"],
     learning:
@@ -126,6 +131,7 @@ export const coursesData: CourseSummary[] = [
     duration: "6 Weeks",
     price: "£1,795.00",
     vatLabel: "inc VAT",
+    remainingSeats: 8,
     heroImage: "/hero-1.png",
     gallery: ["/hero-1.png", "/hero-1.png", "/hero-collage.png", "/hero-1.png"],
     learning:
@@ -149,6 +155,7 @@ export const coursesData: CourseSummary[] = [
     duration: "10 Weeks",
     price: "£2,250.00",
     vatLabel: "inc VAT",
+    remainingSeats: 14,
     heroImage: "/hero-collage.png",
     gallery: ["/hero-collage.png", "/hero-1.png", "/hero-1.png", "/hero-collage.png"],
     learning:

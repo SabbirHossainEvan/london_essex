@@ -92,6 +92,9 @@ export default function DashboardCoursesCatalog() {
                   title={course.title}
                   schedule={course.subtitle || course.schedule}
                   description={course.description || course.shortDescription}
+                  remainingSeats={
+                    course.remainingSeats ?? course.capacity?.remainingSeats
+                  }
                   hrefBasePath="/dashboard/courses"
                 />
               ))}

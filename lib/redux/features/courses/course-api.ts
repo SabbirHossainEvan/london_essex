@@ -23,6 +23,14 @@ export type CourseCatalogCard = {
   isPublished?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  totalSeats?: number;
+  bookedSeats?: number;
+  remainingSeats?: number;
+  capacity?: {
+    totalSeats?: number;
+    bookedSeats?: number;
+    remainingSeats?: number;
+  };
   badge?: {
     label: string;
     tone: CourseCatalogBadgeTone;
@@ -100,6 +108,14 @@ export type CourseDetailCourse = {
   isPublished?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  totalSeats?: number;
+  bookedSeats?: number;
+  remainingSeats?: number;
+  capacity?: {
+    totalSeats?: number;
+    bookedSeats?: number;
+    remainingSeats?: number;
+  };
   overview?: string;
   description: string;
   qualification?: string;

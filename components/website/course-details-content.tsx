@@ -461,6 +461,7 @@ export default function CourseDetailsContent({
                 title={relatedCourse.title}
                 schedule={relatedCourse.schedule}
                 description={relatedCourse.description}
+                remainingSeats={relatedCourse.remainingSeats}
                 hrefBasePath={coursesHrefBasePath}
               />
             ))}
