@@ -14,6 +14,51 @@ const stats = [
   { label: "Years Experience", value: 18, suffix: "+", decimals: 0, icon: Clock },
 ];
 
+const heroCollageImages = [
+  {
+    src: "/hero-electrical-training-3.png",
+    alt: "Electrical students working at a training bench",
+    className:
+      "absolute left-[22px] top-[24px] h-[132px] w-[132px] overflow-hidden rounded-[30px] shadow-[0_18px_45px_rgba(27,54,104,0.14)]",
+    imageClassName: "object-cover object-center",
+  },
+  {
+    src: "/hero-electrical-training.png",
+    alt: "Electrical instructor guiding a trainee",
+    className:
+      "absolute right-[-2px] top-[24px] h-[418px] w-[418px] overflow-hidden rounded-[48px] shadow-[0_30px_70px_rgba(27,54,104,0.16)]",
+    imageClassName: "object-cover object-[67%_center]",
+  },
+  {
+    src: "/hero-1.png",
+    alt: "Hands-on electrical workshop practice",
+    className:
+      "absolute left-[-24px] top-[196px] h-[182px] w-[182px] overflow-hidden rounded-[34px] shadow-[0_22px_48px_rgba(27,54,104,0.14)]",
+    imageClassName: "object-cover object-[48%_center]",
+  },
+  {
+    src: "/hero-electrical-training.png",
+    alt: "Electrical training collaboration",
+    className:
+      "absolute left-[48px] bottom-[62px] h-[110px] w-[110px] overflow-hidden rounded-full shadow-[0_18px_40px_rgba(27,54,104,0.13)]",
+    imageClassName: "object-cover object-[28%_center]",
+  },
+  {
+    src: "/hero-electrical-training-2.png",
+    alt: "Electrical learner working on a panel",
+    className:
+      "absolute bottom-[0px] left-[188px] h-[156px] w-[236px] overflow-hidden rounded-[34px] shadow-[0_22px_50px_rgba(27,54,104,0.13)]",
+    imageClassName: "object-cover object-center",
+  },
+  {
+    src: "/hero-electrical-training.png",
+    alt: "Electrical learners in the workshop",
+    className:
+      "absolute bottom-[58px] right-[18px] h-[112px] w-[112px] overflow-hidden rounded-[30px] shadow-[0_18px_40px_rgba(27,54,104,0.13)]",
+    imageClassName: "object-cover object-[82%_center]",
+  },
+];
+
 const fallbackSearchUi = {
   placeholder: "Find a course...",
   actionLabel: "Find Courses",
@@ -239,7 +284,7 @@ const Hero = () => {
             </h1>
 
             <p className="mt-10 max-w-[640px] text-xl leading-relaxed text-gray-600">
-              Professional electrician, gas, and plumbing training delivered by expert instructors in state-of-the-art facilities.
+              Professional electrical training and assessment support delivered by expert instructors in modern workshop facilities.
             </p>
 
             {/* Search Bar */}
@@ -369,22 +414,36 @@ const Hero = () => {
             </div>
           </motion.div>
 
-          {/* Right Hero Image (Single Image Replication) */}
+          {/* Right Hero Image Group */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 1, ease: "easeOut" }}
             className="relative hidden h-[680px] w-full items-center justify-center lg:flex"
           >
-            <div className="relative h-full w-full lg:translate-x-4 lg:scale-[1.03] xl:translate-x-8">
-              <Image
-                src="/hero-collage.png"
-                alt="Construction Training Collage"
-                fill
-                priority
-                sizes="(max-width: 1024px) 100vw, 700px"
-                className="mt-6 h-full w-full object-contain pointer-events-none drop-shadow-[0_20px_50px_rgba(0,0,0,0.15)]"
-              />
+            <div className="relative h-[660px] w-[592px] lg:translate-x-1 xl:translate-x-4">
+              <div className="absolute left-[154px] top-[396px] h-[128px] w-[128px] rounded-full bg-[radial-gradient(circle,_#7fe2ff_0%,_#31b7ee_65%,_#14a0db_100%)] opacity-95" />
+              <div className="absolute bottom-[48px] left-[8px] grid grid-cols-4 gap-[9px]">
+                {Array.from({ length: 16 }).map((_, index) => (
+                  <span
+                    key={index}
+                    className="h-[5px] w-[5px] rounded-full bg-[#7dd8fb]/90"
+                  />
+                ))}
+              </div>
+
+              {heroCollageImages.map((item) => (
+                <div key={`${item.src}-${item.alt}`} className={item.className}>
+                  <Image
+                    src={item.src}
+                    alt={item.alt}
+                    fill
+                    priority
+                    sizes="(max-width: 1024px) 100vw, 700px"
+                    className={item.imageClassName}
+                  />
+                </div>
+              ))}
             </div>
           </motion.div>
 
