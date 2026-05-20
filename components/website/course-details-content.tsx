@@ -36,7 +36,7 @@ type CourseDetailsContentProps = {
 
 type AccordionKey = "learning" | "delivery" | "additional";
 
-const fallbackCourseImage = "/hero-2.png";
+const fallbackCourseImage = "/hero-1.png";
 
 const am2eEligibleQualificationTokens = [
   "ewa-city-and-guilds-2346",

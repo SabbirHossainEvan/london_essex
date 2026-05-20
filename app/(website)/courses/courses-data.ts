@@ -34,8 +34,8 @@ export const coursesData: CourseSummary[] = [
     duration: "7 Weeks (Mon - Fri) or 18 Weekends",
     price: "£3,195.00",
     vatLabel: "inc VAT",
-    heroImage: "/hero-2.png",
-    gallery: ["/hero-2.png", "/hero-1.png", "/hero-collage.png", "/hero-2.png"],
+    heroImage: "/hero-1.png",
+    gallery: ["/hero-1.png", "/hero-1.png", "/hero-collage.png", "/hero-1.png"],
     learning:
       "In this course, you'll gain comprehensive preparation for the AM2 assessment, covering safe isolation procedures, composite installations, and effective fault diagnosis techniques.",
     delivery:
@@ -58,7 +58,7 @@ export const coursesData: CourseSummary[] = [
     price: "£4,295.00",
     vatLabel: "inc VAT",
     heroImage: "/hero-1.png",
-    gallery: ["/hero-1.png", "/hero-2.png", "/hero-collage.png", "/hero-1.png"],
+    gallery: ["/hero-1.png", "/hero-1.png", "/hero-collage.png", "/hero-1.png"],
     learning:
       "Start from the fundamentals and build practical competence across installation, maintenance, testing, and safety procedures for domestic gas work.",
     delivery:
@@ -81,7 +81,7 @@ export const coursesData: CourseSummary[] = [
     price: "£3,895.00",
     vatLabel: "inc VAT",
     heroImage: "/hero-collage.png",
-    gallery: ["/hero-collage.png", "/hero-2.png", "/hero-1.png", "/hero-collage.png"],
+    gallery: ["/hero-collage.png", "/hero-1.png", "/hero-1.png", "/hero-collage.png"],
     learning:
       "This pathway focuses on accelerated progress through hands-on practice, core gas safety concepts, installation standards, and assessment preparation.",
     delivery:
@@ -104,7 +104,7 @@ export const coursesData: CourseSummary[] = [
     price: "£4,650.00",
     vatLabel: "inc VAT",
     heroImage: "/hero-1.png",
-    gallery: ["/hero-1.png", "/hero-collage.png", "/hero-2.png", "/hero-1.png"],
+    gallery: ["/hero-1.png", "/hero-collage.png", "/hero-1.png", "/hero-1.png"],
     learning:
       "The programme supports long-form skill development through guided practice, safety-first teaching, and staged preparation for industry certification.",
     delivery:
@@ -126,8 +126,8 @@ export const coursesData: CourseSummary[] = [
     duration: "6 Weeks",
     price: "£1,795.00",
     vatLabel: "inc VAT",
-    heroImage: "/hero-2.png",
-    gallery: ["/hero-2.png", "/hero-1.png", "/hero-collage.png", "/hero-2.png"],
+    heroImage: "/hero-1.png",
+    gallery: ["/hero-1.png", "/hero-1.png", "/hero-collage.png", "/hero-1.png"],
     learning:
       "Gain strong grounding in inspection routines, testing sequences, certification, and practical interpretation of electrical standards.",
     delivery:
@@ -150,7 +150,7 @@ export const coursesData: CourseSummary[] = [
     price: "£2,250.00",
     vatLabel: "inc VAT",
     heroImage: "/hero-collage.png",
-    gallery: ["/hero-collage.png", "/hero-1.png", "/hero-2.png", "/hero-collage.png"],
+    gallery: ["/hero-collage.png", "/hero-1.png", "/hero-1.png", "/hero-collage.png"],
     learning:
       "Learn the plumbing essentials including pipe installation, maintenance routines, fittings, water regulations, and practical workshop techniques.",
     delivery:
