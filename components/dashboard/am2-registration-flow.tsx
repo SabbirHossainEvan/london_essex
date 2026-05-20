@@ -4227,11 +4227,11 @@ Thank you,`,
                   <FieldLabel>Are you an employer or self-employed</FieldLabel>
                   <RadioRow
                     name="has-employer"
-                    options={["Yes", "No"]}
-                    value={hasEmployer === "yes" ? "Yes" : "No"}
+                    options={["Employed", "Self-employed"]}
+                    value={hasEmployer === "yes" ? "Employed" : "Self-employed"}
                     onChange={(value) => {
                       setEmployerStepError("");
-                      const nextHasEmployer = value === "Yes" ? "yes" : "no";
+                      const nextHasEmployer = value === "Employed" ? "yes" : "no";
                       setHasEmployer(nextHasEmployer);
                       router.replace(
                         `/dashboard/courses/${course.slug}/book?${(() => {
