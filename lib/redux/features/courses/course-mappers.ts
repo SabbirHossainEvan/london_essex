@@ -75,6 +75,7 @@ export function mapDetailCourseToSummary(course: CourseDetailCourse): CourseSumm
     duration: course.duration || "",
     price: normalizeCurrency(course.pricing?.displayPrice || ""),
     vatLabel: course.pricing?.note || "",
+    remainingSeats: course.remainingSeats,
     heroImage,
     gallery,
     learning: accordion.learning,
@@ -129,6 +130,12 @@ export function mapRelatedCourseToSummary(
         : "",
     price: normalizeCurrency(priceDisplay || ""),
     vatLabel: "",
+    remainingSeats:
+      "remainingSeats" in course && typeof course.remainingSeats === "number"
+        ? course.remainingSeats
+        : "capacity" in course && typeof course.capacity?.remainingSeats === "number"
+          ? course.capacity.remainingSeats
+          : undefined,
     heroImage,
     gallery: heroImage ? [heroImage] : [],
     learning: "",

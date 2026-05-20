@@ -54,6 +54,7 @@ export default function CoursesGridSection({
               title={course.title}
               schedule={course.schedule}
               description={course.description}
+              remainingSeats={course.remainingSeats}
             />
           ))}
         </div>

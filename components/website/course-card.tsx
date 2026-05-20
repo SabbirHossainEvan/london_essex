@@ -7,8 +7,22 @@ type CourseCardProps = {
   title: string;
   schedule: string;
   description: string;
+  remainingSeats?: number;
   hrefBasePath?: string;
 };
+
+const hiddenSeatAvailabilitySlugs = new Set(["am2-assessment-preparation"]);
+
+function formatSeatAvailability(remainingSeats?: number) {
+  if (typeof remainingSeats !== "number" || Number.isNaN(remainingSeats)) {
+    return null;
+  }
+
+  const safeRemainingSeats = Math.max(0, remainingSeats);
+  const seatLabel = safeRemainingSeats === 1 ? "Seat" : "Seats";
+
+  return `${safeRemainingSeats} ${seatLabel} Available`;
+}
 
 export default function CourseCard({
   slug,
@@ -16,8 +30,13 @@ export default function CourseCard({
   title,
   schedule,
   description,
+  remainingSeats,
   hrefBasePath = "/courses",
 }: CourseCardProps) {
+  const seatAvailability = hiddenSeatAvailabilitySlugs.has(slug)
+    ? null
+    : formatSeatAvailability(remainingSeats);
+
   return (
     <article className="group flex min-h-[300px] flex-col overflow-hidden rounded-[16px] border border-[#d8e8f6] bg-white shadow-[0_10px_24px_rgba(60,101,154,0.08)]">
       <div className="bg-[#eef7ff] p-4">
@@ -34,9 +53,17 @@ export default function CourseCard({
       </div>
 
       <div className="flex flex-1 flex-col justify-between p-4">
-        <p className="max-w-[30ch] text-[0.98rem] leading-7 text-[#707b95]">
-          {description}
-        </p>
+        <div>
+          <p className="max-w-[30ch] text-[0.98rem] leading-7 text-[#707b95]">
+            {description}
+          </p>
+
+          {seatAvailability ? (
+            <p className="mt-4 text-sm font-semibold text-[#1b9ed8]">
+              {seatAvailability}
+            </p>
+          ) : null}
+        </div>
 
         <div className="mt-6 flex items-end justify-between gap-4">
           <Link

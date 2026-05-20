@@ -2,6 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 
 type CourseHelpCtaProps = {
@@ -85,13 +86,18 @@ export default function CourseHelpCta({
                 </h2>
               </div>
 
-              <motion.button
+              <motion.div
                 whileHover={reduceMotion ? undefined : { y: -2 }}
                 whileTap={reduceMotion ? undefined : { scale: 0.98 }}
-                className="mt-7 rounded-[10px] bg-[#18a9df] px-9 py-4 text-[1.05rem] font-semibold text-white shadow-[0_4px_0_#4f5561]"
+                className="mt-7"
               >
-                {buttonLabel}
-              </motion.button>
+                <Link
+                  href="/contact"
+                  className="inline-flex rounded-[10px] bg-[#18a9df] px-9 py-4 text-[1.05rem] font-semibold text-white shadow-[0_4px_0_#4f5561]"
+                >
+                  {buttonLabel}
+                </Link>
+              </motion.div>
             </motion.div>
           </div>
         </div>
