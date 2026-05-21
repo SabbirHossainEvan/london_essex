@@ -1,17 +1,22 @@
 import { baseApi } from "@/lib/redux/api/base-api";
 
 export type CreateNormalBookingRequest = {
-  courseSlug: string;
+  courseId: string;
+  assessmentVariant?: string;
   personalDetails: {
     title: string;
     firstName: string;
     lastName: string;
+    fullName?: string;
     dateOfBirth: string;
     niNumber: string;
     email: string;
+    phoneNumber?: string;
     mobileNumber: string;
+    address?: string;
     addressLine1: string;
     addressLine2: string;
+    city?: string;
     town: string;
     postcode: string;
     trainingCenter: string;
@@ -25,26 +30,89 @@ export type CreateNormalBookingResponse = {
     booking: {
       id: string;
       bookingNumber: string;
+      checklistVariant?: string;
+      assessmentVariant?: string;
       status: string;
       paymentStatus: string;
+      tab?: string;
+      statusBadge?: {
+        label?: string;
+        tone?: string;
+      };
+      createdAt?: string;
+      updatedAt?: string;
       payment?: {
         displayAmount?: string;
         amount?: number;
         currency?: string;
+        pricing?: {
+          amount?: number;
+          baseAmount?: number;
+          currency?: string;
+          vatEnabled?: boolean;
+          vatIncluded?: boolean;
+          vatRate?: number;
+          vatPercentage?: number;
+          vatAmount?: number;
+          totalAmount?: number;
+          displayPrice?: string;
+          baseDisplayPrice?: string;
+          totalDisplayPrice?: string;
+          note?: string;
+        };
+      };
+      session?: {
+        location?: string;
+        displayDate?: string;
+        displayTime?: string;
+        displayDateTime?: string;
       };
       course?: {
+        id?: string;
         title?: string;
         slug?: string;
+        schedule?: string;
+        duration?: string;
+        location?: string;
+        qualification?: string;
+        assessmentVariant?: string;
+        thumbnailUrl?: string;
+        price?: number;
+        basePrice?: number;
+        currency?: string;
         displayPrice?: string;
+        pricing?: {
+          amount?: number;
+          baseAmount?: number;
+          currency?: string;
+          vatEnabled?: boolean;
+          vatIncluded?: boolean;
+          vatRate?: number;
+          vatPercentage?: number;
+          vatAmount?: number;
+          totalAmount?: number;
+          displayPrice?: string;
+          baseDisplayPrice?: string;
+          totalDisplayPrice?: string;
+          note?: string;
+        };
+        detailsUrl?: string;
       };
       personalDetails?: {
+        title?: string;
+        firstName?: string;
+        lastName?: string;
         fullName?: string;
         email?: string;
         phoneNumber?: string;
+        mobileNumber?: string;
         dateOfBirth?: string;
         address?: string;
+        addressLine1?: string;
+        addressLine2?: string;
         trainingCenter?: string;
         city?: string;
+        town?: string;
         postcode?: string;
       };
     };
@@ -599,8 +667,6 @@ export type Am2eChecklistFlowVariant = "am2" | "am2e" | "am2e-v1";
 export type GetAm2eChecklistFlowByCourseRequest = {
   variant: Am2eChecklistFlowVariant;
   courseId: string;
-  questionId?: "nvq-registration-date";
-  answerId?: "before-3rd-september-2023" | "after-september-2023";
 };
 
 export type GetAm2eChecklistFlowByCourseResponse = {
@@ -613,6 +679,7 @@ export type GetAm2eChecklistFlowByCourseResponse = {
       title: string;
       slug: string;
       qualification?: string;
+      assessmentVariant?: string;
       location?: string;
       schedule?: string;
       duration?: string;
@@ -620,9 +687,61 @@ export type GetAm2eChecklistFlowByCourseResponse = {
       currency?: string;
       thumbnailUrl?: string;
       galleryImages?: string[];
+      selectedAssessmentVariant?: Am2eChecklistFlowVariant;
+      configuredAssessmentVariant?: string;
+      displayPrice?: string;
+      pricing?: {
+        amount?: number;
+        baseAmount?: number;
+        currency?: string;
+        vatEnabled?: boolean;
+        vatIncluded?: boolean;
+        vatRate?: number;
+        vatPercentage?: number;
+        vatAmount?: number;
+        totalAmount?: number;
+        displayPrice?: string;
+        baseDisplayPrice?: string;
+        totalDisplayPrice?: string;
+        note?: string;
+      };
+      assessmentVariantPricing?: {
+        courseSlug?: string;
+        defaultVariant?: Am2eChecklistFlowVariant;
+        prices?: Partial<Record<Am2eChecklistFlowVariant, number>>;
+        options?: Array<{
+          variant: Am2eChecklistFlowVariant;
+          label?: string;
+          price?: number;
+          amount?: number;
+          defaultPrice?: number;
+          currency?: string;
+          displayPrice?: string;
+          pricing?: {
+            amount?: number;
+            baseAmount?: number;
+            currency?: string;
+            vatEnabled?: boolean;
+            vatIncluded?: boolean;
+            vatRate?: number;
+            vatPercentage?: number;
+            vatAmount?: number;
+            totalAmount?: number;
+            displayPrice?: string;
+            baseDisplayPrice?: string;
+            totalDisplayPrice?: string;
+            note?: string;
+          };
+          isDefault?: boolean;
+        }>;
+      };
     };
     resolvedFrom?: {
+      source?: string;
       routeVariant?: string;
+      requestedVariant?: string;
+      courseVariant?: string;
+      courseVariantSource?: string;
       selectedQuestionId?: string;
       selectedAnswerId?: string;
       selectedAnswerLabel?: string;
@@ -727,6 +846,31 @@ export type GetAm2eChecklistFlowByCourseResponse = {
         notes?: string[];
       };
     };
+    availableVariants?: Array<{
+      variant: Am2eChecklistFlowVariant;
+      templateId?: string;
+      title?: string;
+      description?: string;
+      price?: number;
+      currency?: string;
+      displayPrice?: string;
+      pricing?: {
+        amount?: number;
+        baseAmount?: number;
+        currency?: string;
+        vatEnabled?: boolean;
+        vatIncluded?: boolean;
+        vatRate?: number;
+        vatPercentage?: number;
+        vatAmount?: number;
+        totalAmount?: number;
+        displayPrice?: string;
+        baseDisplayPrice?: string;
+        totalDisplayPrice?: string;
+        note?: string;
+      };
+      apiUrl?: string;
+    }>;
   };
 };
 
@@ -1582,13 +1726,12 @@ export const bookingApi = baseApi.injectEndpoints({
       GetAm2eChecklistFlowByCourseResponse,
       GetAm2eChecklistFlowByCourseRequest
     >({
-      query: ({ variant, courseId, questionId, answerId }) => ({
-        url: `/bookings/${variant}-checklist-flow`,
+      query: ({ variant, courseId }) => ({
+        url: "/bookings/checklist-flow",
         method: "GET",
         params: {
           courseId,
-          ...(questionId ? { questionId } : {}),
-          ...(answerId ? { answerId } : {}),
+          variant,
         },
       }),
       providesTags: ["Booking"],

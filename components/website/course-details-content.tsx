@@ -17,6 +17,11 @@ import { useLazyGetCourseBookNowQuery } from "@/lib/redux/features/courses/cours
 type CourseDetailsContentProps = {
   course: CourseSummary;
   relatedCourses: CourseSummary[];
+  variantPrices?: Array<{
+    variant: string;
+    label: string;
+    displayPrice: string;
+  }>;
   coursesHrefBasePath?: string;
   bookingHrefBasePath?: string;
   defaultSelectedImageIndex?: number;
@@ -80,6 +85,7 @@ function isAm2eEligibleQualification({
 export default function CourseDetailsContent({
   course,
   relatedCourses,
+  variantPrices = [],
   coursesHrefBasePath = "/courses",
   bookingHrefBasePath,
   defaultSelectedImageIndex = 0,
@@ -358,10 +364,35 @@ export default function CourseDetailsContent({
               ))}
             </div>
 
-            <div className="mt-5 flex items-end gap-2">
-              <span className="text-[2rem] font-semibold leading-none text-[#38439e]">{course.price}</span>
-              <span className="pb-1 text-sm text-[#6f7894]">{course.vatLabel}</span>
-            </div>
+            {variantPrices.length === 0 ? (
+              <div className="mt-5 flex items-end gap-2">
+                <span className="text-[2rem] font-semibold leading-none text-[#38439e]">{course.price}</span>
+                <span className="pb-1 text-sm text-[#6f7894]">{course.vatLabel}</span>
+              </div>
+            ) : null}
+
+            {variantPrices.length > 0 ? (
+              <div className="mt-4 rounded-[12px] border border-[#dbe7f4] bg-[#f8fbff] p-4">
+                <p className="text-sm font-semibold text-[#3943a5]">
+                  Checklist / Variant Prices
+                </p>
+                <div className="mt-3 space-y-2">
+                  {variantPrices.map((item) => (
+                    <div
+                      key={item.variant}
+                      className="flex items-center justify-between rounded-[10px] border border-[#e2ebf7] bg-white px-3 py-2.5"
+                    >
+                      <span className="text-sm font-medium text-[#4a57b2]">
+                        {item.label}
+                      </span>
+                      <span className="text-sm font-semibold text-[#24346b]">
+                        {item.displayPrice}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             {onBookNow ? (
               <button

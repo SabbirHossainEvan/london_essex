@@ -1,14 +1,23 @@
 "use client";
 
+import React from "react";
 import CourseDetailsContent from "@/components/website/course-details-content";
 import { useAppSelector } from "@/lib/redux/hooks";
 import {
   useGetCourseDetailScreenQuery,
 } from "@/lib/redux/features/courses/course-api";
+import { useLazyGetAm2eChecklistFlowByCourseQuery } from "@/lib/redux/features/bookings/booking-api";
 import {
   mapDetailCourseToSummary,
   mapRelatedCourseToSummary,
 } from "@/lib/redux/features/courses/course-mappers";
+
+function cleanVariantLabel(value: string) {
+  return value
+    .replace(/\s+full\s+checklist/gi, "")
+    .replace(/\s+checklist/gi, "")
+    .trim();
+}
 
 type CourseDetailScreenProps = {
   slug: string;
@@ -40,6 +49,8 @@ export default function CourseDetailScreen({
   dashboardMode = false,
 }: CourseDetailScreenProps) {
   const hydrated = useAppSelector((state) => state.auth.hydrated);
+  const [fetchChecklistFlow, checklistFlowQuery] =
+    useLazyGetAm2eChecklistFlowByCourseQuery();
   const { data, isLoading, isError, error } = useGetCourseDetailScreenQuery(slug, {
     skip: !hydrated,
     refetchOnMountOrArgChange: true,
@@ -49,6 +60,40 @@ export default function CourseDetailScreen({
   const course = screen?.course ? mapDetailCourseToSummary(screen.course) : null;
   const relatedCourses =
     screen?.relatedCourses?.map(mapRelatedCourseToSummary) ?? [];
+  const variantPrices = checklistFlowQuery.data?.data.availableVariants?.map((item) => ({
+    variant: item.variant,
+    label: cleanVariantLabel(
+      item.label || item.title || item.variant.toUpperCase()
+    ),
+    displayPrice:
+      item.pricing?.totalDisplayPrice ||
+      item.pricing?.displayPrice ||
+      item.displayPrice ||
+      "",
+  }))
+    .filter((item) => item.displayPrice) ?? [];
+
+  React.useEffect(() => {
+    if (
+      !hydrated ||
+      !screen?.course?.id ||
+      screen.course.slug !== "am2-assessment-preparation" ||
+      checklistFlowQuery.data?.data.course?.id === screen.course.id
+    ) {
+      return;
+    }
+
+    void fetchChecklistFlow({
+      courseId: screen.course.id,
+      variant: "am2",
+    });
+  }, [
+    checklistFlowQuery.data?.data.course?.id,
+    fetchChecklistFlow,
+    hydrated,
+    screen?.course?.id,
+    screen?.course?.slug,
+  ]);
 
   if (!hydrated || isLoading) {
     return (
@@ -81,6 +126,7 @@ export default function CourseDetailScreen({
     <CourseDetailsContent
       course={course}
       relatedCourses={relatedCourses}
+      variantPrices={variantPrices}
       coursesHrefBasePath={coursesHrefBasePath}
       bookingHrefBasePath={bookingHrefBasePath}
       dashboardMode={dashboardMode}

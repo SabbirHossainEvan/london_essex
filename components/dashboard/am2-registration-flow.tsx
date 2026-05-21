@@ -226,18 +226,6 @@ const am2eEligibleQualificationTokens = [
   "603-5982-1",
 ];
 
-function getNvqAnswerForFlow(flowType: NetFlowType): NvqTiming | null {
-  if (flowType === "am2e") {
-    return "before-3rd-september-2023";
-  }
-
-  if (flowType === "am2e-v1") {
-    return "after-september-2023";
-  }
-
-  return null;
-}
-
 function normalizeQualificationValue(value?: string) {
   return (value ?? "")
     .trim()
@@ -448,6 +436,20 @@ function resolveBookingIdFromRegistrationScreen(screen?: {
 
 function normalizeAssessmentValue(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, "");
+}
+
+function normalizeAssessmentVariant(value?: string): NetFlowType {
+  const normalizedValue = normalizeAssessmentValue(value ?? "");
+
+  if (normalizedValue === "am2e-v1" || normalizedValue === "am2ev1") {
+    return "am2e-v1";
+  }
+
+  if (normalizedValue === "am2e") {
+    return "am2e";
+  }
+
+  return "am2";
 }
 
 function isAffirmativeSelection(value: string) {
@@ -2303,7 +2305,13 @@ function NetPaymentPanel({
   );
 }
 
-function NetConfirmedPanel({ course }: { course: CourseSummary }) {
+function NetConfirmedPanel({
+  course,
+  amountPaid,
+}: {
+  course: CourseSummary;
+  amountPaid: string;
+}) {
   const bookingReference = buildBookingReference();
   const assignedDate = formatAssignedDate();
 
@@ -2337,7 +2345,7 @@ function NetConfirmedPanel({ course }: { course: CourseSummary }) {
                 ["Assigned Date", assignedDate],
                 ["Time", course.schedule],
                 ["Location", course.location],
-                ["Amount Paid", normalizeCurrency(course.price)],
+                ["Amount Paid", amountPaid],
                 ["Reference", bookingReference],
               ].map(([label, value], index) => (
                 <div
@@ -2636,6 +2644,9 @@ Thank you,`,
   >(null);
   const [am2eChecklistFlowData, setAm2eChecklistFlowData] =
     React.useState<Am2eChecklistFlowData | null>(null);
+  const [variantFlowPreviewData, setVariantFlowPreviewData] = React.useState<
+    GetAm2eChecklistFlowByCourseResponse["data"] | null
+  >(null);
   const [payment, setPayment] = React.useState<PaymentFormState>({
     acceptedTerms: false,
     cardNumber: "",
@@ -2795,6 +2806,10 @@ Thank you,`,
     am2eChecklistFlowData?.checklistVariant === netFlowType
       ? am2eChecklistFlowData
       : null;
+  const activeVariantFlowPreview =
+    variantFlowPreviewData?.checklistVariant === netFlowType
+      ? variantFlowPreviewData
+      : null;
   const requiresProviderSignature =
     (hasEmployer === "yes" || hasEmployer === "both") &&
     (signaturesScreenData?.data.screen
@@ -2809,6 +2824,51 @@ Thank you,`,
   const am2eChecklistSummaryScreen = activeAm2eChecklistFlowData
     ? mapAm2eFlowToChecklistSummaryScreen(activeAm2eChecklistFlowData)
     : null;
+  const selectedVariantDisplayPrice =
+    activeVariantFlowPreview?.course?.pricing?.totalDisplayPrice ||
+    activeVariantFlowPreview?.course?.displayPrice ||
+    activeVariantFlowPreview?.availableVariants?.find(
+      (variant) => variant.variant === netFlowType
+    )?.pricing?.totalDisplayPrice ||
+    activeVariantFlowPreview?.availableVariants?.find(
+      (variant) => variant.variant === netFlowType
+    )?.displayPrice ||
+    normalizeCurrency(course.price);
+  const selectedAssessmentVariantForBooking = React.useMemo<NetFlowType>(() => {
+    if (
+      requestedFlow === "am2" ||
+      requestedFlow === "am2e" ||
+      requestedFlow === "am2e-v1"
+    ) {
+      return requestedFlow;
+    }
+
+    if (isAm2eQualification) {
+      return "am2e";
+    }
+
+    if (assessment.assessmentType.trim()) {
+      return normalizeAssessmentVariant(assessment.assessmentType);
+    }
+
+    if (activeVariantFlowPreview?.course?.selectedAssessmentVariant) {
+      return activeVariantFlowPreview.course.selectedAssessmentVariant;
+    }
+
+    if (activeVariantFlowPreview?.course?.assessmentVariant) {
+      return normalizeAssessmentVariant(
+        activeVariantFlowPreview.course.assessmentVariant
+      );
+    }
+
+    return "am2";
+  }, [
+    activeVariantFlowPreview?.course?.assessmentVariant,
+    activeVariantFlowPreview?.course?.selectedAssessmentVariant,
+    assessment.assessmentType,
+    isAm2eQualification,
+    requestedFlow,
+  ]);
 
   const resolveQualificationId = React.useCallback(() => {
     if (selectedQualificationIdParam) {
@@ -2871,15 +2931,8 @@ Thank you,`,
   }, [resolvedBookingId, netFlowType]);
 
   React.useEffect(() => {
-    const variant =
-      netFlowType === "am2e" || netFlowType === "am2e-v1"
-        ? netFlowType
-        : null;
-    const answerId = getNvqAnswerForFlow(netFlowType);
-
     if (
-      !variant ||
-      !answerId ||
+      (netFlowType !== "am2e" && netFlowType !== "am2e-v1") ||
       !course.id ||
       phase !== "net" ||
       activeAm2eChecklistFlowData
@@ -2888,10 +2941,8 @@ Thank you,`,
     }
 
     getAm2eChecklistFlowByCourse({
-      variant,
+      variant: netFlowType,
       courseId: course.id,
-      questionId: "nvq-registration-date",
-      answerId,
     })
       .unwrap()
       .then((response) => {
@@ -2902,6 +2953,35 @@ Thank you,`,
       });
   }, [
     activeAm2eChecklistFlowData,
+    course.id,
+    getAm2eChecklistFlowByCourse,
+    netFlowType,
+    phase,
+  ]);
+
+  React.useEffect(() => {
+    if (!course.id || phase !== "net") {
+      return;
+    }
+
+    if (activeVariantFlowPreview) {
+      return;
+    }
+
+    getAm2eChecklistFlowByCourse({
+      variant: netFlowType,
+      courseId: course.id,
+    })
+      .unwrap()
+      .then((response) => {
+        setVariantFlowPreviewData(response.data);
+      })
+      .catch(() => {
+        // Price preview is optional; the booking/payment screens still provide
+        // their own fallback pricing.
+      });
+  }, [
+    activeVariantFlowPreview,
     course.id,
     getAm2eChecklistFlowByCourse,
     netFlowType,
@@ -3286,20 +3366,34 @@ Thank you,`,
       }
 
       if (!resolvedBookingId) {
+        if (!course.id) {
+          setCandidateStepError(
+            "We could not determine the course reference needed to create this booking."
+          );
+          return;
+        }
+
         try {
           setCandidateStepError("");
           const response = await createNormalBooking({
-            courseSlug: course.slug,
+            courseId: course.id,
+            assessmentVariant: selectedAssessmentVariantForBooking,
             personalDetails: {
               title: candidate.title.trim(),
               firstName: candidate.firstName.trim(),
               lastName: candidate.lastName.trim(),
+              fullName: `${candidate.firstName.trim()} ${candidate.lastName.trim()}`.trim(),
               dateOfBirth: formatDateForApi(candidate.dob),
               niNumber: candidate.niNumber.trim(),
               email: candidate.email.trim(),
+              phoneNumber: candidate.mobileNumber.trim(),
               mobileNumber: candidate.mobileNumber.trim(),
+              address: [candidate.address1.trim(), candidate.address2.trim()]
+                .filter(Boolean)
+                .join(", "),
               addressLine1: candidate.address1.trim(),
               addressLine2: candidate.address2.trim(),
+              city: candidate.town.trim(),
               town: candidate.town.trim(),
               postcode: candidate.postcode.trim(),
               trainingCenter:
@@ -3654,11 +3748,10 @@ Thank you,`,
       const checklistFlowResponse = await getAm2eChecklistFlowByCourse({
         variant: nextFlowType,
         courseId,
-        questionId: "nvq-registration-date",
-        answerId: nvqTiming,
       }).unwrap();
 
       setAm2eChecklistFlowData(checklistFlowResponse.data);
+      setVariantFlowPreviewData(checklistFlowResponse.data);
       resolvedFlowType = checklistFlowResponse.data.checklistVariant ?? nextFlowType;
     } catch (checklistFlowError) {
       setEligibilityStepError(
@@ -4955,7 +5048,10 @@ Thank you,`,
           ) : null}
 
           {phase === "net" && currentNetStep === "confirmed" ? (
-            <NetConfirmedPanel course={course} />
+            <NetConfirmedPanel
+              course={course}
+              amountPaid={selectedVariantDisplayPrice}
+            />
           ) : null}
 
           {phase === "registration" ? (
@@ -5181,7 +5277,7 @@ Thank you,`,
                     {isSubmittingPayment
                       ? "Preparing payment..."
                       : paymentScreen?.actions?.pay?.label ||
-                        `Pay ${paymentScreen?.summary.displayAmount ?? normalizeCurrency(course.price)}`}
+                        `Pay ${paymentScreen?.summary.displayAmount ?? selectedVariantDisplayPrice}`}
                   </button>
                 ) : null}
 
