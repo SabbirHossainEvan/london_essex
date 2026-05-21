@@ -3037,9 +3037,7 @@ Thank you,`,
     isAffirmativeSelection(assessment.apprentice);
   const employerSelections = getEmployerSelectionState(hasEmployer);
   const shouldRequireEmployerDetails =
-    employerSelections.employed ||
-    employerSelections.selfEmployed ||
-    shouldForceEmployerSelection;
+    employerSelections.employed || shouldForceEmployerSelection;
 
   React.useEffect(() => {
     if (!shouldForceEmployerSelection) {
