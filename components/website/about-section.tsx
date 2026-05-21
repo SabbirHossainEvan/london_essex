@@ -23,7 +23,7 @@ export default function AboutSection() {
           <div className="relative overflow-hidden rounded-[28px] bg-white p-4 shadow-[0_20px_50px_rgba(76,112,170,0.12)] sm:p-5">
             <div className="relative aspect-[4/4.2] overflow-hidden rounded-[22px] bg-[#eef7ff]">
               <Image
-                src="/hero-1.png"
+                src="/hero-electrical-training-2.png"
                 alt="Students in training"
                 fill
                 className="object-cover"

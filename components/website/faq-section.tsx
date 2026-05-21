@@ -87,7 +87,7 @@ export default function FaqSection({
 
           <div className="relative min-h-[360px] overflow-hidden rounded-[20px] bg-[#e5e5e5] shadow-[0_18px_40px_rgba(111,143,186,0.12)] sm:min-h-[460px] lg:min-h-[620px]">
             <Image
-              src="/hero-1.png"
+              src="/hero-consumer-unit.png"
               alt="Electrical training workshop"
               fill
               className="object-cover object-center"
