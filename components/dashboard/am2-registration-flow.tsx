@@ -144,7 +144,7 @@ type EmployerFormState = {
 type TrainingFormState = EmployerFormState;
 type NetFlowType = "am2" | "am2e" | "am2e-v1";
 type NvqTiming = "before-3rd-september-2023" | "after-september-2023";
-type EmployerStatus = "yes" | "no";
+type EmployerStatus = "yes" | "no" | "both";
 type CandidateFieldKey = keyof CandidateFormState;
 type AssessmentFieldKey = keyof AssessmentFormState;
 type EmployerFieldKey = keyof EmployerFormState;
@@ -450,6 +450,35 @@ function normalizeAssessmentValue(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, "");
 }
 
+function isAffirmativeSelection(value: string) {
+  return value.trim().toLowerCase() === "yes";
+}
+
+function getEmployerSelectionState(status: EmployerStatus) {
+  return {
+    employed: status === "yes" || status === "both",
+    selfEmployed: status === "no" || status === "both",
+  };
+}
+
+function getEmployerStatusFromSelections({
+  employed,
+  selfEmployed,
+}: {
+  employed: boolean;
+  selfEmployed: boolean;
+}): EmployerStatus {
+  if (employed && selfEmployed) {
+    return "both";
+  }
+
+  if (employed) {
+    return "yes";
+  }
+
+  return "no";
+}
+
 function convertCanvasToFile(canvas: HTMLCanvasElement, fileName: string) {
   return new Promise<File>((resolve, reject) => {
     canvas.toBlob(
@@ -654,6 +683,48 @@ function RadioRow({
               className="h-4 w-4 accent-[#1ea6df]"
             />
             <span>{option}</span>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
+function MultiSelectRow({
+  options,
+  values,
+  onToggle,
+  columns = "md:grid-cols-2",
+  disabled = false,
+}: {
+  options: Array<{ label: string; value: string }>;
+  values: string[];
+  onToggle: (value: string) => void;
+  columns?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <div className={`grid gap-3 ${columns}`}>
+      {options.map((option) => {
+        const checked = values.includes(option.value);
+
+        return (
+          <label
+            key={option.value}
+            className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition ${
+              checked
+                ? "border-[#8ed7f8] bg-[#dff5ff] text-[#24346b]"
+                : "border-[#dde9f7] bg-[#f4f9ff] text-[#5f6f90]"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={checked}
+              disabled={disabled}
+              onChange={() => onToggle(option.value)}
+              className="h-4 w-4 accent-[#1ea6df]"
+            />
+            <span>{option.label}</span>
           </label>
         );
       })}
@@ -1034,10 +1105,36 @@ function NetSignaturesPanel({
   requiresProviderSignature: boolean;
 }) {
   const [showInfo, setShowInfo] = React.useState(false);
-  const candidateItem = screen.items.find((item) => item.id === "candidate");
-  const providerItem = screen.items.find(
-    (item) => item.id === "training_provider"
-  );
+  const effectiveItems = React.useMemo(() => {
+    const nextItems = [...screen.items];
+    const hasCandidateItem = nextItems.some((item) => item.id === "candidate");
+    const hasProviderItem = nextItems.some(
+      (item) => item.id === "training_provider"
+    );
+
+    if (!hasCandidateItem) {
+      nextItems.unshift({
+        id: "candidate",
+        label: "Candidate",
+        status: "pending",
+      });
+    }
+
+    if (requiresProviderSignature && !hasProviderItem) {
+      nextItems.push({
+        id: "training_provider",
+        label: "Training Provider",
+        status: "pending",
+        action: {
+          label: "Ask for signed",
+        },
+      });
+    }
+
+    return nextItems;
+  }, [requiresProviderSignature, screen.items]);
+  const candidateItem = effectiveItems.find((item) => item.id === "candidate");
+  const providerItem = effectiveItems.find((item) => item.id === "training_provider");
   const candidateSigned = candidateItem?.status === "signed";
   const providerSigned = providerItem?.status === "signed";
   const providerRequested = providerItem?.status === "requested";
@@ -1084,7 +1181,7 @@ function NetSignaturesPanel({
               `Step 1 of ${requiresProviderSignature ? 2 : 1}`}
           </span>
           <div className="flex items-center gap-2">
-            {screen.items.map((item) => {
+            {effectiveItems.map((item) => {
               const active =
                 item.status === "signed" || item.status === "requested";
               return (
@@ -2631,10 +2728,19 @@ Thank you,`,
       return;
     }
 
-    window.sessionStorage.setItem(
-      getEmployerStatusStorageKey(resolvedBookingId),
-      hasEmployer
-    );
+    if (
+      hasEmployer === "yes" ||
+      hasEmployer === "no" ||
+      hasEmployer === "both"
+    ) {
+      window.sessionStorage.setItem(
+        getEmployerStatusStorageKey(resolvedBookingId),
+        hasEmployer
+      );
+      return;
+    }
+
+    window.sessionStorage.removeItem(getEmployerStatusStorageKey(resolvedBookingId));
   }, [hasEmployer, resolvedBookingId]);
 
   const {
@@ -2690,7 +2796,7 @@ Thank you,`,
       ? am2eChecklistFlowData
       : null;
   const requiresProviderSignature =
-    hasEmployer === "yes" &&
+    (hasEmployer === "yes" || hasEmployer === "both") &&
     (signaturesScreenData?.data.screen
       ? signaturesScreenData.data.screen.items.some(
           (item) => item.id === "training_provider"
@@ -2726,7 +2832,11 @@ Thank you,`,
   }, [activeBookingId, searchParams]);
 
   React.useEffect(() => {
-    if (requestedHasEmployer === "yes" || requestedHasEmployer === "no") {
+    if (
+      requestedHasEmployer === "yes" ||
+      requestedHasEmployer === "no" ||
+      requestedHasEmployer === "both"
+    ) {
       setHasEmployer(requestedHasEmployer);
       return;
     }
@@ -2741,7 +2851,11 @@ Thank you,`,
       getEmployerStatusStorageKey(bookingReference)
     );
 
-    if (storedHasEmployer === "yes" || storedHasEmployer === "no") {
+    if (
+      storedHasEmployer === "yes" ||
+      storedHasEmployer === "no" ||
+      storedHasEmployer === "both"
+    ) {
       setHasEmployer(storedHasEmployer);
 
       const params = new URLSearchParams(searchParams.toString());
@@ -2916,6 +3030,59 @@ Thank you,`,
     (step) => step.key === currentStep
   );
   const paymentScreen = paymentScreenData?.data.screen;
+  const isAm2ChecklistCourse = course.slug === "am2-assessment-preparation";
+  const shouldForceEmployerSelection =
+    isAm2ChecklistCourse &&
+    !isAm2eQualification &&
+    isAffirmativeSelection(assessment.apprentice);
+  const employerSelections = getEmployerSelectionState(hasEmployer);
+  const shouldRequireEmployerDetails =
+    employerSelections.employed ||
+    employerSelections.selfEmployed ||
+    shouldForceEmployerSelection;
+
+  React.useEffect(() => {
+    if (!shouldForceEmployerSelection) {
+      return;
+    }
+
+    if (hasEmployer !== "both") {
+      setHasEmployer("both");
+    }
+
+    if (requestedHasEmployer === "both") {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("hasEmployer", "both");
+    router.replace(`/dashboard/courses/${course.slug}/book?${params.toString()}`);
+  }, [
+    course.slug,
+    hasEmployer,
+    requestedHasEmployer,
+    router,
+    searchParams,
+    shouldForceEmployerSelection,
+  ]);
+
+  React.useEffect(() => {
+    if (shouldForceEmployerSelection || hasEmployer !== "both") {
+      return;
+    }
+
+    setHasEmployer("yes");
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("hasEmployer", "yes");
+    router.replace(`/dashboard/courses/${course.slug}/book?${params.toString()}`);
+  }, [
+    course.slug,
+    hasEmployer,
+    router,
+    searchParams,
+    shouldForceEmployerSelection,
+  ]);
 
   React.useEffect(() => {
     if (!registrationScreen?.submission?.payloadTemplate?.personalDetails) {
@@ -3226,7 +3393,7 @@ Thank you,`,
     }
 
     if (currentStep === "employer") {
-      if (hasEmployer === "no") {
+      if (!shouldRequireEmployerDetails) {
         setEmployerStepError("");
       } else {
         const requiredEmployerFields = employerFields.filter(
@@ -4225,23 +4392,72 @@ Thank you,`,
               <div className="mt-5 grid gap-4">
                 <div>
                   <FieldLabel>Are you an employer or self-employed</FieldLabel>
-                  <RadioRow
-                    name="has-employer"
-                    options={["Employed", "Self-employed"]}
-                    value={hasEmployer === "yes" ? "Employed" : "Self-employed"}
-                    onChange={(value) => {
-                      setEmployerStepError("");
-                      const nextHasEmployer = value === "Employed" ? "yes" : "no";
-                      setHasEmployer(nextHasEmployer);
-                      router.replace(
-                        `/dashboard/courses/${course.slug}/book?${(() => {
-                          const params = new URLSearchParams(searchParams.toString());
-                          params.set("hasEmployer", nextHasEmployer);
-                          return params.toString();
-                        })()}`
-                      );
-                    }}
-                  />
+                  {shouldForceEmployerSelection ? (
+                    <MultiSelectRow
+                      options={[
+                        { label: "Employed", value: "employed" },
+                        { label: "Self-employed", value: "self-employed" },
+                      ]}
+                      values={[
+                        ...(employerSelections.employed ? ["employed"] : []),
+                        ...(employerSelections.selfEmployed
+                          ? ["self-employed"]
+                          : []),
+                      ]}
+                      disabled
+                      onToggle={(value) => {
+                        setEmployerStepError("");
+
+                        const nextSelections =
+                          value === "employed"
+                            ? {
+                                ...employerSelections,
+                                employed: !employerSelections.employed,
+                              }
+                            : {
+                                ...employerSelections,
+                                selfEmployed: !employerSelections.selfEmployed,
+                              };
+
+                        if (
+                          !nextSelections.employed &&
+                          !nextSelections.selfEmployed
+                        ) {
+                          return;
+                        }
+
+                        const nextHasEmployer =
+                          getEmployerStatusFromSelections(nextSelections);
+
+                        setHasEmployer(nextHasEmployer);
+                        router.replace(
+                          `/dashboard/courses/${course.slug}/book?${(() => {
+                            const params = new URLSearchParams(searchParams.toString());
+                            params.set("hasEmployer", nextHasEmployer);
+                            return params.toString();
+                          })()}`
+                        );
+                      }}
+                    />
+                  ) : (
+                    <RadioRow
+                      name="has-employer"
+                      options={["Employed", "Self-employed"]}
+                      value={hasEmployer === "yes" ? "Employed" : "Self-employed"}
+                      onChange={(value) => {
+                        setEmployerStepError("");
+                        const nextHasEmployer = value === "Employed" ? "yes" : "no";
+                        setHasEmployer(nextHasEmployer);
+                        router.replace(
+                          `/dashboard/courses/${course.slug}/book?${(() => {
+                            const params = new URLSearchParams(searchParams.toString());
+                            params.set("hasEmployer", nextHasEmployer);
+                            return params.toString();
+                          })()}`
+                        );
+                      }}
+                    />
+                  )}
                 </div>
 
                 {(() => {
@@ -4274,7 +4490,7 @@ Thank you,`,
                             onChange={(value) => updateEmployer(currentStateKey, value)}
                             placeholder={currentField.placeholder ?? ""}
                             type={currentField.type}
-                            disabled={hasEmployer === "no"}
+                            disabled={!shouldRequireEmployerDetails}
                           />
                         </div>
                       );
