@@ -4,6 +4,10 @@ import React from "react";
 import Image from "next/image";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  useGetFaqsQuery,
+  useGetPublicFaqsQuery,
+} from "@/lib/redux/features/settings/settings-api";
 
 export type FaqItem = {
   question: string;
@@ -11,6 +15,7 @@ export type FaqItem = {
 };
 
 type FaqSectionProps = {
+  endpointScope?: "public" | "private";
   eyebrow?: string;
   title?: string;
   description?: string;
@@ -18,32 +23,63 @@ type FaqSectionProps = {
 };
 
 export default function FaqSection({
-  eyebrow = "FAQ",
-  title = "Common question in your mind",
-  description = "We show the frequently question that our ask",
+  endpointScope = "public",
+  eyebrow,
+  title,
+  description,
   items,
 }: FaqSectionProps) {
+  const { data: publicFaqData } = useGetPublicFaqsQuery(undefined, {
+    skip: endpointScope !== "public",
+  });
+  const { data: privateFaqData } = useGetFaqsQuery(undefined, {
+    skip: endpointScope !== "private",
+  });
+  const faqPage =
+    endpointScope === "private"
+      ? privateFaqData?.data.page
+      : publicFaqData?.data.page;
+  const resolvedItems =
+    (faqPage?.items?.length ? faqPage.items : faqPage?.faqs)
+      ?.filter((item) => item.isVisible !== false)
+      .sort((left, right) => (left.order ?? 0) - (right.order ?? 0))
+      .map((item) => ({
+        question: item.question,
+        answer: item.answer,
+      })) ?? items;
+  const resolvedEyebrow = eyebrow ?? "FAQ";
+  const resolvedTitle = title ?? faqPage?.title ?? "Common question in your mind";
+  const resolvedDescription =
+    description ??
+    faqPage?.subtitle ??
+    "We show the frequently question that our ask";
   const [activeIndex, setActiveIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    if (activeIndex >= resolvedItems.length) {
+      setActiveIndex(0);
+    }
+  }, [activeIndex, resolvedItems.length]);
 
   return (
     <section className="bg-[radial-gradient(circle_at_top,_#ffffff_0%,_#eef7ff_58%,_#e9f4ff_100%)] px-4 py-14 sm:px-6 lg:px-10 xl:px-16">
       <div className="mx-auto max-w-[1480px]">
         <div className="flex flex-col items-center">
           <span className="rounded-full border border-[#d7ecfb] bg-[#edf7ff] px-4 py-2 text-xs font-semibold tracking-[0.16em] text-[#19a2dd]">
-            {eyebrow}
+            {resolvedEyebrow}
           </span>
           <h2 className="mt-6 text-center text-3xl font-semibold tracking-tight text-[#38439e] sm:text-4xl lg:text-[3.1rem]">
-            {title}
+            {resolvedTitle}
           </h2>
           <p className="mt-4 text-center text-lg text-[#8790a8] sm:text-[1.45rem]">
-            {description}
+            {resolvedDescription}
           </p>
         </div>
 
         <div className="mt-12 grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_520px]">
           <div>
             <div className="space-y-3">
-              {items.map((item, index) => {
+              {resolvedItems.map((item, index) => {
                 const isActive = index === activeIndex;
 
                 return (
