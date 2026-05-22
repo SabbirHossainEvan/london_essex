@@ -848,6 +848,7 @@ export type GetAm2eChecklistFlowByCourseResponse = {
     };
     availableVariants?: Array<{
       variant: Am2eChecklistFlowVariant;
+      label?: string;
       templateId?: string;
       title?: string;
       description?: string;
