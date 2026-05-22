@@ -9,46 +9,46 @@ import { ArrowRight, Search } from "lucide-react";
 
 const heroCollageImages = [
   {
-    src: "/hero-electrical-training-3.png",
-    alt: "Electrical students working at a training bench",
+    src: "/hero-ev-charger.png",
+    alt: "EV charger installation training",
     className:
       "absolute left-[22px] top-[24px] h-[132px] w-[132px] overflow-hidden rounded-[30px] shadow-[0_18px_45px_rgba(27,54,104,0.14)]",
     imageClassName: "object-cover object-center",
   },
   {
-    src: "/hero-electrical-training.png",
-    alt: "Electrical instructor guiding a trainee",
+    src: "/hero-inspection-testing.png",
+    alt: "Inspection and testing training session",
     className:
       "absolute right-[-2px] top-[24px] h-[418px] w-[418px] overflow-hidden rounded-[48px] shadow-[0_30px_70px_rgba(27,54,104,0.16)]",
-    imageClassName: "object-cover object-[67%_center]",
+    imageClassName: "object-cover object-center",
   },
   {
-    src: "/hero-1.png",
-    alt: "Hands-on electrical workshop practice",
+    src: "/hero-consumer-unit.png",
+    alt: "Consumer unit wiring practice",
     className:
       "absolute left-[-24px] top-[196px] h-[182px] w-[182px] overflow-hidden rounded-[34px] shadow-[0_22px_48px_rgba(27,54,104,0.14)]",
-    imageClassName: "object-cover object-[48%_center]",
+    imageClassName: "object-cover object-center",
   },
   {
-    src: "/hero-electrical-training.png",
-    alt: "Electrical training collaboration",
+    src: "/hero-solar-pv.png",
+    alt: "Solar PV installation training",
     className:
       "absolute left-[48px] bottom-[62px] h-[110px] w-[110px] overflow-hidden rounded-full shadow-[0_18px_40px_rgba(27,54,104,0.13)]",
-    imageClassName: "object-cover object-[28%_center]",
+    imageClassName: "object-cover object-center",
   },
   {
-    src: "/hero-electrical-training-2.png",
-    alt: "Electrical learner working on a panel",
+    src: "/hero-fault-finding.png",
+    alt: "Electrical fault-finding with a multimeter",
     className:
       "absolute bottom-[0px] left-[188px] h-[156px] w-[236px] overflow-hidden rounded-[34px] shadow-[0_22px_50px_rgba(27,54,104,0.13)]",
     imageClassName: "object-cover object-center",
   },
   {
-    src: "/hero-electrical-training.png",
-    alt: "Electrical learners in the workshop",
+    src: "/hero-instructor-apprentices.png",
+    alt: "Workshop instructor guiding apprentices",
     className:
       "absolute bottom-[58px] right-[18px] h-[112px] w-[112px] overflow-hidden rounded-[30px] shadow-[0_18px_40px_rgba(27,54,104,0.13)]",
-    imageClassName: "object-cover object-[82%_center]",
+    imageClassName: "object-cover object-center",
   },
 ];
 

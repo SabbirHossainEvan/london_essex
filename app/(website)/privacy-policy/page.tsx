@@ -78,6 +78,7 @@ const sections = [
 export default function PrivacyPolicyPage() {
   return (
     <LegalPage
+      pageSlug="privacy-policy"
       eyebrow="Privacy"
       title="Privacy Policy"
       intro="This page outlines the general ways we collect, use, and protect personal information when you interact with London & Essex Electrical Training."

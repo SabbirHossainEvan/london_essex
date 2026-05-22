@@ -176,9 +176,99 @@ export interface ProfileSettingsResponse {
   };
 }
 
+export interface LegalPageSection {
+  id: string;
+  sectionId?: string;
+  label?: string;
+  order?: number;
+  title: string;
+  introduction?: string;
+  content?: string;
+  isVisible?: boolean;
+}
+
+export interface LegalPageResponse {
+  success: boolean;
+  message: string;
+  data: {
+    page: {
+      id: string;
+      slug: string;
+      category?: string;
+      title?: string;
+      subtitle?: string;
+      isPublished?: boolean;
+      updatedAt?: string;
+      sections?: LegalPageSection[];
+    };
+  };
+}
+
+export interface FaqPageItem {
+  id: string;
+  faqId?: string;
+  label?: string;
+  order?: number;
+  question: string;
+  answer: string;
+  isVisible?: boolean;
+}
+
+export interface FaqPageResponse {
+  success: boolean;
+  message: string;
+  data: {
+    page: {
+      id: string;
+      key?: string;
+      category?: string;
+      title?: string;
+      subtitle?: string;
+      isPublished?: boolean;
+      updatedAt?: string;
+      items?: FaqPageItem[];
+      faqs?: FaqPageItem[];
+    };
+  };
+}
+
 export const settingsApi = baseApi.injectEndpoints({
   overrideExisting: true,
   endpoints: (builder) => ({
+    getPublicLegalPage: builder.query<
+      LegalPageResponse,
+      "terms-and-conditions" | "privacy-policy"
+    >({
+      query: (slug) => ({
+        url: `/settings/public/legal-pages/${slug}`,
+        method: "GET",
+      }),
+      providesTags: ["Settings"],
+    }),
+    getLegalPage: builder.query<
+      LegalPageResponse,
+      "terms-and-conditions" | "privacy-policy"
+    >({
+      query: (slug) => ({
+        url: `/settings/legal-pages/${slug}`,
+        method: "GET",
+      }),
+      providesTags: ["Settings"],
+    }),
+    getPublicFaqs: builder.query<FaqPageResponse, void>({
+      query: () => ({
+        url: "/settings/public/faqs",
+        method: "GET",
+      }),
+      providesTags: ["Settings"],
+    }),
+    getFaqs: builder.query<FaqPageResponse, void>({
+      query: () => ({
+        url: "/settings/faqs",
+        method: "GET",
+      }),
+      providesTags: ["Settings"],
+    }),
     getNotificationSettings: builder.query<NotificationSettingsResponse, void>({
       query: () => ({
         url: "/settings/notifications",
@@ -242,6 +332,10 @@ export const settingsApi = baseApi.injectEndpoints({
 });
 
 export const {
+  useGetPublicLegalPageQuery,
+  useGetLegalPageQuery,
+  useGetPublicFaqsQuery,
+  useGetFaqsQuery,
   useGetNotificationSettingsQuery,
   useUpdateNotificationSettingsMutation,
   useGetNotificationsQuery,

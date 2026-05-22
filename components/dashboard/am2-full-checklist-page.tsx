@@ -531,16 +531,6 @@ function createFallbackChecklistItem(
 type Am2eChecklistFlowData =
   GetAm2eChecklistFlowByCourseResponse["data"];
 
-function getNvqAnswerForChecklistFlow(
-  flow: Am2FullChecklistPageProps["flow"]
-) {
-  return flow === "am2e"
-    ? "before-3rd-september-2023"
-    : flow === "am2e-v1"
-      ? "after-september-2023"
-      : null;
-}
-
 function mapAm2eFlowToFullChecklistScreen({
   flowData,
   flow,
@@ -1254,9 +1244,7 @@ export default function Am2FullChecklistPage({
       return;
     }
 
-    const answerId = getNvqAnswerForChecklistFlow(flow);
-
-    if (!answerId || !previewCourseId) {
+    if (!previewCourseId) {
       return;
     }
 
@@ -1265,8 +1253,6 @@ export default function Am2FullChecklistPage({
     getAm2eChecklistFlowByCourse({
       variant: flow,
       courseId: previewCourseId,
-      questionId: "nvq-registration-date",
-      answerId,
     })
       .unwrap()
       .then((response) => {

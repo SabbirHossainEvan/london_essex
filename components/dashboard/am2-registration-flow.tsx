@@ -144,7 +144,7 @@ type EmployerFormState = {
 type TrainingFormState = EmployerFormState;
 type NetFlowType = "am2" | "am2e" | "am2e-v1";
 type NvqTiming = "before-3rd-september-2023" | "after-september-2023";
-type EmployerStatus = "yes" | "no";
+type EmployerStatus = "yes" | "no" | "both";
 type CandidateFieldKey = keyof CandidateFormState;
 type AssessmentFieldKey = keyof AssessmentFormState;
 type EmployerFieldKey = keyof EmployerFormState;
@@ -225,18 +225,6 @@ const am2eEligibleQualificationTokens = [
   "eal-603-5982-1",
   "603-5982-1",
 ];
-
-function getNvqAnswerForFlow(flowType: NetFlowType): NvqTiming | null {
-  if (flowType === "am2e") {
-    return "before-3rd-september-2023";
-  }
-
-  if (flowType === "am2e-v1") {
-    return "after-september-2023";
-  }
-
-  return null;
-}
 
 function normalizeQualificationValue(value?: string) {
   return (value ?? "")
@@ -450,6 +438,49 @@ function normalizeAssessmentValue(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, "");
 }
 
+function normalizeAssessmentVariant(value?: string): NetFlowType {
+  const normalizedValue = normalizeAssessmentValue(value ?? "");
+
+  if (normalizedValue === "am2e-v1" || normalizedValue === "am2ev1") {
+    return "am2e-v1";
+  }
+
+  if (normalizedValue === "am2e") {
+    return "am2e";
+  }
+
+  return "am2";
+}
+
+function isAffirmativeSelection(value: string) {
+  return value.trim().toLowerCase() === "yes";
+}
+
+function getEmployerSelectionState(status: EmployerStatus) {
+  return {
+    employed: status === "yes" || status === "both",
+    selfEmployed: status === "no" || status === "both",
+  };
+}
+
+function getEmployerStatusFromSelections({
+  employed,
+  selfEmployed,
+}: {
+  employed: boolean;
+  selfEmployed: boolean;
+}): EmployerStatus {
+  if (employed && selfEmployed) {
+    return "both";
+  }
+
+  if (employed) {
+    return "yes";
+  }
+
+  return "no";
+}
+
 function convertCanvasToFile(canvas: HTMLCanvasElement, fileName: string) {
   return new Promise<File>((resolve, reject) => {
     canvas.toBlob(
@@ -654,6 +685,48 @@ function RadioRow({
               className="h-4 w-4 accent-[#1ea6df]"
             />
             <span>{option}</span>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
+function MultiSelectRow({
+  options,
+  values,
+  onToggle,
+  columns = "md:grid-cols-2",
+  disabled = false,
+}: {
+  options: Array<{ label: string; value: string }>;
+  values: string[];
+  onToggle: (value: string) => void;
+  columns?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <div className={`grid gap-3 ${columns}`}>
+      {options.map((option) => {
+        const checked = values.includes(option.value);
+
+        return (
+          <label
+            key={option.value}
+            className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition ${
+              checked
+                ? "border-[#8ed7f8] bg-[#dff5ff] text-[#24346b]"
+                : "border-[#dde9f7] bg-[#f4f9ff] text-[#5f6f90]"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={checked}
+              disabled={disabled}
+              onChange={() => onToggle(option.value)}
+              className="h-4 w-4 accent-[#1ea6df]"
+            />
+            <span>{option.label}</span>
           </label>
         );
       })}
@@ -1034,10 +1107,36 @@ function NetSignaturesPanel({
   requiresProviderSignature: boolean;
 }) {
   const [showInfo, setShowInfo] = React.useState(false);
-  const candidateItem = screen.items.find((item) => item.id === "candidate");
-  const providerItem = screen.items.find(
-    (item) => item.id === "training_provider"
-  );
+  const effectiveItems = React.useMemo(() => {
+    const nextItems = [...screen.items];
+    const hasCandidateItem = nextItems.some((item) => item.id === "candidate");
+    const hasProviderItem = nextItems.some(
+      (item) => item.id === "training_provider"
+    );
+
+    if (!hasCandidateItem) {
+      nextItems.unshift({
+        id: "candidate",
+        label: "Candidate",
+        status: "pending",
+      });
+    }
+
+    if (requiresProviderSignature && !hasProviderItem) {
+      nextItems.push({
+        id: "training_provider",
+        label: "Training Provider",
+        status: "pending",
+        action: {
+          label: "Ask for signed",
+        },
+      });
+    }
+
+    return nextItems;
+  }, [requiresProviderSignature, screen.items]);
+  const candidateItem = effectiveItems.find((item) => item.id === "candidate");
+  const providerItem = effectiveItems.find((item) => item.id === "training_provider");
   const candidateSigned = candidateItem?.status === "signed";
   const providerSigned = providerItem?.status === "signed";
   const providerRequested = providerItem?.status === "requested";
@@ -1084,7 +1183,7 @@ function NetSignaturesPanel({
               `Step 1 of ${requiresProviderSignature ? 2 : 1}`}
           </span>
           <div className="flex items-center gap-2">
-            {screen.items.map((item) => {
+            {effectiveItems.map((item) => {
               const active =
                 item.status === "signed" || item.status === "requested";
               return (
@@ -2206,7 +2305,13 @@ function NetPaymentPanel({
   );
 }
 
-function NetConfirmedPanel({ course }: { course: CourseSummary }) {
+function NetConfirmedPanel({
+  course,
+  amountPaid,
+}: {
+  course: CourseSummary;
+  amountPaid: string;
+}) {
   const bookingReference = buildBookingReference();
   const assignedDate = formatAssignedDate();
 
@@ -2240,7 +2345,7 @@ function NetConfirmedPanel({ course }: { course: CourseSummary }) {
                 ["Assigned Date", assignedDate],
                 ["Time", course.schedule],
                 ["Location", course.location],
-                ["Amount Paid", normalizeCurrency(course.price)],
+                ["Amount Paid", amountPaid],
                 ["Reference", bookingReference],
               ].map(([label, value], index) => (
                 <div
@@ -2539,6 +2644,9 @@ Thank you,`,
   >(null);
   const [am2eChecklistFlowData, setAm2eChecklistFlowData] =
     React.useState<Am2eChecklistFlowData | null>(null);
+  const [variantFlowPreviewData, setVariantFlowPreviewData] = React.useState<
+    GetAm2eChecklistFlowByCourseResponse["data"] | null
+  >(null);
   const [payment, setPayment] = React.useState<PaymentFormState>({
     acceptedTerms: false,
     cardNumber: "",
@@ -2631,10 +2739,19 @@ Thank you,`,
       return;
     }
 
-    window.sessionStorage.setItem(
-      getEmployerStatusStorageKey(resolvedBookingId),
-      hasEmployer
-    );
+    if (
+      hasEmployer === "yes" ||
+      hasEmployer === "no" ||
+      hasEmployer === "both"
+    ) {
+      window.sessionStorage.setItem(
+        getEmployerStatusStorageKey(resolvedBookingId),
+        hasEmployer
+      );
+      return;
+    }
+
+    window.sessionStorage.removeItem(getEmployerStatusStorageKey(resolvedBookingId));
   }, [hasEmployer, resolvedBookingId]);
 
   const {
@@ -2689,8 +2806,12 @@ Thank you,`,
     am2eChecklistFlowData?.checklistVariant === netFlowType
       ? am2eChecklistFlowData
       : null;
+  const activeVariantFlowPreview =
+    variantFlowPreviewData?.checklistVariant === netFlowType
+      ? variantFlowPreviewData
+      : null;
   const requiresProviderSignature =
-    hasEmployer === "yes" &&
+    (hasEmployer === "yes" || hasEmployer === "both") &&
     (signaturesScreenData?.data.screen
       ? signaturesScreenData.data.screen.items.some(
           (item) => item.id === "training_provider"
@@ -2703,6 +2824,51 @@ Thank you,`,
   const am2eChecklistSummaryScreen = activeAm2eChecklistFlowData
     ? mapAm2eFlowToChecklistSummaryScreen(activeAm2eChecklistFlowData)
     : null;
+  const selectedVariantDisplayPrice =
+    activeVariantFlowPreview?.course?.pricing?.totalDisplayPrice ||
+    activeVariantFlowPreview?.course?.displayPrice ||
+    activeVariantFlowPreview?.availableVariants?.find(
+      (variant) => variant.variant === netFlowType
+    )?.pricing?.totalDisplayPrice ||
+    activeVariantFlowPreview?.availableVariants?.find(
+      (variant) => variant.variant === netFlowType
+    )?.displayPrice ||
+    normalizeCurrency(course.price);
+  const selectedAssessmentVariantForBooking = React.useMemo<NetFlowType>(() => {
+    if (
+      requestedFlow === "am2" ||
+      requestedFlow === "am2e" ||
+      requestedFlow === "am2e-v1"
+    ) {
+      return requestedFlow;
+    }
+
+    if (isAm2eQualification) {
+      return "am2e";
+    }
+
+    if (assessment.assessmentType.trim()) {
+      return normalizeAssessmentVariant(assessment.assessmentType);
+    }
+
+    if (activeVariantFlowPreview?.course?.selectedAssessmentVariant) {
+      return activeVariantFlowPreview.course.selectedAssessmentVariant;
+    }
+
+    if (activeVariantFlowPreview?.course?.assessmentVariant) {
+      return normalizeAssessmentVariant(
+        activeVariantFlowPreview.course.assessmentVariant
+      );
+    }
+
+    return "am2";
+  }, [
+    activeVariantFlowPreview?.course?.assessmentVariant,
+    activeVariantFlowPreview?.course?.selectedAssessmentVariant,
+    assessment.assessmentType,
+    isAm2eQualification,
+    requestedFlow,
+  ]);
 
   const resolveQualificationId = React.useCallback(() => {
     if (selectedQualificationIdParam) {
@@ -2726,7 +2892,11 @@ Thank you,`,
   }, [activeBookingId, searchParams]);
 
   React.useEffect(() => {
-    if (requestedHasEmployer === "yes" || requestedHasEmployer === "no") {
+    if (
+      requestedHasEmployer === "yes" ||
+      requestedHasEmployer === "no" ||
+      requestedHasEmployer === "both"
+    ) {
       setHasEmployer(requestedHasEmployer);
       return;
     }
@@ -2741,7 +2911,11 @@ Thank you,`,
       getEmployerStatusStorageKey(bookingReference)
     );
 
-    if (storedHasEmployer === "yes" || storedHasEmployer === "no") {
+    if (
+      storedHasEmployer === "yes" ||
+      storedHasEmployer === "no" ||
+      storedHasEmployer === "both"
+    ) {
       setHasEmployer(storedHasEmployer);
 
       const params = new URLSearchParams(searchParams.toString());
@@ -2757,15 +2931,8 @@ Thank you,`,
   }, [resolvedBookingId, netFlowType]);
 
   React.useEffect(() => {
-    const variant =
-      netFlowType === "am2e" || netFlowType === "am2e-v1"
-        ? netFlowType
-        : null;
-    const answerId = getNvqAnswerForFlow(netFlowType);
-
     if (
-      !variant ||
-      !answerId ||
+      (netFlowType !== "am2e" && netFlowType !== "am2e-v1") ||
       !course.id ||
       phase !== "net" ||
       activeAm2eChecklistFlowData
@@ -2774,10 +2941,8 @@ Thank you,`,
     }
 
     getAm2eChecklistFlowByCourse({
-      variant,
+      variant: netFlowType,
       courseId: course.id,
-      questionId: "nvq-registration-date",
-      answerId,
     })
       .unwrap()
       .then((response) => {
@@ -2788,6 +2953,35 @@ Thank you,`,
       });
   }, [
     activeAm2eChecklistFlowData,
+    course.id,
+    getAm2eChecklistFlowByCourse,
+    netFlowType,
+    phase,
+  ]);
+
+  React.useEffect(() => {
+    if (!course.id || phase !== "net") {
+      return;
+    }
+
+    if (activeVariantFlowPreview) {
+      return;
+    }
+
+    getAm2eChecklistFlowByCourse({
+      variant: netFlowType,
+      courseId: course.id,
+    })
+      .unwrap()
+      .then((response) => {
+        setVariantFlowPreviewData(response.data);
+      })
+      .catch(() => {
+        // Price preview is optional; the booking/payment screens still provide
+        // their own fallback pricing.
+      });
+  }, [
+    activeVariantFlowPreview,
     course.id,
     getAm2eChecklistFlowByCourse,
     netFlowType,
@@ -2916,6 +3110,57 @@ Thank you,`,
     (step) => step.key === currentStep
   );
   const paymentScreen = paymentScreenData?.data.screen;
+  const isAm2ChecklistCourse = course.slug === "am2-assessment-preparation";
+  const shouldForceEmployerSelection =
+    isAm2ChecklistCourse &&
+    !isAm2eQualification &&
+    isAffirmativeSelection(assessment.apprentice);
+  const employerSelections = getEmployerSelectionState(hasEmployer);
+  const shouldRequireEmployerDetails =
+    employerSelections.employed || shouldForceEmployerSelection;
+
+  React.useEffect(() => {
+    if (!shouldForceEmployerSelection) {
+      return;
+    }
+
+    if (hasEmployer !== "both") {
+      setHasEmployer("both");
+    }
+
+    if (requestedHasEmployer === "both") {
+      return;
+    }
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("hasEmployer", "both");
+    router.replace(`/dashboard/courses/${course.slug}/book?${params.toString()}`);
+  }, [
+    course.slug,
+    hasEmployer,
+    requestedHasEmployer,
+    router,
+    searchParams,
+    shouldForceEmployerSelection,
+  ]);
+
+  React.useEffect(() => {
+    if (shouldForceEmployerSelection || hasEmployer !== "both") {
+      return;
+    }
+
+    setHasEmployer("yes");
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("hasEmployer", "yes");
+    router.replace(`/dashboard/courses/${course.slug}/book?${params.toString()}`);
+  }, [
+    course.slug,
+    hasEmployer,
+    router,
+    searchParams,
+    shouldForceEmployerSelection,
+  ]);
 
   React.useEffect(() => {
     if (!registrationScreen?.submission?.payloadTemplate?.personalDetails) {
@@ -3121,20 +3366,34 @@ Thank you,`,
       }
 
       if (!resolvedBookingId) {
+        if (!course.id) {
+          setCandidateStepError(
+            "We could not determine the course reference needed to create this booking."
+          );
+          return;
+        }
+
         try {
           setCandidateStepError("");
           const response = await createNormalBooking({
-            courseSlug: course.slug,
+            courseId: course.id,
+            assessmentVariant: selectedAssessmentVariantForBooking,
             personalDetails: {
               title: candidate.title.trim(),
               firstName: candidate.firstName.trim(),
               lastName: candidate.lastName.trim(),
+              fullName: `${candidate.firstName.trim()} ${candidate.lastName.trim()}`.trim(),
               dateOfBirth: formatDateForApi(candidate.dob),
               niNumber: candidate.niNumber.trim(),
               email: candidate.email.trim(),
+              phoneNumber: candidate.mobileNumber.trim(),
               mobileNumber: candidate.mobileNumber.trim(),
+              address: [candidate.address1.trim(), candidate.address2.trim()]
+                .filter(Boolean)
+                .join(", "),
               addressLine1: candidate.address1.trim(),
               addressLine2: candidate.address2.trim(),
+              city: candidate.town.trim(),
               town: candidate.town.trim(),
               postcode: candidate.postcode.trim(),
               trainingCenter:
@@ -3226,7 +3485,7 @@ Thank you,`,
     }
 
     if (currentStep === "employer") {
-      if (hasEmployer === "no") {
+      if (!shouldRequireEmployerDetails) {
         setEmployerStepError("");
       } else {
         const requiredEmployerFields = employerFields.filter(
@@ -3489,11 +3748,10 @@ Thank you,`,
       const checklistFlowResponse = await getAm2eChecklistFlowByCourse({
         variant: nextFlowType,
         courseId,
-        questionId: "nvq-registration-date",
-        answerId: nvqTiming,
       }).unwrap();
 
       setAm2eChecklistFlowData(checklistFlowResponse.data);
+      setVariantFlowPreviewData(checklistFlowResponse.data);
       resolvedFlowType = checklistFlowResponse.data.checklistVariant ?? nextFlowType;
     } catch (checklistFlowError) {
       setEligibilityStepError(
@@ -4225,23 +4483,72 @@ Thank you,`,
               <div className="mt-5 grid gap-4">
                 <div>
                   <FieldLabel>Are you an employer or self-employed</FieldLabel>
-                  <RadioRow
-                    name="has-employer"
-                    options={["Employed", "Self-employed"]}
-                    value={hasEmployer === "yes" ? "Employed" : "Self-employed"}
-                    onChange={(value) => {
-                      setEmployerStepError("");
-                      const nextHasEmployer = value === "Employed" ? "yes" : "no";
-                      setHasEmployer(nextHasEmployer);
-                      router.replace(
-                        `/dashboard/courses/${course.slug}/book?${(() => {
-                          const params = new URLSearchParams(searchParams.toString());
-                          params.set("hasEmployer", nextHasEmployer);
-                          return params.toString();
-                        })()}`
-                      );
-                    }}
-                  />
+                  {shouldForceEmployerSelection ? (
+                    <MultiSelectRow
+                      options={[
+                        { label: "Employed", value: "employed" },
+                        { label: "Self-employed", value: "self-employed" },
+                      ]}
+                      values={[
+                        ...(employerSelections.employed ? ["employed"] : []),
+                        ...(employerSelections.selfEmployed
+                          ? ["self-employed"]
+                          : []),
+                      ]}
+                      disabled
+                      onToggle={(value) => {
+                        setEmployerStepError("");
+
+                        const nextSelections =
+                          value === "employed"
+                            ? {
+                                ...employerSelections,
+                                employed: !employerSelections.employed,
+                              }
+                            : {
+                                ...employerSelections,
+                                selfEmployed: !employerSelections.selfEmployed,
+                              };
+
+                        if (
+                          !nextSelections.employed &&
+                          !nextSelections.selfEmployed
+                        ) {
+                          return;
+                        }
+
+                        const nextHasEmployer =
+                          getEmployerStatusFromSelections(nextSelections);
+
+                        setHasEmployer(nextHasEmployer);
+                        router.replace(
+                          `/dashboard/courses/${course.slug}/book?${(() => {
+                            const params = new URLSearchParams(searchParams.toString());
+                            params.set("hasEmployer", nextHasEmployer);
+                            return params.toString();
+                          })()}`
+                        );
+                      }}
+                    />
+                  ) : (
+                    <RadioRow
+                      name="has-employer"
+                      options={["Employed", "Self-employed"]}
+                      value={hasEmployer === "yes" ? "Employed" : "Self-employed"}
+                      onChange={(value) => {
+                        setEmployerStepError("");
+                        const nextHasEmployer = value === "Employed" ? "yes" : "no";
+                        setHasEmployer(nextHasEmployer);
+                        router.replace(
+                          `/dashboard/courses/${course.slug}/book?${(() => {
+                            const params = new URLSearchParams(searchParams.toString());
+                            params.set("hasEmployer", nextHasEmployer);
+                            return params.toString();
+                          })()}`
+                        );
+                      }}
+                    />
+                  )}
                 </div>
 
                 {(() => {
@@ -4274,7 +4581,7 @@ Thank you,`,
                             onChange={(value) => updateEmployer(currentStateKey, value)}
                             placeholder={currentField.placeholder ?? ""}
                             type={currentField.type}
-                            disabled={hasEmployer === "no"}
+                            disabled={!shouldRequireEmployerDetails}
                           />
                         </div>
                       );
@@ -4741,7 +5048,10 @@ Thank you,`,
           ) : null}
 
           {phase === "net" && currentNetStep === "confirmed" ? (
-            <NetConfirmedPanel course={course} />
+            <NetConfirmedPanel
+              course={course}
+              amountPaid={selectedVariantDisplayPrice}
+            />
           ) : null}
 
           {phase === "registration" ? (
@@ -4967,7 +5277,7 @@ Thank you,`,
                     {isSubmittingPayment
                       ? "Preparing payment..."
                       : paymentScreen?.actions?.pay?.label ||
-                        `Pay ${paymentScreen?.summary.displayAmount ?? normalizeCurrency(course.price)}`}
+                        `Pay ${paymentScreen?.summary.displayAmount ?? selectedVariantDisplayPrice}`}
                   </button>
                 ) : null}
 

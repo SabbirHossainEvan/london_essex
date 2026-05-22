@@ -358,19 +358,28 @@ export default function CourseBookingFlow({ course }: BookingFlowProps) {
         return;
       }
 
+      if (!course.id) {
+        setDetailsError("We could not determine the course reference needed to create this booking.");
+        return;
+      }
+
       try {
         const response = await createNormalBooking({
-          courseSlug: course.slug,
+          courseId: course.id,
           personalDetails: {
             title: "",
             firstName,
             lastName,
+            fullName: details.fullName.trim(),
             dateOfBirth: formatDateForApi(details.dob),
             niNumber: "",
             email: details.email.trim(),
+            phoneNumber: details.phone.trim(),
             mobileNumber: details.phone.trim(),
+            address: details.address.trim(),
             addressLine1: details.address.trim(),
             addressLine2: "",
+            city: details.city.trim(),
             town: details.city.trim(),
             postcode: details.postcode.trim(),
             trainingCenter: details.location.trim(),

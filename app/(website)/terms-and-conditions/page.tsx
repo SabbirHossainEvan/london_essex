@@ -95,6 +95,7 @@ const sections = [
 export default function TermsAndConditionsPage() {
   return (
     <LegalPage
+      pageSlug="terms-and-conditions"
       eyebrow="Legal"
       title="Terms & Conditions"
       intro="These terms explain how our website and training services may be used. They are intended to provide a clear summary for visitors, learners, and customers."
