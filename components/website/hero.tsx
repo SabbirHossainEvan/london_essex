@@ -55,12 +55,6 @@ const heroCollageImages = [
 const fallbackSearchUi = {
   placeholder: "Find a course...",
   actionLabel: "Find Courses",
-  popular: [
-    { label: "Gas Engineer", query: "Gas Engineer" },
-    { label: "Electrical", query: "Electrical" },
-    { label: "Plumbing", query: "Plumbing" },
-    { label: "Renewables", query: "Renewables" },
-  ],
 };
 
 const searchEndpointBase =
@@ -98,10 +92,6 @@ type SearchApiPayload = {
       query?: string;
       placeholder?: string;
       actionLabel?: string;
-      popular?: Array<{
-        label: string;
-        query: string;
-      }>;
     };
     filters?: {
       search?: string;
@@ -140,7 +130,6 @@ const Hero = () => {
   const [error, setError] = React.useState("");
   const [placeholder, setPlaceholder] = React.useState(fallbackSearchUi.placeholder);
   const [actionLabel, setActionLabel] = React.useState(fallbackSearchUi.actionLabel);
-  const [popularSearches, setPopularSearches] = React.useState(fallbackSearchUi.popular);
 
   const runSearch = React.useCallback(async (value: string) => {
     const trimmedValue = value.trim();
@@ -178,7 +167,6 @@ const Hero = () => {
       setSearchedTerm(nextSearchConfig?.query ?? trimmedValue);
       setPlaceholder(nextSearchConfig?.placeholder ?? fallbackSearchUi.placeholder);
       setActionLabel(nextSearchConfig?.actionLabel ?? fallbackSearchUi.actionLabel);
-      setPopularSearches(nextSearchConfig?.popular ?? fallbackSearchUi.popular);
       setError(nextResults.length === 0 ? `No courses found for "${trimmedValue}".` : "");
     } catch (searchError) {
       console.error("Course search failed", searchError);
@@ -329,22 +317,6 @@ const Hero = () => {
               </form>
             </div>
 
-            {/* Categories */}
-            <div className="mt-10 flex max-w-[640px] flex-wrap gap-4">
-              <span className="text-sm font-bold text-[#2D3182]/50 uppercase tracking-widest mr-2 self-center">
-                Popular:
-              </span>
-              {popularSearches.map((item) => (
-                <button
-                  key={item.query}
-                  type="button"
-                  onClick={() => void handleCategorySearch(item.query)}
-                  className="px-5 py-2.5 bg-white border border-gray-100 rounded-full text-sm font-semibold text-[#2D3182] hover:bg-blue-50 hover:border-blue-200 transition-all shadow-sm"
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
           </motion.div>
 
           {/* Right Hero Image Group */}

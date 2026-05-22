@@ -4482,7 +4482,7 @@ Thank you,`,
 
               <div className="mt-5 grid gap-4">
                 <div>
-                  <FieldLabel>Are you an employer or self-employed</FieldLabel>
+                  <FieldLabel>Are you an employed or self-employed</FieldLabel>
                   {shouldForceEmployerSelection ? (
                     <MultiSelectRow
                       options={[
