@@ -83,6 +83,24 @@ function isAm2eEligibleQualification({
   );
 }
 
+function getFrontendCoursePrice(price: string) {
+  const trimmed = price.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  return trimmed.split(/\s*\+\s*VAT/i)[0]?.trim() || trimmed;
+}
+
+function shouldShowVatLabel(vatLabel?: string) {
+  return /vat/i.test(vatLabel ?? "");
+}
+
+function priceIncludesVat(price: string) {
+  return /\+\s*vat/i.test(price);
+}
+
 export default function CourseDetailsContent({
   course,
   relatedCourses,
@@ -123,6 +141,9 @@ export default function CourseDetailsContent({
   const [selectedModalOptionId, setSelectedModalOptionId] = React.useState("");
   const activeModalStep =
     modalSteps.find((step) => step.id === activeModalStepId) ?? modalSteps[0];
+  const frontendCoursePrice = getFrontendCoursePrice(course.price);
+  const showVatLabel =
+    shouldShowVatLabel(course.vatLabel) || priceIncludesVat(course.price);
 
   const accordionItems: Array<{ key: AccordionKey; title: string; content: string }> = [
     { key: "learning", title: "What you'll learn", content: course.learning },
@@ -413,8 +434,12 @@ export default function CourseDetailsContent({
 
             {variantPrices.length === 0 ? (
               <div className="mt-5 flex items-end gap-2">
-                <span className="text-[2rem] font-semibold leading-none text-[#38439e]">{course.price}</span>
-                <span className="pb-1 text-sm text-[#6f7894]">{course.vatLabel}</span>
+                <span className="text-[2rem] font-semibold leading-none text-[#38439e]">
+                  {frontendCoursePrice}
+                </span>
+                {showVatLabel ? (
+                  <span className="pb-1 text-sm font-medium text-[#6f7894]">+ VAT</span>
+                ) : null}
               </div>
             ) : null}
 
