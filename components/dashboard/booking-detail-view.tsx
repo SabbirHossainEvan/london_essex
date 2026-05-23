@@ -143,6 +143,7 @@ export default function BookingDetailView({ bookingId }: BookingDetailViewProps)
   const personalDetails = booking.personalDetails ?? {};
   const payment = booking.payment ?? {};
   const detailHref = course.slug ? `/dashboard/courses/${course.slug}` : "/dashboard/courses";
+  const canContinueCheckout = booking.status === "pending_payment";
 
   return (
     <div className="space-y-6">
@@ -214,14 +215,6 @@ export default function BookingDetailView({ bookingId }: BookingDetailViewProps)
           >
             {booking.actions?.detailsLabel || "Course Details"}
           </Link>
-          {booking.status === "pending_payment" ? (
-            <Link
-              href={`/dashboard/bookings/${booking.id}/checkout/payment`}
-              className="block rounded-xl border border-[#d8e5f6] bg-white px-5 py-3 text-center text-sm font-medium text-[#4356ad]"
-            >
-              Continue Checkout
-            </Link>
-          ) : null}
         </PanelCard>
 
         <div className="space-y-6">
@@ -269,6 +262,24 @@ export default function BookingDetailView({ bookingId }: BookingDetailViewProps)
               </div>
             ) : null}
           </PanelCard>
+
+          {canContinueCheckout ? (
+            <Link
+              href={`/dashboard/bookings/${booking.id}/checkout/payment`}
+              className="block rounded-xl bg-[#1ea65a] px-5 py-3 text-center text-sm font-medium text-white shadow-[0_10px_22px_rgba(30,166,90,0.18)] transition hover:bg-[#18864a]"
+            >
+              Continue Checkout
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="block w-full cursor-not-allowed rounded-xl bg-[#a8d9b9] px-5 py-3 text-center text-sm font-medium text-white opacity-70"
+            >
+              Continue Checkout
+            </button>
+          )}
         </div>
       </div>
     </div>
