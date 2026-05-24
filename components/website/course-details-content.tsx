@@ -40,6 +40,7 @@ type CourseDetailsContentProps = {
 };
 
 type AccordionKey = "learning" | "delivery" | "additional";
+type ImageOrientation = "portrait" | "landscape" | "square";
 
 const fallbackCourseImage = "/hero-1.png";
 
@@ -82,6 +83,24 @@ function isAm2eEligibleQualification({
   );
 }
 
+function getFrontendCoursePrice(price: string) {
+  const trimmed = price.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  return trimmed.split(/\s*\+\s*VAT/i)[0]?.trim() || trimmed;
+}
+
+function shouldShowVatLabel(vatLabel?: string) {
+  return /vat/i.test(vatLabel ?? "");
+}
+
+function priceIncludesVat(price: string) {
+  return /\+\s*vat/i.test(price);
+}
+
 export default function CourseDetailsContent({
   course,
   relatedCourses,
@@ -109,6 +128,8 @@ export default function CourseDetailsContent({
   const [selectedImage, setSelectedImage] = React.useState(
     galleryImages[defaultSelectedImageIndex] ?? galleryImages[0] ?? fallbackCourseImage
   );
+  const [selectedImageOrientation, setSelectedImageOrientation] =
+    React.useState<ImageOrientation>("landscape");
   const [openSection, setOpenSection] = React.useState<AccordionKey>("learning");
   const [relatedIndex, setRelatedIndex] = React.useState(0);
   const [bookingOpen, setBookingOpen] = React.useState(false);
@@ -120,6 +141,9 @@ export default function CourseDetailsContent({
   const [selectedModalOptionId, setSelectedModalOptionId] = React.useState("");
   const activeModalStep =
     modalSteps.find((step) => step.id === activeModalStepId) ?? modalSteps[0];
+  const frontendCoursePrice = getFrontendCoursePrice(course.price);
+  const showVatLabel =
+    shouldShowVatLabel(course.vatLabel) || priceIncludesVat(course.price);
 
   const accordionItems: Array<{ key: AccordionKey; title: string; content: string }> = [
     { key: "learning", title: "What you'll learn", content: course.learning },
@@ -178,6 +202,26 @@ export default function CourseDetailsContent({
       galleryImages[defaultSelectedImageIndex] ?? galleryImages[0] ?? fallbackCourseImage
     );
   }, [defaultSelectedImageIndex, galleryImages]);
+
+  React.useEffect(() => {
+    const image = new window.Image();
+
+    image.onload = () => {
+      if (image.naturalWidth > image.naturalHeight) {
+        setSelectedImageOrientation("landscape");
+        return;
+      }
+
+      if (image.naturalWidth < image.naturalHeight) {
+        setSelectedImageOrientation("portrait");
+        return;
+      }
+
+      setSelectedImageOrientation("square");
+    };
+
+    image.src = selectedImage;
+  }, [selectedImage]);
 
   const buildBookingPath = (
     selectedQualification?: string,
@@ -324,9 +368,27 @@ export default function CourseDetailsContent({
 
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)] lg:items-start">
           <div>
-            <div className="overflow-hidden rounded-[16px] bg-white shadow-[0_8px_24px_rgba(60,101,154,0.08)]">
-              <div className="relative aspect-[16/9]">
-                <Image src={selectedImage} alt={course.title} fill className="object-cover" sizes="(max-width: 1024px) 100vw, 900px" />
+            <div
+              className={`overflow-hidden rounded-[16px] bg-white shadow-[0_8px_24px_rgba(60,101,154,0.08)] ${
+                selectedImageOrientation === "portrait" ? "mx-auto max-w-[620px]" : ""
+              }`}
+            >
+              <div
+                className={`relative bg-[#f8fbff] ${
+                  selectedImageOrientation === "portrait"
+                    ? "aspect-[4/5]"
+                    : selectedImageOrientation === "square"
+                      ? "aspect-square"
+                      : "aspect-[16/9]"
+                }`}
+              >
+                <Image
+                  src={selectedImage}
+                  alt={course.title}
+                  fill
+                  className="object-contain"
+                  sizes="(max-width: 1024px) 100vw, 900px"
+                />
               </div>
             </div>
 
@@ -338,8 +400,14 @@ export default function CourseDetailsContent({
                   onClick={() => setSelectedImage(image)}
                   className={`relative overflow-hidden rounded-[10px] border ${selectedImage === image ? "border-[#1ea9de]" : "border-[#d6e4f5]"}`}
                 >
-                  <div className="relative aspect-[4/3]">
-                    <Image src={image} alt={`${course.title} preview ${index + 1}`} fill className="object-cover" sizes="160px" />
+                  <div className="relative aspect-[4/3] bg-[#f8fbff]">
+                    <Image
+                      src={image}
+                      alt={`${course.title} preview ${index + 1}`}
+                      fill
+                      className="object-contain"
+                      sizes="160px"
+                    />
                   </div>
                 </button>
               ))}
@@ -366,8 +434,12 @@ export default function CourseDetailsContent({
 
             {variantPrices.length === 0 ? (
               <div className="mt-5 flex items-end gap-2">
-                <span className="text-[2rem] font-semibold leading-none text-[#38439e]">{course.price}</span>
-                <span className="pb-1 text-sm text-[#6f7894]">{course.vatLabel}</span>
+                <span className="text-[2rem] font-semibold leading-none text-[#38439e]">
+                  {frontendCoursePrice}
+                </span>
+                {showVatLabel ? (
+                  <span className="pb-1 text-sm font-medium text-[#6f7894]">+ VAT</span>
+                ) : null}
               </div>
             ) : null}
 

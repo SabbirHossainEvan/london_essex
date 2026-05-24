@@ -19,6 +19,9 @@ export type CourseCatalogCard = {
   price: number;
   currency: string;
   thumbnailUrl?: string;
+  imageUrl?: string;
+  imageUrls?: string[];
+  galleryImages?: string[];
   tags?: string[];
   isPublished?: boolean;
   createdAt?: string;
@@ -37,7 +40,24 @@ export type CourseCatalogCard = {
   };
   image?: {
     url: string;
+    urls?: string[];
     alt: string;
+  };
+  media?: {
+    thumbnailUrl?: string;
+    imageUrl?: string;
+    imageUrls?: string[];
+    galleryImages?: string[];
+  };
+  pricing?: {
+    amount: number;
+    baseAmount?: number;
+    currency: string;
+    displayPrice: string;
+    baseDisplayPrice?: string;
+    totalDisplayPrice?: string;
+    vatIncluded?: boolean;
+    note?: string;
   };
   subtitle?: string;
   description?: string;

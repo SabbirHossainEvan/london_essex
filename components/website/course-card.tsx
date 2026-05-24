@@ -1,5 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Flame } from "lucide-react";
+import { CalendarDays, Flame, MapPin, Tag } from "lucide-react";
 
 type CourseCardProps = {
   slug: string;
@@ -9,6 +10,11 @@ type CourseCardProps = {
   description: string;
   remainingSeats?: number;
   hrefBasePath?: string;
+  heroImage?: string;
+  imageAlt?: string;
+  price?: string;
+  location?: string;
+  tags?: string[];
 };
 
 const hiddenSeatAvailabilitySlugs = new Set(["am2-assessment-preparation"]);
@@ -32,28 +38,78 @@ export default function CourseCard({
   description,
   remainingSeats,
   hrefBasePath = "/courses",
+  heroImage,
+  imageAlt,
+  price,
+  location,
+  tags = [],
 }: CourseCardProps) {
   const seatAvailability = hiddenSeatAvailabilitySlugs.has(slug)
     ? null
     : formatSeatAvailability(remainingSeats);
+  const visibleTags = tags.filter(Boolean).slice(0, 2);
+  const hasVisual = typeof heroImage === "string" && heroImage.length > 0;
 
   return (
-    <article className="group flex min-h-[300px] flex-col overflow-hidden rounded-[16px] border border-[#d8e8f6] bg-white shadow-[0_10px_24px_rgba(60,101,154,0.08)]">
-      <div className="bg-[#eef7ff] p-4">
-        <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-[#566287] shadow-sm">
-          <Flame className="h-3.5 w-3.5 text-[#ff4a4a]" />
-          <span>{category}</span>
+    <article className="group flex min-h-[380px] flex-col overflow-hidden rounded-[20px] border border-[#d8e8f6] bg-white shadow-[0_10px_24px_rgba(60,101,154,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(60,101,154,0.16)]">
+      {hasVisual ? (
+        <div className="relative h-52 overflow-hidden bg-[#dbefff]">
+          <Image
+            src={heroImage}
+            alt={imageAlt || title}
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+            className="object-cover transition duration-500 group-hover:scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#14224a]/78 via-[#1c3f75]/22 to-transparent" />
+          <div className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-white/92 px-4 py-2 text-sm font-medium text-[#445275] shadow-sm backdrop-blur">
+            <Flame className="h-3.5 w-3.5 text-[#ff4a4a]" />
+            <span>{category}</span>
+          </div>
+          {price ? (
+            <div className="absolute bottom-4 right-4 rounded-full bg-[#19a9de] px-3.5 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(25,169,222,0.35)]">
+              {price}
+            </div>
+          ) : null}
         </div>
+      ) : (
+        <div className="bg-[#eef7ff] p-4">
+          <div className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-[#566287] shadow-sm">
+            <Flame className="h-3.5 w-3.5 text-[#ff4a4a]" />
+            <span>{category}</span>
+          </div>
 
-        <h3 className="mt-4 text-[1.05rem] font-semibold leading-[1.35] text-[#37409b] sm:text-[1.2rem]">
-          {title}
-        </h3>
+          <h3 className="mt-4 text-[1.05rem] font-semibold leading-[1.35] text-[#37409b] sm:text-[1.2rem]">
+            {title}
+          </h3>
 
-        <p className="mt-3 text-[0.98rem] text-[#4f567f]">{schedule}</p>
-      </div>
+          <p className="mt-3 text-[0.98rem] text-[#4f567f]">{schedule}</p>
+        </div>
+      )}
 
       <div className="flex flex-1 flex-col justify-between p-4">
         <div>
+          {hasVisual ? (
+            <>
+              <h3 className="text-[1.08rem] font-semibold leading-[1.35] text-[#37409b] sm:text-[1.22rem]">
+                {title}
+              </h3>
+
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-[#586480]">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#eef7ff] px-3 py-1.5">
+                  <CalendarDays className="h-4 w-4 text-[#19a9de]" />
+                  {schedule}
+                </span>
+                {location ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f4f8fc] px-3 py-1.5">
+                    <MapPin className="h-4 w-4 text-[#63708f]" />
+                    {location}
+                  </span>
+                ) : null}
+              </div>
+            </>
+          ) : null}
+
           <p className="max-w-[30ch] text-[0.98rem] leading-7 text-[#707b95]">
             {description}
           </p>
@@ -62,6 +118,20 @@ export default function CourseCard({
             <p className="mt-4 text-sm font-semibold text-[#1b9ed8]">
               {seatAvailability}
             </p>
+          ) : null}
+
+          {visibleTags.length > 0 ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {visibleTags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#dbe7f4] bg-[#f8fbff] px-3 py-1 text-xs font-medium uppercase tracking-[0.08em] text-[#5d6986]"
+                >
+                  <Tag className="h-3 w-3" />
+                  {tag}
+                </span>
+              ))}
+            </div>
           ) : null}
         </div>
 

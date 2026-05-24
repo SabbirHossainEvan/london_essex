@@ -44,6 +44,64 @@ function normalizeImageUrl(value?: string) {
   return url.toString();
 }
 
+function formatDisplayDate(value?: string) {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    return "-";
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const [year, month, day] = trimmed.split("-");
+    return `${day}/${month}/${year.slice(-2)}`;
+  }
+
+  const parsed = new Date(trimmed);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return trimmed;
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+  }).format(parsed);
+}
+
+const DEFAULT_TRAINING_CENTRE = "Romford, Essex";
+
+function looksLikeLocation(value: string) {
+  const normalized = value.trim().toLowerCase();
+
+  if (!normalized) {
+    return false;
+  }
+
+  if (
+    normalized.includes("am2 final assessment") ||
+    normalized.includes("electrical trainees preparing")
+  ) {
+    return false;
+  }
+
+  return (
+    normalized.includes("romford") ||
+    normalized.includes("essex") ||
+    normalized.includes("london") ||
+    normalized.includes("campus") ||
+    normalized.includes("centre") ||
+    normalized.includes("center") ||
+    normalized.includes(",")
+  );
+}
+
+function resolveTrainingCentre(...values: Array<string | undefined>) {
+  const locationValue = values.find((value) => value && looksLikeLocation(value));
+
+  return locationValue?.trim() || DEFAULT_TRAINING_CENTRE;
+}
+
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4 rounded-xl border border-[#e4edf8] bg-white px-4 py-3">
@@ -85,6 +143,7 @@ export default function BookingDetailView({ bookingId }: BookingDetailViewProps)
   const personalDetails = booking.personalDetails ?? {};
   const payment = booking.payment ?? {};
   const detailHref = course.slug ? `/dashboard/courses/${course.slug}` : "/dashboard/courses";
+  const canContinueCheckout = booking.status === "pending_payment";
 
   return (
     <div className="space-y-6">
@@ -133,7 +192,13 @@ export default function BookingDetailView({ bookingId }: BookingDetailViewProps)
             </div>
             <div className="flex items-center gap-2 text-sm text-[#70809d]">
               <MapPin className="h-4 w-4 text-[#5166c5]" />
-              <span>{booking.session?.location || course.location || "Location pending"}</span>
+              <span>
+                {resolveTrainingCentre(
+                  booking.session?.location,
+                  course.location,
+                  personalDetails.trainingCenter
+                )}
+              </span>
             </div>
           </div>
 
@@ -150,14 +215,6 @@ export default function BookingDetailView({ bookingId }: BookingDetailViewProps)
           >
             {booking.actions?.detailsLabel || "Course Details"}
           </Link>
-          {booking.status === "pending_payment" ? (
-            <Link
-              href={`/dashboard/bookings/${booking.id}/checkout/payment`}
-              className="block rounded-xl border border-[#d8e5f6] bg-white px-5 py-3 text-center text-sm font-medium text-[#4356ad]"
-            >
-              Continue Checkout
-            </Link>
-          ) : null}
         </PanelCard>
 
         <div className="space-y-6">
@@ -170,14 +227,18 @@ export default function BookingDetailView({ bookingId }: BookingDetailViewProps)
               <InfoRow label="Full Name" value={personalDetails.fullName || "-"} />
               <InfoRow label="Email" value={personalDetails.email || "-"} />
               <InfoRow label="Phone" value={personalDetails.phoneNumber || "-"} />
-              <InfoRow label="Date of Birth" value={personalDetails.dateOfBirth || "-"} />
+              <InfoRow label="Date of Birth" value={formatDisplayDate(personalDetails.dateOfBirth)} />
               <InfoRow label="City" value={personalDetails.city || "-"} />
               <InfoRow label="Postcode" value={personalDetails.postcode || "-"} />
             </div>
             <InfoRow label="Address" value={personalDetails.address || "-"} />
             <InfoRow
               label="Training Centre"
-              value={personalDetails.trainingCenter || course.location || "-"}
+              value={resolveTrainingCentre(
+                booking.session?.location,
+                course.location,
+                personalDetails.trainingCenter
+              )}
             />
           </PanelCard>
 
@@ -201,6 +262,24 @@ export default function BookingDetailView({ bookingId }: BookingDetailViewProps)
               </div>
             ) : null}
           </PanelCard>
+
+          {canContinueCheckout ? (
+            <Link
+              href={`/dashboard/bookings/${booking.id}/checkout/payment`}
+              className="block rounded-xl bg-[#1ea65a] px-5 py-3 text-center text-sm font-medium text-white shadow-[0_10px_22px_rgba(30,166,90,0.18)] transition hover:bg-[#18864a]"
+            >
+              Continue Checkout
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="block w-full cursor-not-allowed rounded-xl bg-[#a8d9b9] px-5 py-3 text-center text-sm font-medium text-white opacity-70"
+            >
+              Continue Checkout
+            </button>
+          )}
         </div>
       </div>
     </div>
