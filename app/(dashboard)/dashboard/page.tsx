@@ -35,13 +35,47 @@ function normalizeDashboardUrl(value?: string) {
   return value;
 }
 
+function normalizeRunningBookingProgressTitle(
+  booking: NonNullable<
+    NonNullable<
+      ReturnType<typeof useGetBookingDashboardQuery>["data"]
+    >["data"]["dashboard"]["runningCourse"]
+  >["booking"]
+) {
+  if (!booking) {
+    return booking;
+  }
+
+  const courseTitle = booking.course?.title?.trim();
+  const currentProgressTitle = booking.progress?.title?.trim();
+  const isAm2AssessmentPreparation = courseTitle === "AM2 Assessment Preparation";
+
+  if (!isAm2AssessmentPreparation) {
+    return booking;
+  }
+
+  const expectedProgressTitle = `${courseTitle} Readiness Progress`;
+
+  if (currentProgressTitle === expectedProgressTitle) {
+    return booking;
+  }
+
+  return {
+    ...booking,
+    progress: {
+      ...booking.progress,
+      title: expectedProgressTitle,
+    },
+  };
+}
+
 export default function DashboardPage() {
   const { data, isLoading, isError, error } = useGetBookingDashboardQuery();
   const dashboard = data?.data.dashboard;
 
   const runningBooking = dashboard?.runningCourse?.booking
     ? {
-        ...dashboard.runningCourse.booking,
+        ...normalizeRunningBookingProgressTitle(dashboard.runningCourse.booking),
         action: dashboard.runningCourse.booking.action
           ? {
               ...dashboard.runningCourse.booking.action,
