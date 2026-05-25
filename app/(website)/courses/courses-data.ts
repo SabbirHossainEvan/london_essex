@@ -15,6 +15,10 @@ export type CourseSummary = {
   remainingSeats?: number;
   heroImage: string;
   gallery: string[];
+  detailSections?: Array<{
+    title: string;
+    content: string;
+  }>;
   learning: string;
   delivery: string;
   additionalInfo: string;

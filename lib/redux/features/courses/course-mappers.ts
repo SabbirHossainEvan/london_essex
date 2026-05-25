@@ -50,7 +50,15 @@ function mapSectionsToAccordionContent(sections: CourseDetailCourse["sections"])
 }
 
 export function mapDetailCourseToSummary(course: CourseDetailCourse): CourseSummary {
-  const accordion = mapSectionsToAccordionContent(course.sections ?? []);
+  const detailSections =
+    course.detailSections?.filter(
+      (section) => Boolean(section?.title?.trim()) || Boolean(section?.content?.trim())
+    ) ??
+    course.sections?.filter(
+      (section) => Boolean(section?.title?.trim()) || Boolean(section?.content?.trim())
+    ) ??
+    [];
+  const accordion = mapSectionsToAccordionContent(detailSections);
   const gallery = course.media?.galleryImages?.length
     ? course.media.galleryImages.map(normalizeImageUrl)
     : [course.media?.thumbnailUrl || course.thumbnailUrl]
@@ -78,6 +86,7 @@ export function mapDetailCourseToSummary(course: CourseDetailCourse): CourseSumm
     remainingSeats: course.remainingSeats,
     heroImage,
     gallery,
+    detailSections,
     learning: accordion.learning,
     delivery: accordion.delivery,
     additionalInfo: accordion.additionalInfo,
@@ -138,6 +147,7 @@ export function mapRelatedCourseToSummary(
           : undefined,
     heroImage,
     gallery: heroImage ? [heroImage] : [],
+    detailSections: [],
     learning: "",
     delivery: "",
     additionalInfo: "",
