@@ -175,6 +175,10 @@ export type CourseDetailCourse = {
     title: string;
     content: string;
   }>;
+  detailSections?: Array<{
+    title: string;
+    content: string;
+  }>;
   order?: number;
 };
 

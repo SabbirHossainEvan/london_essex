@@ -39,7 +39,6 @@ type CourseDetailsContentProps = {
   };
 };
 
-type AccordionKey = "learning" | "delivery" | "additional";
 type ImageOrientation = "portrait" | "landscape" | "square";
 
 const fallbackCourseImage = "/hero-1.png";
@@ -130,7 +129,6 @@ export default function CourseDetailsContent({
   );
   const [selectedImageOrientation, setSelectedImageOrientation] =
     React.useState<ImageOrientation>("landscape");
-  const [openSection, setOpenSection] = React.useState<AccordionKey>("learning");
   const [relatedIndex, setRelatedIndex] = React.useState(0);
   const [bookingOpen, setBookingOpen] = React.useState(false);
   const effectiveBookingModal = bookNowModalQuery.data?.data.modal ?? bookingModal;
@@ -145,11 +143,27 @@ export default function CourseDetailsContent({
   const showVatLabel =
     shouldShowVatLabel(course.vatLabel) || priceIncludesVat(course.price);
 
-  const accordionItems: Array<{ key: AccordionKey; title: string; content: string }> = [
-    { key: "learning", title: "What you'll learn", content: course.learning },
-    { key: "delivery", title: "How you'll learn", content: course.delivery },
-    { key: "additional", title: "Additional info", content: course.additionalInfo },
-  ];
+  const accordionItems = React.useMemo(() => {
+    const apiSections =
+      course.detailSections?.filter(
+        (section) => Boolean(section.title?.trim()) || Boolean(section.content?.trim())
+      ) ?? [];
+
+    if (apiSections.length > 0) {
+      return apiSections.map((section, index) => ({
+        key: `section-${index}`,
+        title: section.title,
+        content: section.content,
+      }));
+    }
+
+    return [
+      { key: "learning", title: "What you'll learn", content: course.learning },
+      { key: "delivery", title: "How you'll learn", content: course.delivery },
+      { key: "additional", title: "Additional info", content: course.additionalInfo },
+    ].filter((section) => Boolean(section.title.trim()) || Boolean(section.content.trim()));
+  }, [course.additionalInfo, course.delivery, course.detailSections, course.learning]);
+  const [openSection, setOpenSection] = React.useState(accordionItems[0]?.key ?? "");
 
   const visibleRelatedCourses =
     relatedCourses.length <= 3
@@ -202,6 +216,14 @@ export default function CourseDetailsContent({
       galleryImages[defaultSelectedImageIndex] ?? galleryImages[0] ?? fallbackCourseImage
     );
   }, [defaultSelectedImageIndex, galleryImages]);
+
+  React.useEffect(() => {
+    setOpenSection((current) =>
+      accordionItems.some((item) => item.key === current)
+        ? current
+        : (accordionItems[0]?.key ?? "")
+    );
+  }, [accordionItems]);
 
   React.useEffect(() => {
     const image = new window.Image();
@@ -510,7 +532,9 @@ export default function CourseDetailsContent({
                 <div key={item.key} className="overflow-hidden rounded-[12px] border border-[#deebf6] bg-white">
                   <button
                     type="button"
-                    onClick={() => setOpenSection(isOpen ? "learning" : item.key)}
+                    onClick={() =>
+                      setOpenSection(isOpen ? (accordionItems[0]?.key ?? "") : item.key)
+                    }
                     className="flex w-full items-center justify-between px-5 py-4 text-left"
                   >
                     <span className="text-[1.05rem] font-medium text-[#3943a5]">{item.title}</span>
