@@ -350,7 +350,7 @@ export default function CourseDetailsContent({
     );
 
     const shouldBypassIntermediateModal =
-      course.slug === "am2-assessment-preparation" &&
+      course.bookingFlow === "am2" &&
       isAm2eEligibleQualification({
         label: selectedOption?.label ?? selectedModalOptionId,
         id: selectedOption?.id,

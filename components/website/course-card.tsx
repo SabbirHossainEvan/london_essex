@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { CalendarDays, Flame, MapPin, Tag } from "lucide-react";
+import { isAm2Course } from "@/lib/redux/features/courses/course-flow";
 
 type CourseCardProps = {
   slug: string;
@@ -15,9 +16,8 @@ type CourseCardProps = {
   price?: string;
   location?: string;
   tags?: string[];
+  bookingFlow?: "standard" | "am2";
 };
-
-const hiddenSeatAvailabilitySlugs = new Set(["am2-assessment-preparation"]);
 
 function formatSeatAvailability(remainingSeats?: number) {
   if (typeof remainingSeats !== "number" || Number.isNaN(remainingSeats)) {
@@ -43,8 +43,9 @@ export default function CourseCard({
   price,
   location,
   tags = [],
+  bookingFlow,
 }: CourseCardProps) {
-  const seatAvailability = hiddenSeatAvailabilitySlugs.has(slug)
+  const seatAvailability = isAm2Course({ slug, title, bookingFlow })
     ? null
     : formatSeatAvailability(remainingSeats);
   const visibleTags = tags.filter(Boolean).slice(0, 2);

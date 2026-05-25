@@ -11,6 +11,8 @@ export type CourseCatalogCard = {
   id: string;
   title: string;
   slug: string;
+  flowType?: string;
+  courseType?: string;
   status: string;
   schedule: string;
   shortDescription: string;
@@ -19,6 +21,7 @@ export type CourseCatalogCard = {
   price: number;
   currency: string;
   thumbnailUrl?: string;
+  assessmentVariant?: string;
   imageUrl?: string;
   imageUrls?: string[];
   galleryImages?: string[];
@@ -116,6 +119,8 @@ export type CourseDetailCourse = {
   id: string;
   title: string;
   slug: string;
+  flowType?: string;
+  courseType?: string;
   status: string;
   schedule: string;
   shortDescription: string;
@@ -124,6 +129,7 @@ export type CourseDetailCourse = {
   price: number;
   currency: string;
   thumbnailUrl?: string;
+  assessmentVariant?: string;
   tags?: string[];
   isPublished?: boolean;
   createdAt?: string;
@@ -186,6 +192,9 @@ export type CourseDetailRelatedCourse = {
   id: string;
   title: string;
   slug: string;
+  flowType?: string;
+  courseType?: string;
+  assessmentVariant?: string;
   badge?: {
     label: string;
     tone: string;

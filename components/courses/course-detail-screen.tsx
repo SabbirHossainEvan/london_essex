@@ -7,6 +7,7 @@ import {
   useGetCourseDetailScreenQuery,
 } from "@/lib/redux/features/courses/course-api";
 import { useLazyGetAm2eChecklistFlowByCourseQuery } from "@/lib/redux/features/bookings/booking-api";
+import { isAm2Course } from "@/lib/redux/features/courses/course-flow";
 import {
   mapDetailCourseToSummary,
   mapRelatedCourseToSummary,
@@ -58,6 +59,7 @@ export default function CourseDetailScreen({
 
   const screen = data?.data.screen;
   const course = screen?.course ? mapDetailCourseToSummary(screen.course) : null;
+  const shouldLoadAm2ChecklistFlow = screen?.course ? isAm2Course(screen.course) : false;
   const relatedCourses =
     screen?.relatedCourses?.map(mapRelatedCourseToSummary) ?? [];
   const variantPrices = checklistFlowQuery.data?.data.availableVariants?.map((item) => ({
@@ -77,7 +79,7 @@ export default function CourseDetailScreen({
     if (
       !hydrated ||
       !screen?.course?.id ||
-      screen.course.slug !== "am2-assessment-preparation" ||
+      !shouldLoadAm2ChecklistFlow ||
       checklistFlowQuery.data?.data.course?.id === screen.course.id
     ) {
       return;
@@ -92,7 +94,7 @@ export default function CourseDetailScreen({
     fetchChecklistFlow,
     hydrated,
     screen?.course?.id,
-    screen?.course?.slug,
+    shouldLoadAm2ChecklistFlow,
   ]);
 
   if (!hydrated || isLoading) {
