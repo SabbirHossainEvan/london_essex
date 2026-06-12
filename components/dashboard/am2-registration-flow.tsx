@@ -3110,7 +3110,7 @@ Thank you,`,
     (step) => step.key === currentStep
   );
   const paymentScreen = paymentScreenData?.data.screen;
-  const isAm2ChecklistCourse = course.slug === "am2-assessment-preparation";
+  const isAm2ChecklistCourse = course.bookingFlow === "am2";
   const shouldForceEmployerSelection =
     isAm2ChecklistCourse &&
     !isAm2eQualification &&

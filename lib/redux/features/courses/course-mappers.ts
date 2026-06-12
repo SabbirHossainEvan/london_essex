@@ -4,6 +4,7 @@ import type {
   CourseDetailCourse,
   CourseDetailRelatedCourse,
 } from "@/lib/redux/features/courses/course-api";
+import { getCourseBookingFlow } from "@/lib/redux/features/courses/course-flow";
 
 function normalizeCurrency(value: string) {
   return value.replace(/\u00c2\u00a3/g, "\u00a3");
@@ -71,8 +72,7 @@ export function mapDetailCourseToSummary(course: CourseDetailCourse): CourseSumm
   return {
     id: course.id,
     slug: course.slug,
-    bookingFlow:
-      course.slug === "am2-assessment-preparation" ? "am2" : "standard",
+    bookingFlow: getCourseBookingFlow(course),
     category: course.badge?.label ?? course.status ?? "Course",
     title: course.title,
     schedule: course.schedule,
@@ -117,8 +117,7 @@ export function mapRelatedCourseToSummary(
   return {
     id: course.id,
     slug: course.slug,
-    bookingFlow:
-      course.slug === "am2-assessment-preparation" ? "am2" : "standard",
+    bookingFlow: getCourseBookingFlow(course),
     category: badgeLabel ?? ("status" in course ? course.status : "Course"),
     title: course.title,
     schedule:
